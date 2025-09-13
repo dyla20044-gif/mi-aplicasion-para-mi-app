@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, signInAnonymously, signOut, getRedirectResult } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- Configuración de Firebase ---
@@ -615,7 +615,7 @@ proStatusButton.addEventListener('click', async () => {
     // Check if the user is authenticated. If not, trigger Google sign-in.
     if (!currentUser || currentUser.isAnonymous) {
         try {
-            await signInWithPopup(auth, provider);
+            await signInWithRedirect(auth, provider);
         } catch (error) {
             console.error("Google sign-in error:", error);
             alert('Hubo un error al iniciar sesión. Intenta de nuevo.');
