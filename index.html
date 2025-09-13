@@ -107,39 +107,15 @@
         </div>
 
         <div id="profile-screen" class="screen">
-            <div id="profile-logged-in" style="display: none;">
-                <div class="screen-header">
-                    <h2>Mi Perfil</h2>
-                    <button id="signout-button" class="icon-button"><i class="fas fa-sign-out-alt"></i></button>
-                </div>
-                <div class="profile-options">
-                    <button id="pro-status-button" class="button profile-button"><i class="fas fa-crown"></i> <span>Activar Cuenta Pro</span></button>
-                    <button id="favorites-button" class="button secondary profile-button" data-screen="favorites-screen"><i class="fas fa-heart"></i> <span>Mis Favoritos</span></button>
-                    <button id="request-button" class="button secondary profile-button" data-screen="request-screen"><i class="fas fa-plus-circle"></i> <span>Solicitar Película</span></button>
-                    <button id="settings-button" class="button secondary profile-button" data-screen="settings-screen"><i class="fas fa-cog"></i> <span>Configuración</span></button>
-                </div>
+            <div class="screen-header">
+                <h2>Mi Perfil</h2>
             </div>
-            <div id="profile-logged-out" style="display: block;">
-                <div class="screen-header">
-                    <h2>Mi Perfil</h2>
-                    <a href="#" id="profile-login-link" class="text-button">Iniciar sesión</a>
-                </div>
-                <div class="profile-cta">
-                    <h2 class="profile-cta-title">Con Premium tienes más</h2>
-                    <div class="premium-benefits">
-                        <p><i class="fas fa-check"></i> Series y Películas Premium</p>
-                        <p><i class="fas fa-check"></i> Más contenido que cualquier otro streaming</p>
-                        <p><i class="fas fa-check"></i> Cancela cuando quieras</p>
-                        <p><i class="fas fa-check"></i> Sin anuncios</p>
-                    </div>
-                    <button class="button profile-cta-button" id="create-account-button">Crea tu cuenta Premium</button>
-                </div>
-                <div class="profile-footer-links">
-                    <a href="#" class="profile-link">Mi lista</a>
-                    <a href="#" class="profile-link">Política de privacidad</a>
-                    <a href="#" class="profile-link">Términos de uso</a>
-                    <a href="#" class="profile-link">Centro de ayuda</a>
-                </div>
+            <div class="profile-options">
+                <button id="pro-status-button" class="button profile-button"><i class="fas fa-crown"></i> <span>Activar Cuenta Pro</span></button>
+                <button id="signout-button" class="button secondary profile-button" style="display: none;"><i class="fas fa-sign-out-alt"></i> <span>Cerrar Sesión</span></button>
+                <button id="favorites-button" class="button secondary profile-button" data-screen="favorites-screen"><i class="fas fa-heart"></i> <span>Mis Favoritos</span></button>
+                <button id="request-button" class="button secondary profile-button" data-screen="request-screen"><i class="fas fa-plus-circle"></i> <span>Solicitar Película</span></button>
+                <button id="settings-button" class="button secondary profile-button" data-screen="settings-screen"><i class="fas fa-cog"></i> <span>Configuración</span></button>
             </div>
         </div>
 
@@ -238,7 +214,7 @@
                 <p><i class="fas fa-check"></i> Cancela cuando quieras</p>
                 <p><i class="fas fa-check"></i> Sin anuncios</p>
             </div>
-            <button class="button premium-cta-button" id="premium-info-cta">Empezar ya</button>
+            <button class="button premium-cta-button" id="premium-info-cta">Empieza ya</button>
             <p class="premium-info-login">Ya tengo plan Premium, <a href="#" id="premium-info-login-link">iniciar sesión</a>.</p>
         </div>
     </div>
@@ -268,21 +244,24 @@
         <div class="modal-content auth-content">
             <span class="close-button">&times;</span>
             <div id="login-form" class="auth-form active-form">
-                <h2 class="auth-title">Iniciar Sesión</h2>
+                <h2>Iniciar Sesión</h2>
                 <input type="email" id="login-email" placeholder="Correo electrónico">
                 <input type="password" id="login-password" placeholder="Contraseña">
-                <button class="button" id="login-button">Comenzar</button>
+                <button class="button" id="login-button">Iniciar Sesión</button>
                 <p class="switch-form-text">¿No tienes cuenta? <a href="#" id="show-signup-link">Regístrate</a></p>
+                <p class="or-separator">O</p>
+                <div class="social-login-buttons">
+                    <button class="social-button apple-btn"><i class="fab fa-apple"></i></button>
+                    <button class="social-button microsoft-btn"><i class="fab fa-microsoft"></i></button>
+                    <button class="social-button twitter-btn"><i class="fab fa-twitter"></i></button>
+                    <button class="social-button yahoo-btn"><i class="fab fa-yahoo"></i></button>
+                </div>
             </div>
             <div id="signup-form" class="auth-form">
-                <h2 class="auth-title">Crea tu cuenta y empieza a disfrutar</h2>
-                <input type="email" id="signup-email" placeholder="ejemplo@email.com">
+                <h2>Regístrate</h2>
+                <input type="email" id="signup-email" placeholder="Correo electrónico">
                 <input type="password" id="signup-password" placeholder="Contraseña">
-                <div class="terms-checkbox">
-                    <input type="checkbox" id="terms-checkbox">
-                    <label for="terms-checkbox" class="terms-label">Acepto los Términos de Uso de Sala Cine y reconozco que mi información personal será utilizada conforme al Aviso de Privacidad de Sala Cine.</label>
-                </div>
-                <button class="button" id="signup-button">Comenzar</button>
+                <button class="button" id="signup-button">Regístrate</button>
                 <p class="switch-form-text">¿Ya tienes cuenta? <a href="#" id="show-login-link">Inicia Sesión</a></p>
             </div>
         </div>
