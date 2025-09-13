@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- Configuración de Firebase ---
 const firebaseConfig = {
@@ -19,12 +19,17 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 // --- Elementos del DOM ---
+const appContainer = document.getElementById('app-container');
 const homeScreen = document.getElementById('home-screen');
 const moviesScreen = document.getElementById('movies-screen');
 const seriesScreen = document.getElementById('series-screen');
 const profileScreen = document.getElementById('profile-screen');
 const detailsScreen = document.getElementById('details-screen');
+const favoritesScreen = document.getElementById('favorites-screen');
+const requestScreen = document.getElementById('request-screen');
+const settingsScreen = document.getElementById('settings-screen');
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
+const screenButtons = document.querySelectorAll('[data-screen]');
 const searchInput = document.getElementById('search-input');
 const searchIconTop = document.getElementById('search-icon');
 const videoModal = document.getElementById('video-modal');
@@ -49,11 +54,13 @@ const bannerList = document.getElementById('banner-list');
 const loader = document.getElementById('loader');
 const seeMoreButtons = document.querySelectorAll('.see-more-btn');
 const paymentModal = document.getElementById('payment-modal');
-const proButton = document.getElementById('pro-button');
+const proStatusButton = document.getElementById('pro-status-button');
 const signinButton = document.getElementById('signin-button');
-const requestButton = document.getElementById('request-button');
+const signoutButton = document.getElementById('signout-button');
+const buyButtons = document.querySelectorAll('.buy-button');
 const movieRequestInput = document.getElementById('movie-request-input');
 const submitRequestButton = document.getElementById('submit-request-button');
+const favoritesGrid = document.getElementById('favorites-grid');
 
 
 let moviesData = [];
@@ -117,32 +124,46 @@ function createBannerItem(movie) {
     const isPremium = localMovie && localMovie.isPremium;
     const hasVideo = localMovie && localMovie.videoLink;
 
+    let buttonHtml = '';
+    if (hasVideo) {
+        buttonHtml = `<button class="banner-button red">${isPremium ? 'Ver con Premium' : 'Ver ahora'}</button>`;
+    } else {
+        buttonHtml = `<button class="banner-button mylist-btn"><i class="fas fa-plus"></i> Mi lista</button>`;
+    }
+
     bannerItem.innerHTML = `
         <div class="banner-buttons-container">
-            <button class="banner-button watch-btn" style="display: ${hasVideo && !isPremium ? 'inline-block' : 'none'};">Ver ahora</button>
-            <button class="banner-button premium-btn" style="display: ${hasVideo && isPremium ? 'inline-block' : 'none'};">Ver con Premium</button>
-            <button class="banner-button mylist-btn"><i class="fas fa-plus"></i> Mi lista</button>
+            ${buttonHtml}
         </div>
     `;
     
-    if (hasVideo && !isPremium) {
-        bannerItem.querySelector('.watch-btn').addEventListener('click', (e) => {
+    const playButton = bannerItem.querySelector('.red');
+    if (playButton) {
+        playButton.addEventListener('click', (e) => {
             e.stopPropagation();
-            videoPlayer.src = localMovie.videoLink;
-            showModal(videoModal);
-            videoPlayer.play();
+            if (isPremium) {
+                if (!currentUser || !currentUser.isPro) {
+                    alert('¡Contenido Premium! Suscríbete para verlo.');
+                } else {
+                    videoPlayer.src = localMovie.videoLink;
+                    showModal(videoModal);
+                    videoPlayer.play();
+                }
+            } else {
+                videoPlayer.src = localMovie.videoLink;
+                showModal(videoModal);
+                videoPlayer.play();
+            }
         });
     }
-    if (hasVideo && isPremium) {
-        bannerItem.querySelector('.premium-btn').addEventListener('click', (e) => {
+
+    const mylistButton = bannerItem.querySelector('.mylist-btn');
+    if(mylistButton) {
+        mylistButton.addEventListener('click', (e) => {
             e.stopPropagation();
-            alert('¡Contenido Premium! Suscríbete para verlo.'); // Replace with premium modal
+            addToFavorites(movie);
         });
     }
-    bannerItem.querySelector('.mylist-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        addToFavorites(movie);
-    });
 
     bannerItem.addEventListener('click', () => showDetailsScreen(movie, movie.media_type || 'movie'));
     return bannerItem;
@@ -168,6 +189,7 @@ function renderGrid(container, movies, type = 'movie') {
 async function showDetailsScreen(movie, type = 'movie') {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     detailsScreen.classList.add('active');
+    appContainer.scrollTo({ top: 0, behavior: 'smooth' });
     showLoader();
 
     try {
@@ -195,8 +217,8 @@ async function showDetailsScreen(movie, type = 'movie') {
             detailsPlayButton.onclick = () => {
                 if (localMovie && localMovie.videoLink) {
                     if (localMovie.isPremium && (!currentUser || !currentUser.isPro)) {
-                        // Play 10-minute preview for non-pro users
-                        videoPlayer.src = localMovie.videoLink.replace('.mp4', '_preview.mp4'); // Assuming preview video URL ends with _preview.mp4
+                         // Play 10-minute preview for non-pro users
+                        videoPlayer.src = localMovie.videoLink.replace('.mp4', '_preview.mp4');
                         showModal(videoModal);
                         videoPlayer.play();
 
@@ -204,7 +226,7 @@ async function showDetailsScreen(movie, type = 'movie') {
                             videoPlayer.pause();
                             alert('Este contenido es Premium. ¡Suscríbete para ver la película completa y sin interrupciones!');
                         }, 1000 * 60 * 10); // 10 minutes
-                    } else if (!localMovie.isPremium && !currentUser.isPro) {
+                    } else if (!localMovie.isPremium && (!currentUser || !currentUser.isPro)) {
                          // Play ad for free movies for non-pro users
                         playAd().then(() => {
                             videoPlayer.src = localMovie.videoLink;
@@ -293,7 +315,6 @@ async function fetchHomeContent() {
         
         bannerMovies = trendingContent.filter(m => m.backdrop_path);
         renderBannerCarousel();
-        startBannerAutoScroll();
     } catch (error) {
         console.error("Error fetching home content:", error);
         alert('Hubo un error al cargar el contenido principal. Por favor, recarga la página.');
@@ -307,12 +328,18 @@ function renderBannerCarousel() {
     bannerMovies.forEach(movie => {
         bannerList.appendChild(createBannerItem(movie));
     });
+    startBannerAutoScroll();
+}
+
+// Lógica para pausar y reanudar el scroll automático del carrusel
+function stopBannerAutoScroll() {
+    clearInterval(bannerInterval);
 }
 
 function startBannerAutoScroll() {
     let currentIndex = 0;
     const scrollAmount = bannerList.clientWidth;
-    clearInterval(bannerInterval);
+    stopBannerAutoScroll();
     bannerInterval = setInterval(() => {
         if (currentIndex < bannerMovies.length - 1) {
             currentIndex++;
@@ -325,6 +352,12 @@ function startBannerAutoScroll() {
         });
     }, 3000);
 }
+
+bannerList.addEventListener('mousedown', stopBannerAutoScroll);
+bannerList.addEventListener('mouseup', startBannerAutoScroll);
+bannerList.addEventListener('touchstart', stopBannerAutoScroll);
+bannerList.addEventListener('touchend', startBannerAutoScroll);
+
 
 async function fetchAllGenres(type = 'movie') {
     try {
@@ -406,25 +439,34 @@ async function handleSearch(query) {
 }
 
 // --- Navegación ---
-navItems.forEach(item => {
+function switchScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+    
+    const targetScreen = document.getElementById(screenId);
+    if (targetScreen) {
+        targetScreen.classList.add('active');
+        const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
+        if (navItem) navItem.classList.add('active');
+    }
+
+    if (screenId === 'movies-screen') {
+        renderAllMovies();
+    } else if (screenId === 'series-screen') {
+        renderAllSeries();
+    } else if (screenId === 'home-screen') {
+        fetchHomeContent();
+    } else if (screenId === 'favorites-screen') {
+        fetchFavorites();
+    }
+}
+
+document.querySelectorAll('.nav-item, .profile-button[data-screen]').forEach(item => {
     item.addEventListener('click', (e) => {
         e.preventDefault();
-        document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-        
         const targetScreenId = e.currentTarget.getAttribute('data-screen');
-        const targetScreen = document.getElementById(targetScreenId);
-        if (targetScreen) targetScreen.classList.add('active');
-        e.currentTarget.classList.add('active');
-
-        if (targetScreenId === 'movies-screen') {
-            renderAllMovies();
-        } else if (targetScreenId === 'series-screen') {
-            renderAllSeries();
-        } else if (targetScreenId === 'profile-screen') {
-            // Lógica para la pantalla de perfil
-        } else if (targetScreenId === 'home-screen') {
-            fetchHomeContent();
+        if (targetScreenId) {
+            switchScreen(targetScreenId);
         }
     });
 });
@@ -440,12 +482,10 @@ seeMoreButtons.forEach(button => {
             const items = await fetchFromTMDB(endpoint);
             if (type === 'movie') {
                 renderGrid(allMoviesGrid, items, 'movie');
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                moviesScreen.classList.add('active');
+                switchScreen('movies-screen');
             } else {
                 renderGrid(allSeriesGrid, items, 'tv');
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                seriesScreen.classList.add('active');
+                switchScreen('series-screen');
             }
         } catch (error) {
             console.error("Error loading 'See more' content:", error);
@@ -493,7 +533,7 @@ async function renderAllSeries() {
 
 // --- Funcionalidad de Favoritos (NUEVO) ---
 async function addToFavorites(movie) {
-    if (!auth.currentUser) {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
         alert('Debes iniciar sesión para guardar favoritos.');
         return;
     }
@@ -512,10 +552,40 @@ async function addToFavorites(movie) {
     }
 }
 
-// --- Movie Request Logic ---
+async function fetchFavorites() {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        alert('Debes iniciar sesión para ver tus favoritos.');
+        return;
+    }
+    showLoader();
+    try {
+        const q = query(collection(db, "favorites"), where("userId", "==", auth.currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const favorites = querySnapshot.docs.map(doc => doc.data());
+        renderGrid(favoritesGrid, favorites, 'movie');
+    } catch (e) {
+        console.error("Error fetching favorites: ", e);
+        alert('No se pudieron cargar los favoritos.');
+    } finally {
+        hideLoader();
+    }
+}
+
+// --- Funcionalidad de Anuncios (Simulada) ---
+async function playAd() {
+    return new Promise((resolve) => {
+        console.log("Simulating ad playback...");
+        alert('Anuncio: El video comenzará en breve.');
+        setTimeout(() => {
+            resolve();
+        }, 5000); // Ad duration
+    });
+}
+
+// --- Funcionalidad de Solicitud de Películas (NUEVO) ---
 submitRequestButton.addEventListener('click', async (e) => {
     e.preventDefault();
-    if (!auth.currentUser) {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
         alert('Debes iniciar sesión para solicitar películas.');
         return;
     }
@@ -541,58 +611,85 @@ submitRequestButton.addEventListener('click', async (e) => {
     }
 });
 
-// --- Premium and Sign-in Logic ---
-proButton.addEventListener('click', () => {
-    // Show the payment modal
-    showModal(paymentModal);
-});
-
-signinButton.addEventListener('click', async () => {
-    try {
-        const result = await signInWithPopup(auth, new GoogleAuthProvider());
-        console.log("User signed in:", result.user);
-    } catch (error) {
-        console.error("Google sign-in error:", error);
-        alert('Hubo un error al iniciar sesión. Intenta de nuevo.');
+// --- Lógica de Autenticación y Perfil (MEJORADO) ---
+proStatusButton.addEventListener('click', async () => {
+    if (!currentUser || currentUser.isAnonymous) {
+        try {
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error("Google sign-in error:", error);
+            alert('Hubo un error al iniciar sesión. Intenta de nuevo.');
+        }
+    } else if (!currentUser.isPro) {
+        showModal(paymentModal);
     }
 });
 
-// Function to simulate an ad playback
-async function playAd() {
-    return new Promise((resolve) => {
-        console.log("Simulating ad playback...");
-        // This is where you would integrate an actual ad SDK.
-        // For example, Google AdSense for Video, etc.
-        // The ad would play, and once finished, you would call resolve().
-        alert('Anuncio: El video comenzará en breve.');
-        setTimeout(() => {
-            resolve();
-        }, 5000); // Ad duration
+buyButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+        const plan = e.target.getAttribute('data-plan');
+        alert(`¡Gracias! Has seleccionado el ${plan} plan. Redirigiendo a la pasarela de pago... (Simulado)`);
+        
+        if (currentUser && !currentUser.isAnonymous) {
+            try {
+                // Conceptually, this is where a payment would be processed
+                // and a webhook would confirm the payment and update the user's status.
+                // For this example, we'll update the Firestore document directly.
+                const userRef = doc(db, 'users', currentUser.uid);
+                await setDoc(userRef, { isPro: true, proPlan: plan, subscribedAt: new Date() }, { merge: true });
+                alert('¡Felicidades! Tu cuenta Premium está activada.');
+                closeModal(paymentModal);
+            } catch (error) {
+                console.error("Error updating user status:", error);
+                alert('Hubo un error al procesar tu pago. Intenta de nuevo.');
+            }
+        }
     });
-}
+});
+
+signoutButton.addEventListener('click', async () => {
+    try {
+        await signOut(auth);
+        alert('Has cerrado sesión.');
+        window.location.reload(); // Reload the page to reset the UI
+    } catch (error) {
+        console.error("Sign out error:", error);
+        alert('No se pudo cerrar sesión. Intenta de nuevo.');
+    }
+});
 
 // --- Initialization ---
 onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
     if (!user) {
-        // Sign in anonymously if no user is found
+        proStatusButton.textContent = 'Iniciar Sesión con Google';
+        proStatusButton.style.display = 'inline-block';
+        signoutButton.style.display = 'none';
         await signInAnonymously(auth);
-    }
-    currentUser = user; // Update currentUser variable
-
-    // Logic to update UI based on user state (e.g., hide signin button if logged in)
-    if (user) {
-        // In a real app, you would fetch user's pro status from Firestore here
-        // For now, we'll assume isPro is false unless we set it explicitly
-        currentUser.isPro = false;
-        signinButton.style.display = 'none'; // Hide sign in button
-        proButton.style.display = 'block'; // Show Pro button
-        requestButton.style.display = 'block';
     } else {
-        signinButton.style.display = 'block'; // Show sign in button
-        proButton.style.display = 'none'; // Hide Pro button
-        requestButton.style.display = 'none';
+        if (user.isAnonymous) {
+            proStatusButton.textContent = 'Iniciar Sesión con Google';
+            proStatusButton.style.display = 'inline-block';
+            signinButton.style.display = 'none';
+            signoutButton.style.display = 'none';
+        } else {
+            const userDoc = doc(db, 'users', user.uid);
+            const userSnapshot = await getDoc(userDoc);
+            
+            if (userSnapshot.exists() && userSnapshot.data().isPro) {
+                currentUser.isPro = true;
+                proStatusButton.textContent = 'Cuenta Premium Activada';
+                proStatusButton.disabled = true;
+            } else {
+                currentUser.isPro = false;
+                proStatusButton.textContent = 'Activar Cuenta Premium';
+                proStatusButton.disabled = false;
+            }
+            proStatusButton.style.display = 'inline-block';
+            signinButton.style.display = 'none';
+            signoutButton.style.display = 'inline-block';
+        }
     }
-
     const moviesColRef = collection(db, 'movies');
     onSnapshot(moviesColRef, (snapshot) => {
         moviesData = snapshot.docs.map(doc => ({
@@ -600,7 +697,6 @@ onAuthStateChanged(auth, async (user) => {
             ...doc.data()
         }));
     });
-
     await fetchAllGenres('movie');
     await fetchAllGenres('tv');
     fetchHomeContent();
