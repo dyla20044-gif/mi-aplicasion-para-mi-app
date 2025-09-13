@@ -282,6 +282,10 @@ body {
     padding: 20px;
 }
 
+.modal.active {
+    display: flex;
+}
+
 .movie-details-screen {
     background-color: #0d0d0d;
     position: fixed;
