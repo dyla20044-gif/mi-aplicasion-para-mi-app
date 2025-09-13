@@ -22,7 +22,7 @@ const provider = new GoogleAuthProvider();
 const appContainer = document.getElementById('app-container');
 const homeScreen = document.getElementById('home-screen');
 const moviesScreen = document.getElementById('movies-screen');
-const seriesScreen = document = document.getElementById('series-screen');
+const seriesScreen = document.getElementById('series-screen');
 const profileScreen = document.getElementById('profile-screen');
 const detailsScreen = document.getElementById('details-screen');
 const favoritesScreen = document.getElementById('favorites-screen');
