@@ -550,7 +550,6 @@ body {
     width: 90%;
     max-width: 400px;
     position: relative;
-    /* Centrado */
     margin: auto;
 }
 .auth-form {
@@ -674,4 +673,43 @@ body {
     color: #e50914;
     text-decoration: none;
     font-weight: bold;
+}
+/* New Profile Logged Out State */
+.profile-cta {
+    padding: 20px;
+    text-align: left;
+}
+.profile-cta-title {
+    font-size: 1.8em;
+    font-weight: bold;
+    margin-top: 0;
+}
+.profile-footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px;
+}
+.profile-link {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 1.1em;
+    transition: color 0.2s;
+}
+.profile-link:hover {
+    color: #ffffff;
+}
+.terms-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+.terms-checkbox input {
+    width: auto;
+    margin-top: 5px;
+}
+.terms-label {
+    font-size: 0.8em;
+    color: #ccc;
+    text-align: left;
 }
