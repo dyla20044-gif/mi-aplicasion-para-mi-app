@@ -53,6 +53,10 @@ const allSeriesGrid = document.getElementById('all-series-grid');
 const bannerList = document.getElementById('banner-list');
 const loader = document.getElementById('loader');
 const seeMoreButtons = document.querySelectorAll('.see-more-btn');
+const premiumInfoModal = document.getElementById('premium-info-modal');
+const premiumInfoCtaButton = document.getElementById('premium-info-cta');
+const premiumInfoCloseButton = document.getElementById('premium-info-close');
+const premiumInfoLoginLink = document.getElementById('premium-info-login-link');
 const paymentModal = document.getElementById('payment-modal');
 const proStatusButton = document.getElementById('pro-status-button');
 const signoutButton = document.getElementById('signout-button');
@@ -82,14 +86,14 @@ let currentUser = null;
 
 // --- Funciones para manejar Modales y Carga ---
 function closeModal(modal) {
-    modal.style.display = 'none';
+    modal.classList.remove('active');
     if (modal.id === 'video-modal') {
         videoPlayer.pause();
         videoPlayer.currentTime = 0;
     }
 }
 function showModal(modal) {
-    modal.style.display = 'flex';
+    modal.classList.add('active');
 }
 
 function showLoader() {
@@ -102,14 +106,14 @@ function hideLoader() {
 
 closeButtons.forEach(button => {
     button.addEventListener('click', (event) => {
-        const modal = event.target.closest('.modal');
+        const modal = event.target.closest('.modal') || event.target.closest('.modal-from-bottom');
         if (modal) {
             closeModal(modal);
         }
     });
 });
 window.addEventListener('click', (event) => {
-    if (event.target.classList.contains('modal')) {
+    if (event.target.classList.contains('modal') || event.target.classList.contains('modal-from-bottom')) {
         closeModal(event.target);
     }
 });
@@ -136,7 +140,7 @@ function createBannerItem(movie) {
 
     let buttonHtml = '';
     if (hasVideo) {
-        buttonHtml = `<button class="banner-button red">${isPremium ? 'Ver con Premium' : 'Ver ahora'}</button>`;
+        buttonHtml = `<button class="banner-button red">${isPremium ? 'Ver Premium' : 'Ver ahora'}</button>`;
     } else {
         buttonHtml = `<button class="banner-button mylist-btn"><i class="fas fa-plus"></i> Mi lista</button>`;
     }
@@ -153,7 +157,7 @@ function createBannerItem(movie) {
             e.stopPropagation();
             if (isPremium) {
                 if (!currentUser || !currentUser.isPro) {
-                    showModal(paymentModal);
+                    showModal(premiumInfoModal); // Show new premium info modal
                 } else {
                     videoPlayer.src = localMovie.videoLink;
                     showModal(videoModal);
