@@ -1,10 +1,23 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent body scroll */
+}
+
 body {
     background-color: #000000;
     color: #ffffff;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    margin: 0;
-    padding: 0;
     font-size: 14px;
+    display: flex;
+    flex-direction: column;
+}
+
+#app-container {
+    flex-grow: 1;
+    overflow-y: auto; /* Allow content scroll */
+    padding-bottom: 70px;
 }
 
 .screen {
@@ -146,8 +159,17 @@ body {
     transition: background-color 0.2s;
 }
 
+.banner-button.red {
+    background-color: #e50914;
+    color: #ffffff;
+    border: none;
+}
+
 .banner-button:hover {
     background-color: rgba(255, 255, 255, 0.4);
+}
+.banner-button.red:hover {
+    background-color: #ff3333;
 }
 
 .category-section {
@@ -443,7 +465,7 @@ body {
 }
 
 /* Payment Modal */
-.payment-content {
+.modal-content.payment-content {
     background-color: #1a1a1a;
     padding: 30px;
     border-radius: 10px;
@@ -451,6 +473,8 @@ body {
     width: 90%;
     max-width: 500px;
     position: relative;
+    /* Centrado */
+    margin: auto;
 }
 
 .payment-content h2 {
@@ -496,24 +520,23 @@ body {
     margin-top: 20px;
 }
 
-/* Movie Request Form */
-.request-form {
+/* New profile buttons style */
+.profile-options {
     display: flex;
     flex-direction: column;
-    padding: 20px;
     gap: 15px;
+    padding: 20px;
 }
 
-#movie-request-input {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #ffffff;
+.profile-button {
+    width: 100%;
+    text-align: left;
     padding: 15px;
     border-radius: 10px;
-    font-size: 1em;
-    outline: none;
+    font-size: 1.1em;
 }
 
-#submit-request-button {
-    width: 100%;
+.profile-button i {
+    font-size: 1.2em;
+    margin-right: 15px;
 }
