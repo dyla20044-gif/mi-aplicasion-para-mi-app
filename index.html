@@ -236,10 +236,39 @@
                 </section>
             </div>
         </div>
+        
+        <div id="auth-screen" class="screen full-screen-auth">
+            <header class="auth-header">
+                <a href="#" class="back-button" id="auth-back-button"><i class="fas fa-arrow-left"></i></a>
+                <div class="logo">🍿 Sala Cine</div>
+                <a href="#" class="login-link" id="auth-login-link">Iniciar sesión</a>
+            </header>
+            <div class="auth-content-container">
+                <div id="login-form" class="auth-form">
+                    <h2 class="auth-title">Crea tu cuenta y empieza a disfrutar</h2>
+                    <p class="auth-subtitle">Iniciar Sesión</p>
+                    <input type="email" id="login-email" placeholder="Correo electrónico">
+                    <input type="password" id="login-password" placeholder="Contraseña">
+                    <button class="button" id="login-button">Comenzar</button>
+                    <p class="switch-form-text">¿No tienes cuenta? <a href="#" id="show-signup-link">Regístrate</a></p>
+                </div>
+                <div id="signup-form" class="auth-form active-form">
+                    <h2 class="auth-title">Crea tu cuenta y empieza a disfrutar</h2>
+                    <input type="email" id="signup-email" placeholder="ejemplo@email.com">
+                    <input type="password" id="signup-password" placeholder="Contraseña">
+                    <div class="terms-checkbox">
+                        <input type="checkbox" id="terms-checkbox">
+                        <label for="terms-checkbox" class="terms-label">Acepto los Términos de Uso de Sala Cine y reconozco que mi información personal será utilizada conforme al Aviso de Privacidad de Sala Cine.</label>
+                    </div>
+                    <button class="button" id="signup-button">Comenzar</button>
+                    <p class="switch-form-text">¿Ya tienes cuenta? <a href="#" id="show-login-link">Inicia Sesión</a></p>
+                </div>
+            </div>
+        </div>
     </main>
 
     <nav class="bottom-nav">
-        <a href="#" class="nav-item" data-screen="home-screen">
+        <a href="#" class="nav-item active" data-screen="home-screen">
             <i class="fas fa-home"></i>
             <span>Inicio</span>
         </a>
@@ -297,30 +326,6 @@
                 </div>
             </div>
             <p class="legal-text">© Sala Cine. Todos los derechos reservados. Su suscripción se renueva automáticamente. Puede cancelar en cualquier momento.</p>
-        </div>
-    </div>
-
-    <div id="auth-modal" class="modal">
-        <div class="modal-content auth-content">
-            <span class="close-button">&times;</span>
-            <div id="login-form" class="auth-form active-form">
-                <h2 class="auth-title">Iniciar Sesión</h2>
-                <input type="email" id="login-email" placeholder="Correo electrónico">
-                <input type="password" id="login-password" placeholder="Contraseña">
-                <button class="button" id="login-button">Comenzar</button>
-                <p class="switch-form-text">¿No tienes cuenta? <a href="#" id="show-signup-link">Regístrate</a></p>
-            </div>
-            <div id="signup-form" class="auth-form">
-                <h2 class="auth-title">Crea tu cuenta y empieza a disfrutar</h2>
-                <input type="email" id="signup-email" placeholder="ejemplo@email.com">
-                <input type="password" id="signup-password" placeholder="Contraseña">
-                <div class="terms-checkbox">
-                    <input type="checkbox" id="terms-checkbox">
-                    <label for="terms-checkbox" class="terms-label">Acepto los Términos de Uso de Sala Cine y reconozco que mi información personal será utilizada conforme al Aviso de Privacidad de Sala Cine.</label>
-                </div>
-                <button class="button" id="signup-button">Comenzar</button>
-                <p class="switch-form-text">¿Ya tienes cuenta? <a href="#" id="show-login-link">Inicia Sesión</a></p>
-            </div>
         </div>
     </div>
     
