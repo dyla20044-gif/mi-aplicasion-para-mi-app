@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, signInAnonymously, signOut, getRedirectResult } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- Configuración de Firebase ---
@@ -60,7 +60,18 @@ const buyButtons = document.querySelectorAll('.buy-button');
 const movieRequestInput = document.getElementById('movie-request-input');
 const submitRequestButton = document.getElementById('submit-request-button');
 const favoritesGrid = document.getElementById('favorites-grid');
-
+const authModal = document.getElementById('auth-modal');
+const showSignupLink = document.getElementById('show-signup-link');
+const showLoginLink = document.getElementById('show-login-link');
+const loginForm = document.getElementById('login-form');
+const signupForm = document.getElementById('signup-form');
+const loginEmailInput = document.getElementById('login-email');
+const loginPasswordInput = document.getElementById('login-password');
+const loginButton = document.getElementById('login-button');
+const signupEmailInput = document.getElementById('signup-email');
+const signupPasswordInput = document.getElementById('signup-password');
+const signupButton = document.getElementById('signup-button');
+const googleLoginButton = document.getElementById('google-login-button');
 
 let moviesData = [];
 let bannerMovies = [];
@@ -612,19 +623,62 @@ submitRequestButton.addEventListener('click', async (e) => {
 
 // --- Lógica de Autenticación y Perfil (MEJORADO) ---
 proStatusButton.addEventListener('click', async () => {
-    // Check if the user is authenticated. If not, trigger Google sign-in.
     if (!currentUser || currentUser.isAnonymous) {
-        try {
-            await signInWithRedirect(auth, provider);
-        } catch (error) {
-            console.error("Google sign-in error:", error);
-            alert('Hubo un error al iniciar sesión. Intenta de nuevo.');
-        }
+        showModal(authModal);
     } else {
-        // If the user is authenticated, show the payment modal.
         showModal(paymentModal);
     }
 });
+
+// Email/Password and Google Authentication
+showSignupLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginForm.classList.remove('active-form');
+    signupForm.classList.add('active-form');
+});
+
+showLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    signupForm.classList.remove('active-form');
+    loginForm.classList.add('active-form');
+});
+
+signupButton.addEventListener('click', async () => {
+    const email = signupEmailInput.value;
+    const password = signupPasswordInput.value;
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        alert('¡Registro exitoso! Ya puedes iniciar sesión.');
+        closeModal(authModal);
+    } catch (error) {
+        console.error("Signup error:", error);
+        alert(`Error al registrarse: ${error.message}`);
+    }
+});
+
+loginButton.addEventListener('click', async () => {
+    const email = loginEmailInput.value;
+    const password = loginPasswordInput.value;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        alert('¡Inicio de sesión exitoso!');
+        closeModal(authModal);
+    } catch (error) {
+        console.error("Login error:", error);
+        alert(`Error al iniciar sesión: ${error.message}`);
+    }
+});
+
+googleLoginButton.addEventListener('click', async () => {
+    try {
+        await signInWithPopup(auth, provider);
+        closeModal(authModal);
+    } catch (error) {
+        console.error("Google sign-in error:", error);
+        alert('Hubo un error al iniciar sesión con Google. Intenta de nuevo.');
+    }
+});
+
 
 buyButtons.forEach(button => {
     button.addEventListener('click', async (e) => {
@@ -666,9 +720,7 @@ onAuthStateChanged(auth, async (user) => {
         await signInAnonymously(auth);
     }
     
-    // Update button visibility based on login status
     if (user && !user.isAnonymous) {
-        // User is logged in with a Google account
         signoutButton.style.display = 'inline-block';
         
         const userDocRef = doc(db, 'users', user.uid);
@@ -684,9 +736,8 @@ onAuthStateChanged(auth, async (user) => {
             proStatusButton.disabled = false;
         }
     } else {
-        // User is anonymous or not logged in, show the "Iniciar Sesión" button
         signoutButton.style.display = 'none';
-        proStatusButton.textContent = 'Iniciar Sesión con Google';
+        proStatusButton.textContent = 'Iniciar Sesión';
         proStatusButton.disabled = false;
     }
     
