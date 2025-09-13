@@ -59,7 +59,7 @@
                 <section class="category-section">
                     <div class="category-header">
                         <h2>Animación</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with-genres=16" data-type="movie">Ver más</a>
+                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=16" data-type="movie">Ver más</a>
                     </div>
                     <div id="animacion-movies" class="movie-list horizontal-scroll"></div>
                 </section>
@@ -107,29 +107,39 @@
         </div>
 
         <div id="profile-screen" class="screen">
-            <div class="profile-header">
-                <div class="profile-info-container">
-                    <div class="profile-info-item">
-                        <div class="profile-avatar-container">
-                            <img id="main-profile-avatar" src="https://placehold.co/100" alt="Profile Avatar" class="profile-avatar-large">
-                            <span id="main-profile-name">Mi Perfil</span>
-                        </div>
-                    </div>
-                    <button class="edit-profile-button" id="edit-profiles-button"><i class="fas fa-pencil-alt"></i> Editar perfiles</button>
+            <div id="profile-logged-in" style="display: none;">
+                <div class="screen-header">
+                    <h2>Mi Perfil</h2>
+                    <button id="signout-button" class="icon-button"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+                <div class="profile-options">
+                    <button id="pro-status-button" class="button profile-button"><i class="fas fa-crown"></i> <span>Activar Cuenta Pro</span></button>
+                    <button id="favorites-button" class="button secondary profile-button" data-screen="favorites-screen"><i class="fas fa-heart"></i> <span>Mis Favoritos</span></button>
+                    <button id="request-button" class="button secondary profile-button" data-screen="request-screen"><i class="fas fa-plus-circle"></i> <span>Solicitar Película</span></button>
+                    <button id="settings-button" class="button secondary profile-button" data-screen="settings-screen"><i class="fas fa-cog"></i> <span>Configuración</span></button>
                 </div>
             </div>
-            <div class="profile-logged-in-options">
-                <div class="profile-premium-cta">
-                    <p>Con Premium tienes más</p>
-                    <button class="button" id="profile-upgrade-button">Mejorar plan</button>
+            <div id="profile-logged-out" style="display: block;">
+                <div class="screen-header">
+                    <h2>Mi Perfil</h2>
+                    <a href="#" id="profile-login-link" class="text-button">Iniciar sesión</a>
                 </div>
-                <div class="profile-options-list">
-                    <a href="#" class="profile-option" id="profile-my-list"><i class="fas fa-list"></i> Mi lista</a>
-                    <a href="#" class="profile-option" id="profile-privacy"><i class="fas fa-shield-alt"></i> Política de privacidad</a>
-                    <a href="#" class="profile-option" id="profile-terms"><i class="fas fa-file-alt"></i> Términos de uso</a>
-                    <a href="#" class="profile-option" id="profile-subscription"><i class="fas fa-crown"></i> Condiciones de Suscripción</a>
-                    <a href="#" class="profile-option" id="profile-help-center"><i class="fas fa-question-circle"></i> Centro de ayuda</a>
-                    <a href="#" class="profile-option" id="profile-signout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</a>
+                <div class="profile-cta">
+                    <h2 class="profile-cta-title">Con Premium tienes más</h2>
+                    <div class="premium-benefits">
+                        <p><i class="fas fa-check"></i> Series y Películas Premium</p>
+                        <p><i class="fas fa-check"></i> Más contenido que cualquier otro streaming</p>
+                        <p><i class="fas fa-check"></i> Cancela cuando quieras</p>
+                        <p><i class="fas fa-check"></i> Sin anuncios</p>
+                    </div>
+                    <button class="button profile-cta-button" id="create-account-button">Crea tu cuenta Premium</button>
+                </div>
+                <div class="profile-footer-links">
+                    <a href="#" id="profile-my-list" class="profile-link">Mi lista</a>
+                    <a href="#" id="profile-privacy" class="profile-link">Política de privacidad</a>
+                    <a href="#" id="profile-terms" class="profile-link">Términos de uso</a>
+                    <a href="#" id="profile-subscription" class="profile-link">Condiciones de Suscripción</a>
+                    <a href="#" id="profile-help-center" class="profile-link">Centro de ayuda</a>
                 </div>
             </div>
         </div>
@@ -195,6 +205,7 @@
             </div>
         </div>
 
+
         <div id="details-screen" class="screen">
             <div id="details-poster-top">
                 <div class="poster-overlay">
@@ -254,69 +265,6 @@
                 </div>
             </div>
         </div>
-
-        <div id="create-profile-screen" class="screen">
-            <div class="profile-form-container">
-                <h2 class="auth-title">Crear perfil</h2>
-                <p class="auth-subtitle">Crea hasta 5 perfiles y ten una experiencia personalizada para cada uno.</p>
-                <div class="profile-avatar-selector">
-                    <div class="profile-avatar-preview" id="profile-avatar-preview">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="avatar-options" id="avatar-options">
-                        <button class="avatar-option" style="background-color: #e50914;"></button>
-                        <button class="avatar-option" style="background-color: #0080ff;"></button>
-                        <button class="avatar-option" style="background-color: #ff9900;"></button>
-                        <button class="avatar-option" style="background-color: #00b300;"></button>
-                        <button class="avatar-option" style="background-color: #9933ff;"></button>
-                    </div>
-                </div>
-                <label for="profile-name-input" class="input-label">Nombre del perfil</label>
-                <input type="text" id="profile-name-input" placeholder="Mi Perfil" value="Mi Perfil">
-                <button class="button" id="create-profile-button">Crear perfil</button>
-            </div>
-        </div>
-
-        <div id="welcome-screen" class="screen">
-            <div class="welcome-container">
-                <h2 class="welcome-title">¡Nos encanta tenerte con nosotros!</h2>
-                <p class="welcome-subtitle">Empieza a disfrutar tu experiencia.</p>
-                <div class="welcome-buttons">
-                    <button class="button primary-button" id="welcome-subscribe-button">Suscríbete Ya</button>
-                    <button class="button secondary-button" id="welcome-skip-button">Ver Ahora</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="select-plan-screen" class="screen">
-            <div class="plan-header">
-                <a href="#" class="back-button"><i class="fas fa-arrow-left"></i></a>
-                <h2 class="plan-title">Elige tu plan Premium</h2>
-            </div>
-            <div class="plan-cards-container">
-                <div class="plan-card active-plan" data-plan="mensual">
-                    <h3 class="plan-card-title">Premium Mensual</h3>
-                    <p class="plan-card-price">$1.99 USD/mes</p>
-                    <ul class="plan-benefits-list">
-                        <li><i class="fas fa-check"></i> Series y películas premium</li>
-                        <li><i class="fas fa-check"></i> Dispositivos ilimitados</li>
-                        <li><i class="fas fa-check"></i> Sin anuncios</li>
-                    </ul>
-                    <button class="button plan-select-button">Elegir plan</button>
-                </div>
-                <div class="plan-card" data-plan="anual">
-                    <span class="best-value-badge">Mejor Precio</span>
-                    <h3 class="plan-card-title">Premium Anual</h3>
-                    <p class="plan-card-price">$19.99 USD/año</p>
-                    <ul class="plan-benefits-list">
-                        <li><i class="fas fa-check"></i> Series y películas premium</li>
-                        <li><i class="fas fa-check"></i> Dispositivos ilimitados</li>
-                        <li><i class="fas fa-check"></i> Sin anuncios</li>
-                    </ul>
-                    <button class="button plan-select-button">Elegir plan</button>
-                </div>
-            </div>
-        </div>
     </main>
 
     <nav class="bottom-nav">
@@ -359,24 +307,28 @@
             <p class="premium-info-login">Ya tengo plan Premium, <a href="#" id="premium-info-login-link">iniciar sesión</a>.</p>
         </div>
     </div>
-    
+
     <div id="payment-modal" class="modal">
         <div class="modal-content payment-content">
+            <span class="close-button" id="payment-close">&times;</span>
             <h2>Activar Cuenta Premium</h2>
             <p>Disfruta de nuestra selección Premium sin anuncios y con acceso anticipado a nuevas películas y series. Protegemos tus datos con los más altos estándares de seguridad, al igual que plataformas como Netflix y Disney Plus.</p>
-            
-            <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
-                <input type="hidden" name="cmd" value="_s-xclick" />
-                <input type="hidden" name="hosted_button_id" value="AP9MB5X5LR6TG" />
-                <input type="hidden" name="currency_code" value="USD" />
-                <input type="image" src="https://www.paypalobjects.com/es_ES/i/btn/btn_buynowCC_LG.gif" border="0" name="submit" title="PayPal es una forma segura y fácil de pagar en línea." alt="Comprar ahora" />
-            </form>
-            
+            <div class="plans-container">
+                <div class="plan-card">
+                    <h3>Plan Mensual</h3>
+                    <p>1 mes por $1.99</p>
+                    <button class="button buy-button" data-plan="monthly">Comprar</button>
+                </div>
+                <div class="plan-card">
+                    <h3>Plan Anual</h3>
+                    <p>1 año por $19.99</p>
+                    <button class="button buy-button" data-plan="annual">Comprar</button>
+                </div>
+            </div>
             <p class="legal-text">© Sala Cine. Todos los derechos reservados. Su suscripción se renueva automáticamente. Puede cancelar en cualquier momento.</p>
-            <span class="close-button" id="payment-close">&times;</span>
         </div>
     </div>
-
+    
     <div class="footer-text">© Sala Cine. Todos los derechos reservados.</div>
 
     <script type="module" src="script.js"></script>
