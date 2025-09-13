@@ -581,3 +581,19 @@ body {
     text-decoration: none;
     font-weight: bold;
 }
+/* Social Login Buttons */
+.social-login-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+.social-button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 1px solid #ffffff;
+    background: transparent;
+    color: #ffffff;
+    font-size: 1.5em;
+    cursor: pointer;
+}
