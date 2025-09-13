@@ -141,8 +141,6 @@ function createBannerItem(movie) {
     let buttonHtml = '';
     if (hasVideo) {
         buttonHtml = `<button class="banner-button red">${isPremium ? 'Ver Premium' : 'Ver ahora'}</button>`;
-    } else {
-        buttonHtml = `<button class="banner-button mylist-btn"><i class="fas fa-plus"></i> Mi lista</button>`;
     }
 
     bannerItem.innerHTML = `
@@ -157,7 +155,7 @@ function createBannerItem(movie) {
             e.stopPropagation();
             if (isPremium) {
                 if (!currentUser || !currentUser.isPro) {
-                    showModal(premiumInfoModal); // Show new premium info modal
+                    showModal(premiumInfoModal);
                 } else {
                     videoPlayer.src = localMovie.videoLink;
                     showModal(videoModal);
@@ -168,14 +166,6 @@ function createBannerItem(movie) {
                 showModal(videoModal);
                 videoPlayer.play();
             }
-        });
-    }
-
-    const mylistButton = bannerItem.querySelector('.mylist-btn');
-    if(mylistButton) {
-        mylistButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            addToFavorites(movie);
         });
     }
 
