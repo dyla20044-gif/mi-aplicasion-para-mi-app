@@ -55,7 +55,6 @@ const loader = document.getElementById('loader');
 const seeMoreButtons = document.querySelectorAll('.see-more-btn');
 const paymentModal = document.getElementById('payment-modal');
 const proStatusButton = document.getElementById('pro-status-button');
-const signinButton = document.getElementById('signin-button');
 const signoutButton = document.getElementById('signout-button');
 const buyButtons = document.querySelectorAll('.buy-button');
 const movieRequestInput = document.getElementById('movie-request-input');
@@ -613,6 +612,7 @@ submitRequestButton.addEventListener('click', async (e) => {
 
 // --- Lógica de Autenticación y Perfil (MEJORADO) ---
 proStatusButton.addEventListener('click', async () => {
+    // Check if the user is authenticated. If not, trigger Google sign-in.
     if (!currentUser || currentUser.isAnonymous) {
         try {
             await signInWithPopup(auth, provider);
@@ -620,7 +620,8 @@ proStatusButton.addEventListener('click', async () => {
             console.error("Google sign-in error:", error);
             alert('Hubo un error al iniciar sesión. Intenta de nuevo.');
         }
-    } else if (!currentUser.isPro) {
+    } else {
+        // If the user is authenticated, show the payment modal.
         showModal(paymentModal);
     }
 });
@@ -661,11 +662,13 @@ signoutButton.addEventListener('click', async () => {
 // --- Initialization ---
 onAuthStateChanged(auth, async (user) => {
     currentUser = user;
+    if (!user) {
+        await signInAnonymously(auth);
+    }
     
     // Update button visibility based on login status
     if (user && !user.isAnonymous) {
         // User is logged in with a Google account
-        signinButton.style.display = 'none';
         signoutButton.style.display = 'inline-block';
         
         const userDocRef = doc(db, 'users', user.uid);
@@ -681,12 +684,10 @@ onAuthStateChanged(auth, async (user) => {
             proStatusButton.disabled = false;
         }
     } else {
-        // User is anonymous or not logged in, show the "Activar Cuenta Pro" button
-        signinButton.style.display = 'none';
+        // User is anonymous or not logged in, show the "Iniciar Sesión" button
         signoutButton.style.display = 'none';
         proStatusButton.textContent = 'Iniciar Sesión con Google';
         proStatusButton.disabled = false;
-        await signInAnonymously(auth); // Keep the anonymous sign-in
     }
     
     const moviesColRef = collection(db, 'movies');
