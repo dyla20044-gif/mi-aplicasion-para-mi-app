@@ -160,7 +160,7 @@ body {
 }
 
 .banner-button.red {
-    background-color: #e50914;
+    background-color: rgba(229, 9, 20, 0.8);
     color: #ffffff;
     border: none;
 }
@@ -169,7 +169,7 @@ body {
     background-color: rgba(255, 255, 255, 0.4);
 }
 .banner-button.red:hover {
-    background-color: #ff3333;
+    background-color: rgba(255, 51, 51, 0.9);
 }
 
 .category-section {
