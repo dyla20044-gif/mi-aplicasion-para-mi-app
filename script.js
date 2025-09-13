@@ -679,13 +679,12 @@ onAuthStateChanged(auth, async (user) => {
             currentUser.isPro = false;
             proStatusButton.textContent = 'Activar Cuenta Premium';
             proStatusButton.disabled = false;
-            // The logic now allows the "pro status button" to be a sign-in button
         }
     } else {
         // User is anonymous or not logged in, show the "Activar Cuenta Pro" button
         signinButton.style.display = 'none';
         signoutButton.style.display = 'none';
-        proStatusButton.textContent = 'Activar Cuenta Premium';
+        proStatusButton.textContent = 'Iniciar Sesión con Google';
         proStatusButton.disabled = false;
         await signInAnonymously(auth); // Keep the anonymous sign-in
     }
