@@ -143,7 +143,7 @@ function createBannerItem(movie) {
             e.stopPropagation();
             if (isPremium) {
                 if (!currentUser || !currentUser.isPro) {
-                    alert('¡Contenido Premium! Suscríbete para verlo.');
+                    showModal(paymentModal);
                 } else {
                     videoPlayer.src = localMovie.videoLink;
                     showModal(videoModal);
@@ -661,44 +661,44 @@ signoutButton.addEventListener('click', async () => {
 // --- Initialization ---
 onAuthStateChanged(auth, async (user) => {
     currentUser = user;
-    if (!user) {
-        proStatusButton.textContent = 'Iniciar Sesión con Google';
-        proStatusButton.style.display = 'inline-block';
-        signoutButton.style.display = 'none';
-        await signInAnonymously(auth);
-    } else {
-        if (user.isAnonymous) {
-            proStatusButton.textContent = 'Iniciar Sesión con Google';
-            proStatusButton.style.display = 'inline-block';
-            signinButton.style.display = 'none';
-            signoutButton.style.display = 'none';
+    
+    // Update button visibility based on login status
+    if (user && !user.isAnonymous) {
+        // User is logged in with a Google account
+        signinButton.style.display = 'none';
+        signoutButton.style.display = 'inline-block';
+        
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (userDocSnap.exists() && userDocSnap.data().isPro) {
+            currentUser.isPro = true;
+            proStatusButton.textContent = 'Cuenta Premium Activada';
+            proStatusButton.disabled = true;
         } else {
-            const userDoc = doc(db, 'users', user.uid);
-            const userSnapshot = await getDoc(userDoc);
-            
-            if (userSnapshot.exists() && userSnapshot.data().isPro) {
-                currentUser.isPro = true;
-                proStatusButton.textContent = 'Cuenta Premium Activada';
-                proStatusButton.disabled = true;
-            } else {
-                currentUser.isPro = false;
-                proStatusButton.textContent = 'Activar Cuenta Premium';
-                proStatusButton.disabled = false;
-            }
-            proStatusButton.style.display = 'inline-block';
-            signinButton.style.display = 'none';
-            signoutButton.style.display = 'inline-block';
+            currentUser.isPro = false;
+            proStatusButton.textContent = 'Activar Cuenta Premium';
+            proStatusButton.disabled = false;
+            // The logic now allows the "pro status button" to be a sign-in button
         }
+    } else {
+        // User is anonymous or not logged in, show the "Activar Cuenta Pro" button
+        signinButton.style.display = 'none';
+        signoutButton.style.display = 'none';
+        proStatusButton.textContent = 'Activar Cuenta Premium';
+        proStatusButton.disabled = false;
+        await signInAnonymously(auth); // Keep the anonymous sign-in
     }
+    
     const moviesColRef = collection(db, 'movies');
     onSnapshot(moviesColRef, (snapshot) => {
         moviesData = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
+        fetchHomeContent();
     });
+    
     await fetchAllGenres('movie');
     await fetchAllGenres('tv');
-    fetchHomeContent();
 });
-
