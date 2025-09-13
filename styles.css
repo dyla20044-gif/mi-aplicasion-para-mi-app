@@ -540,3 +540,44 @@ body {
     font-size: 1.2em;
     margin-right: 15px;
 }
+
+/* Auth Modal Styles */
+.auth-content {
+    background-color: #1a1a1a;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+    margin: auto;
+}
+.auth-form {
+    display: none;
+    flex-direction: column;
+    gap: 15px;
+}
+.auth-form.active-form {
+    display: flex;
+}
+.auth-content input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background-color: #0d0d0d;
+    color: #ffffff;
+    font-size: 1em;
+}
+.auth-content .button {
+    width: 100%;
+}
+.auth-content .or-separator {
+    color: #666;
+    margin: 10px 0;
+}
+.auth-content .switch-form-text a {
+    color: #e50914;
+    text-decoration: none;
+    font-weight: bold;
+}
