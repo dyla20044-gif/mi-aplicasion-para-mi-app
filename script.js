@@ -628,6 +628,26 @@ proStatusButton.addEventListener('click', async () => {
     }
 });
 
+createAccountButton.addEventListener('click', () => {
+    showModal(authModal);
+});
+
+profileLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    showModal(authModal);
+});
+
+premiumInfoCtaButton.addEventListener('click', () => {
+    closeModal(premiumInfoModal);
+    showModal(paymentModal);
+});
+
+premiumInfoLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeModal(premiumInfoModal);
+    showModal(authModal);
+});
+
 // Email/Password and Social Authentication
 showSignupLink.addEventListener('click', (e) => {
     e.preventDefault();
@@ -647,7 +667,6 @@ signupButton.addEventListener('click', async () => {
     try {
         await createUserWithEmailAndPassword(auth, email, password);
         closeModal(authModal);
-        // Prompt for payment plans immediately after signup
         showModal(paymentModal);
     } catch (error) {
         console.error("Signup error:", error);
@@ -662,7 +681,6 @@ loginButton.addEventListener('click', async () => {
         await signInWithEmailAndPassword(auth, email, password);
         alert('¡Inicio de sesión exitoso!');
         closeModal(authModal);
-        // Redirect to profile screen after login
         switchScreen('profile-screen');
     } catch (error) {
         console.error("Login error:", error);
