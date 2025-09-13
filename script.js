@@ -98,14 +98,18 @@ let currentUser = null;
 
 // --- Funciones para manejar Modales y Carga ---
 function closeModal(modal) {
-    modal.classList.remove('active');
-    if (modal.id === 'video-modal') {
-        videoPlayer.pause();
-        videoPlayer.currentTime = 0;
+    if (modal) {
+        modal.classList.remove('active');
+        if (modal.id === 'video-modal') {
+            videoPlayer.pause();
+            videoPlayer.currentTime = 0;
+        }
     }
 }
 function showModal(modal) {
-    modal.classList.add('active');
+    if (modal) {
+        modal.classList.add('active');
+    }
 }
 
 function showLoader() {
@@ -550,7 +554,7 @@ async function renderAllSeries() {
 // --- Funcionalidad de Favoritos (NUEVO) ---
 async function addToFavorites(movie) {
     if (!auth.currentUser || auth.currentUser.isAnonymous) {
-        alert('Debes iniciar sesión para guardar favoritos.');
+        showModal(authModal);
         return;
     }
     try {
@@ -570,7 +574,7 @@ async function addToFavorites(movie) {
 
 async function fetchFavorites() {
     if (!auth.currentUser || auth.currentUser.isAnonymous) {
-        alert('Debes iniciar sesión para ver tus favoritos.');
+        showModal(authModal);
         return;
     }
     showLoader();
@@ -602,7 +606,7 @@ async function playAd() {
 submitRequestButton.addEventListener('click', async (e) => {
     e.preventDefault();
     if (!auth.currentUser || auth.currentUser.isAnonymous) {
-        alert('Debes iniciar sesión para solicitar películas.');
+        showModal(authModal);
         return;
     }
 
@@ -636,14 +640,18 @@ proStatusButton.addEventListener('click', async () => {
     }
 });
 
-createAccountButton.addEventListener('click', () => {
-    showModal(authModal);
-});
+if (createAccountButton) {
+    createAccountButton.addEventListener('click', () => {
+        showModal(authModal);
+    });
+}
 
-profileLoginLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    showModal(authModal);
-});
+if (profileLoginLink) {
+    profileLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        showModal(authModal);
+    });
+}
 
 premiumInfoCtaButton.addEventListener('click', () => {
     closeModal(premiumInfoModal);
@@ -769,24 +777,36 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     
     if (user && !user.isAnonymous) {
-        profileLoggedIn.style.display = 'block';
-        profileLoggedOut.style.display = 'none';
+        if (profileLoggedIn) {
+            profileLoggedIn.style.display = 'block';
+        }
+        if (profileLoggedOut) {
+            profileLoggedOut.style.display = 'none';
+        }
         
         const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
         
         if (userDocSnap.exists() && userDocSnap.data().isPro) {
             currentUser.isPro = true;
-            proStatusButton.textContent = 'Cuenta Premium Activada';
-            proStatusButton.disabled = true;
+            if (proStatusButton) {
+                proStatusButton.textContent = 'Cuenta Premium Activada';
+                proStatusButton.disabled = true;
+            }
         } else {
             currentUser.isPro = false;
-            proStatusButton.textContent = 'Activar Cuenta Premium';
-            proStatusButton.disabled = false;
+            if (proStatusButton) {
+                proStatusButton.textContent = 'Activar Cuenta Premium';
+                proStatusButton.disabled = false;
+            }
         }
     } else {
-        profileLoggedIn.style.display = 'none';
-        profileLoggedOut.style.display = 'block';
+        if (profileLoggedIn) {
+            profileLoggedIn.style.display = 'none';
+        }
+        if (profileLoggedOut) {
+            profileLoggedOut.style.display = 'block';
+        }
         if (!user) {
              await signInAnonymously(auth);
         }
