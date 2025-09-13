@@ -32,9 +32,6 @@ const termsScreen = document.getElementById('terms-screen');
 const helpScreen = document.getElementById('help-screen');
 const settingsScreen = document.getElementById('settings-screen');
 const authScreen = document.getElementById('auth-screen');
-const createProfileScreen = document.getElementById('create-profile-screen');
-const welcomeScreen = document.getElementById('welcome-screen');
-const selectPlanScreen = document.getElementById('select-plan-screen');
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
 const screenButtons = document.querySelectorAll('[data-screen]');
 const searchInput = document.getElementById('search-input');
@@ -67,6 +64,7 @@ const premiumInfoLoginLink = document.getElementById('premium-info-login-link');
 const paymentModal = document.getElementById('payment-modal');
 const proStatusButton = document.getElementById('pro-status-button');
 const signoutButton = document.getElementById('signout-button');
+const buyButtons = document.querySelectorAll('.buy-button');
 const movieRequestInput = document.getElementById('movie-request-input');
 const submitRequestButton = document.getElementById('submit-request-button');
 const favoritesGrid = document.getElementById('favorites-grid');
@@ -92,14 +90,7 @@ const profileSubscription = document.getElementById('profile-subscription');
 const profileHelpCenter = document.getElementById('profile-help-center');
 const authBackButton = document.getElementById('auth-back-button');
 const authLoginLink = document.getElementById('auth-login-link');
-// Nuevos elementos para el flujo de registro
-const profileAvatarPreview = document.getElementById('profile-avatar-preview');
-const avatarOptions = document.querySelectorAll('.avatar-option');
-const profileNameInput = document.getElementById('profile-name-input');
-const createProfileButton = document.getElementById('create-profile-button');
-const welcomeSubscribeButton = document.getElementById('welcome-subscribe-button');
-const welcomeSkipButton = document.getElementById('welcome-skip-button');
-const selectPlanButtons = document.querySelectorAll('.plan-select-button');
+
 
 let moviesData = [];
 let bannerMovies = [];
@@ -495,7 +486,7 @@ function switchScreen(screenId) {
     }
     
     // Ocultar barras de navegación para pantallas de detalles y autenticación
-    if (screenId === 'details-screen' || screenId === 'auth-screen' || screenId === 'payment-modal') {
+    if (screenId === 'details-screen' || screenId === 'auth-screen') {
         document.querySelector('.top-nav').style.display = 'none';
         document.querySelector('.bottom-nav').style.display = 'none';
         appContainer.style.paddingBottom = '0';
@@ -791,6 +782,25 @@ loginButton.addEventListener('click', async () => {
 socialLoginButtons.forEach(button => {
     button.addEventListener('click', () => {
         alert('Esta funcionalidad aún no está disponible.');
+    });
+});
+
+buyButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+        const plan = e.target.getAttribute('data-plan');
+        alert(`¡Gracias! Has seleccionado el ${plan} plan. Redirigiendo a la pasarela de pago... (Simulado)`);
+        
+        if (currentUser && !currentUser.isAnonymous) {
+            try {
+                const userRef = doc(db, 'users', currentUser.uid);
+                await setDoc(userRef, { isPro: true, proPlan: plan, subscribedAt: new Date() }, { merge: true });
+                alert('¡Felicidades! Tu cuenta Premium está activada.');
+                closeModal(paymentModal);
+            } catch (error) {
+                console.error("Error updating user status:", error);
+                alert('Hubo un error al procesar tu pago. Intenta de nuevo.');
+            }
+        }
     });
 });
 
