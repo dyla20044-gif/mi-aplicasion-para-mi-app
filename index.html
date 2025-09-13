@@ -307,28 +307,24 @@
             <p class="premium-info-login">Ya tengo plan Premium, <a href="#" id="premium-info-login-link">iniciar sesión</a>.</p>
         </div>
     </div>
-
+    
     <div id="payment-modal" class="modal">
         <div class="modal-content payment-content">
-            <span class="close-button" id="payment-close">&times;</span>
             <h2>Activar Cuenta Premium</h2>
             <p>Disfruta de nuestra selección Premium sin anuncios y con acceso anticipado a nuevas películas y series. Protegemos tus datos con los más altos estándares de seguridad, al igual que plataformas como Netflix y Disney Plus.</p>
-            <div class="plans-container">
-                <div class="plan-card">
-                    <h3>Plan Básico</h3>
-                    <p>1 mes por $1.99</p>
-                    <button class="button buy-button" data-plan="basic">Comprar</button>
-                </div>
-                <div class="plan-card">
-                    <h3>Plan Anual</h3>
-                    <p>1 año por $19.99</p>
-                    <button class="button buy-button" data-plan="annual">Comprar</button>
-                </div>
-            </div>
+            
+            <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+                <input type="hidden" name="cmd" value="_s-xclick" />
+                <input type="hidden" name="hosted_button_id" value="AP9MB5X5LR6TG" />
+                <input type="hidden" name="currency_code" value="USD" />
+                <input type="image" src="https://www.paypalobjects.com/es_ES/i/btn/btn_buynowCC_LG.gif" border="0" name="submit" title="PayPal es una forma segura y fácil de pagar en línea." alt="Comprar ahora" />
+            </form>
+            
             <p class="legal-text">© Sala Cine. Todos los derechos reservados. Su suscripción se renueva automáticamente. Puede cancelar en cualquier momento.</p>
+            <span class="close-button" id="payment-close">&times;</span>
         </div>
     </div>
-    
+
     <div class="footer-text">© Sala Cine. Todos los derechos reservados.</div>
 
     <script type="module" src="script.js"></script>
