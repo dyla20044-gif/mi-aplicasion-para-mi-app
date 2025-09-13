@@ -22,7 +22,7 @@ const provider = new GoogleAuthProvider();
 const appContainer = document.getElementById('app-container');
 const homeScreen = document.getElementById('home-screen');
 const moviesScreen = document.getElementById('movies-screen');
-const seriesScreen = document.getElementById('series-screen');
+const seriesScreen = document = document.getElementById('series-screen');
 const profileScreen = document.getElementById('profile-screen');
 const detailsScreen = document.getElementById('details-screen');
 const favoritesScreen = document.getElementById('favorites-screen');
@@ -64,7 +64,6 @@ const premiumInfoLoginLink = document.getElementById('premium-info-login-link');
 const paymentModal = document.getElementById('payment-modal');
 const proStatusButton = document.getElementById('pro-status-button');
 const signoutButton = document.getElementById('signout-button');
-const buyButtons = document.querySelectorAll('.buy-button');
 const movieRequestInput = document.getElementById('movie-request-input');
 const submitRequestButton = document.getElementById('submit-request-button');
 const favoritesGrid = document.getElementById('favorites-grid');
@@ -486,7 +485,7 @@ function switchScreen(screenId) {
     }
     
     // Ocultar barras de navegación para pantallas de detalles y autenticación
-    if (screenId === 'details-screen' || screenId === 'auth-screen') {
+    if (screenId === 'details-screen' || screenId === 'auth-screen' || screenId === 'payment-modal') {
         document.querySelector('.top-nav').style.display = 'none';
         document.querySelector('.bottom-nav').style.display = 'none';
         appContainer.style.paddingBottom = '0';
@@ -782,25 +781,6 @@ loginButton.addEventListener('click', async () => {
 socialLoginButtons.forEach(button => {
     button.addEventListener('click', () => {
         alert('Esta funcionalidad aún no está disponible.');
-    });
-});
-
-buyButtons.forEach(button => {
-    button.addEventListener('click', async (e) => {
-        const plan = e.target.getAttribute('data-plan');
-        alert(`¡Gracias! Has seleccionado el ${plan} plan. Redirigiendo a la pasarela de pago... (Simulado)`);
-        
-        if (currentUser && !currentUser.isAnonymous) {
-            try {
-                const userRef = doc(db, 'users', currentUser.uid);
-                await setDoc(userRef, { isPro: true, proPlan: plan, subscribedAt: new Date() }, { merge: true });
-                alert('¡Felicidades! Tu cuenta Premium está activada.');
-                closeModal(paymentModal);
-            } catch (error) {
-                console.error("Error updating user status:", error);
-                alert('Hubo un error al procesar tu pago. Intenta de nuevo.');
-            }
-        }
     });
 });
 
