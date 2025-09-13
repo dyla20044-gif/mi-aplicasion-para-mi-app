@@ -224,6 +224,28 @@
             <p class="legal-text">© Sala Cine. Todos los derechos reservados. Su suscripción se renueva automáticamente. Puede cancelar en cualquier momento.</p>
         </div>
     </div>
+
+    <div id="auth-modal" class="modal">
+        <div class="modal-content auth-content">
+            <span class="close-button">&times;</span>
+            <div id="login-form" class="auth-form active-form">
+                <h2>Iniciar Sesión</h2>
+                <input type="email" id="login-email" placeholder="Correo electrónico">
+                <input type="password" id="login-password" placeholder="Contraseña">
+                <button class="button" id="login-button">Iniciar Sesión</button>
+                <p class="switch-form-text">¿No tienes cuenta? <a href="#" id="show-signup-link">Regístrate</a></p>
+                <p class="or-separator">O</p>
+                <button class="button secondary" id="google-login-button"><i class="fab fa-google"></i> Iniciar sesión con Google</button>
+            </div>
+            <div id="signup-form" class="auth-form">
+                <h2>Regístrate</h2>
+                <input type="email" id="signup-email" placeholder="Correo electrónico">
+                <input type="password" id="signup-password" placeholder="Contraseña">
+                <button class="button" id="signup-button">Regístrate</button>
+                <p class="switch-form-text">¿Ya tienes cuenta? <a href="#" id="show-login-link">Inicia Sesión</a></p>
+            </div>
+        </div>
+    </div>
     
     <div class="footer-text">© Sala Cine. Todos los derechos reservados.</div>
 
