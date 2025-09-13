@@ -27,6 +27,9 @@ const profileScreen = document.getElementById('profile-screen');
 const detailsScreen = document.getElementById('details-screen');
 const favoritesScreen = document.getElementById('favorites-screen');
 const requestScreen = document.getElementById('request-screen');
+const privacyScreen = document.getElementById('privacy-screen');
+const termsScreen = document.getElementById('terms-screen');
+const helpScreen = document.getElementById('help-screen');
 const settingsScreen = document.getElementById('settings-screen');
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
 const screenButtons = document.querySelectorAll('[data-screen]');
@@ -80,6 +83,11 @@ const signupEmailInput = document.getElementById('signup-email');
 const signupPasswordInput = document.getElementById('signup-password');
 const signupButton = document.getElementById('signup-button');
 const socialLoginButtons = document.querySelectorAll('.social-button');
+const profileMyList = document.getElementById('profile-my-list');
+const profilePrivacy = document.getElementById('profile-privacy');
+const profileTerms = document.getElementById('profile-terms');
+const profileSubscription = document.getElementById('profile-subscription');
+const profileHelpCenter = document.getElementById('profile-help-center');
 
 let moviesData = [];
 let bannerMovies = [];
@@ -648,6 +656,31 @@ premiumInfoLoginLink.addEventListener('click', (e) => {
     showModal(authModal);
 });
 
+profileMyList.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser || currentUser.isAnonymous) {
+        showModal(authModal);
+    } else {
+        switchScreen('favorites-screen');
+    }
+});
+profilePrivacy.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('privacy-screen');
+});
+profileTerms.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('terms-screen');
+});
+profileSubscription.addEventListener('click', (e) => {
+    e.preventDefault();
+    showModal(paymentModal);
+});
+profileHelpCenter.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('help-screen');
+});
+
 // Email/Password and Social Authentication
 showSignupLink.addEventListener('click', (e) => {
     e.preventDefault();
@@ -664,6 +697,13 @@ showLoginLink.addEventListener('click', (e) => {
 signupButton.addEventListener('click', async () => {
     const email = signupEmailInput.value;
     const password = signupPasswordInput.value;
+    const termsAccepted = document.getElementById('terms-checkbox').checked;
+
+    if (!termsAccepted) {
+        alert('Debes aceptar los términos y condiciones para continuar.');
+        return;
+    }
+    
     try {
         await createUserWithEmailAndPassword(auth, email, password);
         closeModal(authModal);
