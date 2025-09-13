@@ -31,6 +31,7 @@ const privacyScreen = document.getElementById('privacy-screen');
 const termsScreen = document.getElementById('terms-screen');
 const helpScreen = document.getElementById('help-screen');
 const settingsScreen = document.getElementById('settings-screen');
+const authScreen = document.getElementById('auth-screen');
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
 const screenButtons = document.querySelectorAll('[data-screen]');
 const searchInput = document.getElementById('search-input');
@@ -67,7 +68,6 @@ const buyButtons = document.querySelectorAll('.buy-button');
 const movieRequestInput = document.getElementById('movie-request-input');
 const submitRequestButton = document.getElementById('submit-request-button');
 const favoritesGrid = document.getElementById('favorites-grid');
-const authModal = document.getElementById('auth-modal');
 const profileLoggedIn = document.getElementById('profile-logged-in');
 const profileLoggedOut = document.getElementById('profile-logged-out');
 const profileLoginLink = document.getElementById('profile-login-link');
@@ -88,6 +88,9 @@ const profilePrivacy = document.getElementById('profile-privacy');
 const profileTerms = document.getElementById('profile-terms');
 const profileSubscription = document.getElementById('profile-subscription');
 const profileHelpCenter = document.getElementById('profile-help-center');
+const authBackButton = document.getElementById('auth-back-button');
+const authLoginLink = document.getElementById('auth-login-link');
+
 
 let moviesData = [];
 let bannerMovies = [];
@@ -95,6 +98,8 @@ let allMovieGenres = {};
 let allTvGenres = {};
 let bannerInterval;
 let currentUser = null;
+let currentScreen = 'home-screen';
+let previousScreen = '';
 
 // --- Funciones para manejar Modales y Carga ---
 function closeModal(modal) {
@@ -458,7 +463,7 @@ async function handleSearch(query) {
     }
 }
 
-// --- Navegación ---
+// --- Navegación (MODIFICADO) ---
 function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
@@ -479,16 +484,41 @@ function switchScreen(screenId) {
     } else if (screenId === 'favorites-screen') {
         fetchFavorites();
     }
+    
+    // Ocultar barras de navegación para pantallas de detalles y autenticación
+    if (screenId === 'details-screen' || screenId === 'auth-screen') {
+        document.querySelector('.top-nav').style.display = 'none';
+        document.querySelector('.bottom-nav').style.display = 'none';
+        appContainer.style.paddingBottom = '0';
+    } else {
+        document.querySelector('.top-nav').style.display = 'flex';
+        document.querySelector('.bottom-nav').style.display = 'flex';
+        appContainer.style.paddingBottom = '70px';
+    }
 }
-
+// Manejo de historial para el botón de retroceso
+window.addEventListener('popstate', () => {
+    switchScreen(window.location.hash.substring(1) || 'home-screen');
+});
 document.querySelectorAll('.nav-item, .profile-button[data-screen]').forEach(item => {
     item.addEventListener('click', (e) => {
         e.preventDefault();
         const targetScreenId = e.currentTarget.getAttribute('data-screen');
         if (targetScreenId) {
+            previousScreen = currentScreen;
+            currentScreen = targetScreenId;
             switchScreen(targetScreenId);
         }
     });
+});
+// Funcionalidad del botón de retroceso de la pantalla de autenticación
+authBackButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (previousScreen) {
+        switchScreen(previousScreen);
+    } else {
+        switchScreen('home-screen');
+    }
 });
 
 seeMoreButtons.forEach(button => {
@@ -554,7 +584,7 @@ async function renderAllSeries() {
 // --- Funcionalidad de Favoritos (NUEVO) ---
 async function addToFavorites(movie) {
     if (!auth.currentUser || auth.currentUser.isAnonymous) {
-        showModal(authModal);
+        switchScreen('auth-screen');
         return;
     }
     try {
@@ -574,7 +604,7 @@ async function addToFavorites(movie) {
 
 async function fetchFavorites() {
     if (!auth.currentUser || auth.currentUser.isAnonymous) {
-        showModal(authModal);
+        switchScreen('auth-screen');
         return;
     }
     showLoader();
@@ -606,7 +636,7 @@ async function playAd() {
 submitRequestButton.addEventListener('click', async (e) => {
     e.preventDefault();
     if (!auth.currentUser || auth.currentUser.isAnonymous) {
-        showModal(authModal);
+        switchScreen('auth-screen');
         return;
     }
 
@@ -634,7 +664,7 @@ submitRequestButton.addEventListener('click', async (e) => {
 // --- Lógica de Autenticación y Perfil (MEJORADO) ---
 proStatusButton.addEventListener('click', async () => {
     if (!currentUser || currentUser.isAnonymous) {
-        showModal(authModal);
+        switchScreen('auth-screen');
     } else {
         showModal(paymentModal);
     }
@@ -642,14 +672,26 @@ proStatusButton.addEventListener('click', async () => {
 
 if (createAccountButton) {
     createAccountButton.addEventListener('click', () => {
-        showModal(authModal);
+        switchScreen('auth-screen');
+        loginForm.classList.remove('active-form');
+        signupForm.classList.add('active-form');
     });
 }
 
 if (profileLoginLink) {
     profileLoginLink.addEventListener('click', (e) => {
         e.preventDefault();
-        showModal(authModal);
+        switchScreen('auth-screen');
+        loginForm.classList.add('active-form');
+        signupForm.classList.remove('active-form');
+    });
+}
+
+if(authLoginLink){
+    authLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        loginForm.classList.add('active-form');
+        signupForm.classList.remove('active-form');
     });
 }
 
@@ -661,13 +703,15 @@ premiumInfoCtaButton.addEventListener('click', () => {
 premiumInfoLoginLink.addEventListener('click', (e) => {
     e.preventDefault();
     closeModal(premiumInfoModal);
-    showModal(authModal);
+    switchScreen('auth-screen');
+    loginForm.classList.add('active-form');
+    signupForm.classList.remove('active-form');
 });
 
 profileMyList.addEventListener('click', (e) => {
     e.preventDefault();
     if (!currentUser || currentUser.isAnonymous) {
-        showModal(authModal);
+        switchScreen('auth-screen');
     } else {
         switchScreen('favorites-screen');
     }
@@ -714,7 +758,7 @@ signupButton.addEventListener('click', async () => {
     
     try {
         await createUserWithEmailAndPassword(auth, email, password);
-        closeModal(authModal);
+        switchScreen('profile-screen');
         showModal(paymentModal);
     } catch (error) {
         console.error("Signup error:", error);
@@ -728,7 +772,6 @@ loginButton.addEventListener('click', async () => {
     try {
         await signInWithEmailAndPassword(auth, email, password);
         alert('¡Inicio de sesión exitoso!');
-        closeModal(authModal);
         switchScreen('profile-screen');
     } catch (error) {
         console.error("Login error:", error);
@@ -773,20 +816,6 @@ signoutButton.addEventListener('click', async () => {
 });
 
 // --- Initialization ---
-async function fetchDataAndInitialize() {
-    const moviesColRef = collection(db, 'movies');
-    onSnapshot(moviesColRef, (snapshot) => {
-        moviesData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-        fetchHomeContent();
-    });
-    
-    await fetchAllGenres('movie');
-    await fetchAllGenres('tv');
-}
-
 onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     
@@ -825,6 +854,16 @@ onAuthStateChanged(auth, async (user) => {
              await signInAnonymously(auth);
         }
     }
+    
+    const moviesColRef = collection(db, 'movies');
+    onSnapshot(moviesColRef, (snapshot) => {
+        moviesData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        fetchHomeContent();
+    });
+    
+    await fetchAllGenres('movie');
+    await fetchAllGenres('tv');
 });
-
-fetchDataAndInitialize();
