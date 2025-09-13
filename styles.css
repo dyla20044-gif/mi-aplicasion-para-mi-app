@@ -598,3 +598,80 @@ body {
     font-size: 1.5em;
     cursor: pointer;
 }
+/* New modal for premium info */
+.modal-from-bottom {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0.3s, opacity 0.3s;
+}
+
+.modal-from-bottom.active {
+    visibility: visible;
+    opacity: 1;
+}
+
+.modal-from-bottom .modal-content {
+    background-color: #1a1a1a;
+    padding: 30px 20px;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    width: 100%;
+    max-width: 500px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-in-out;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.modal-from-bottom.active .modal-content {
+    transform: translateY(0);
+}
+
+.premium-info-title {
+    font-size: 2em;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.premium-benefits {
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.premium-benefits p {
+    font-size: 1.1em;
+    margin: 10px 0;
+}
+
+.premium-benefits i {
+    color: #e50914;
+    margin-right: 10px;
+}
+
+.premium-cta-button {
+    width: 100%;
+    font-size: 1.2em;
+    padding: 15px;
+}
+
+.premium-info-login {
+    margin-top: 20px;
+    color: #ccc;
+    font-size: 0.9em;
+}
+
+.premium-info-login a {
+    color: #e50914;
+    text-decoration: none;
+    font-weight: bold;
+}
