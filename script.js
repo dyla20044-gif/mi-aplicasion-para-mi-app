@@ -71,7 +71,7 @@ const loginButton = document.getElementById('login-button');
 const signupEmailInput = document.getElementById('signup-email');
 const signupPasswordInput = document.getElementById('signup-password');
 const signupButton = document.getElementById('signup-button');
-const googleLoginButton = document.getElementById('google-login-button');
+const socialLoginButtons = document.querySelectorAll('.social-button');
 
 let moviesData = [];
 let bannerMovies = [];
@@ -630,7 +630,7 @@ proStatusButton.addEventListener('click', async () => {
     }
 });
 
-// Email/Password and Google Authentication
+// Email/Password and Social Authentication
 showSignupLink.addEventListener('click', (e) => {
     e.preventDefault();
     loginForm.classList.remove('active-form');
@@ -669,16 +669,11 @@ loginButton.addEventListener('click', async () => {
     }
 });
 
-googleLoginButton.addEventListener('click', async () => {
-    try {
-        await signInWithPopup(auth, provider);
-        closeModal(authModal);
-    } catch (error) {
-        console.error("Google sign-in error:", error);
-        alert('Hubo un error al iniciar sesión con Google. Intenta de nuevo.');
-    }
+socialLoginButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        alert('Esta funcionalidad aún no está disponible.');
+    });
 });
-
 
 buyButtons.forEach(button => {
     button.addEventListener('click', async (e) => {
@@ -687,9 +682,6 @@ buyButtons.forEach(button => {
         
         if (currentUser && !currentUser.isAnonymous) {
             try {
-                // Conceptually, this is where a payment would be processed
-                // and a webhook would confirm the payment and update the user's status.
-                // For this example, we'll update the Firestore document directly.
                 const userRef = doc(db, 'users', currentUser.uid);
                 await setDoc(userRef, { isPro: true, proPlan: plan, subscribedAt: new Date() }, { merge: true });
                 alert('¡Felicidades! Tu cuenta Premium está activada.');
@@ -706,7 +698,7 @@ signoutButton.addEventListener('click', async () => {
     try {
         await signOut(auth);
         alert('Has cerrado sesión.');
-        window.location.reload(); // Reload the page to reset the UI
+        window.location.reload();
     } catch (error) {
         console.error("Sign out error:", error);
         alert('No se pudo cerrar sesión. Intenta de nuevo.');
@@ -716,9 +708,6 @@ signoutButton.addEventListener('click', async () => {
 // --- Initialization ---
 onAuthStateChanged(auth, async (user) => {
     currentUser = user;
-    if (!user) {
-        await signInAnonymously(auth);
-    }
     
     if (user && !user.isAnonymous) {
         signoutButton.style.display = 'inline-block';
@@ -739,6 +728,9 @@ onAuthStateChanged(auth, async (user) => {
         signoutButton.style.display = 'none';
         proStatusButton.textContent = 'Iniciar Sesión';
         proStatusButton.disabled = false;
+        if (!user) {
+             await signInAnonymously(auth);
+        }
     }
     
     const moviesColRef = collection(db, 'movies');
