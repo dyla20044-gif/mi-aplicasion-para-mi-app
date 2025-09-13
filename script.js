@@ -65,6 +65,10 @@ const movieRequestInput = document.getElementById('movie-request-input');
 const submitRequestButton = document.getElementById('submit-request-button');
 const favoritesGrid = document.getElementById('favorites-grid');
 const authModal = document.getElementById('auth-modal');
+const profileLoggedIn = document.getElementById('profile-logged-in');
+const profileLoggedOut = document.getElementById('profile-logged-out');
+const profileLoginLink = document.getElementById('profile-login-link');
+const createAccountButton = document.getElementById('create-account-button');
 const showSignupLink = document.getElementById('show-signup-link');
 const showLoginLink = document.getElementById('show-login-link');
 const loginForm = document.getElementById('login-form');
@@ -642,8 +646,9 @@ signupButton.addEventListener('click', async () => {
     const password = signupPasswordInput.value;
     try {
         await createUserWithEmailAndPassword(auth, email, password);
-        alert('¡Registro exitoso! Ya puedes iniciar sesión.');
         closeModal(authModal);
+        // Prompt for payment plans immediately after signup
+        showModal(paymentModal);
     } catch (error) {
         console.error("Signup error:", error);
         alert(`Error al registrarse: ${error.message}`);
@@ -657,6 +662,8 @@ loginButton.addEventListener('click', async () => {
         await signInWithEmailAndPassword(auth, email, password);
         alert('¡Inicio de sesión exitoso!');
         closeModal(authModal);
+        // Redirect to profile screen after login
+        switchScreen('profile-screen');
     } catch (error) {
         console.error("Login error:", error);
         alert(`Error al iniciar sesión: ${error.message}`);
@@ -704,7 +711,8 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     
     if (user && !user.isAnonymous) {
-        signoutButton.style.display = 'inline-block';
+        profileLoggedIn.style.display = 'block';
+        profileLoggedOut.style.display = 'none';
         
         const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
@@ -719,9 +727,8 @@ onAuthStateChanged(auth, async (user) => {
             proStatusButton.disabled = false;
         }
     } else {
-        signoutButton.style.display = 'none';
-        proStatusButton.textContent = 'Iniciar Sesión';
-        proStatusButton.disabled = false;
+        profileLoggedIn.style.display = 'none';
+        profileLoggedOut.style.display = 'block';
         if (!user) {
              await signInAnonymously(auth);
         }
