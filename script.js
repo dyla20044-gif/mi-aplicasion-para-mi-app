@@ -32,6 +32,9 @@ const termsScreen = document.getElementById('terms-screen');
 const helpScreen = document.getElementById('help-screen');
 const settingsScreen = document.getElementById('settings-screen');
 const authScreen = document.getElementById('auth-screen');
+const createProfileScreen = document.getElementById('create-profile-screen');
+const welcomeScreen = document.getElementById('welcome-screen');
+const selectPlanScreen = document.getElementById('select-plan-screen');
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
 const screenButtons = document.querySelectorAll('[data-screen]');
 const searchInput = document.getElementById('search-input');
@@ -89,7 +92,14 @@ const profileSubscription = document.getElementById('profile-subscription');
 const profileHelpCenter = document.getElementById('profile-help-center');
 const authBackButton = document.getElementById('auth-back-button');
 const authLoginLink = document.getElementById('auth-login-link');
-
+// Nuevos elementos para el flujo de registro
+const profileAvatarPreview = document.getElementById('profile-avatar-preview');
+const avatarOptions = document.querySelectorAll('.avatar-option');
+const profileNameInput = document.getElementById('profile-name-input');
+const createProfileButton = document.getElementById('create-profile-button');
+const welcomeSubscribeButton = document.getElementById('welcome-subscribe-button');
+const welcomeSkipButton = document.getElementById('welcome-skip-button');
+const selectPlanButtons = document.querySelectorAll('.plan-select-button');
 
 let moviesData = [];
 let bannerMovies = [];
