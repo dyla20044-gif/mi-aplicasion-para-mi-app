@@ -773,6 +773,20 @@ signoutButton.addEventListener('click', async () => {
 });
 
 // --- Initialization ---
+async function fetchDataAndInitialize() {
+    const moviesColRef = collection(db, 'movies');
+    onSnapshot(moviesColRef, (snapshot) => {
+        moviesData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        fetchHomeContent();
+    });
+    
+    await fetchAllGenres('movie');
+    await fetchAllGenres('tv');
+}
+
 onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     
@@ -811,16 +825,6 @@ onAuthStateChanged(auth, async (user) => {
              await signInAnonymously(auth);
         }
     }
-    
-    const moviesColRef = collection(db, 'movies');
-    onSnapshot(moviesColRef, (snapshot) => {
-        moviesData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-        fetchHomeContent();
-    });
-    
-    await fetchAllGenres('movie');
-    await fetchAllGenres('tv');
 });
+
+fetchDataAndInitialize();
