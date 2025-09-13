@@ -27,6 +27,9 @@ const profileScreen = document.getElementById('profile-screen');
 const detailsScreen = document.getElementById('details-screen');
 const favoritesScreen = document.getElementById('favorites-screen');
 const requestScreen = document.getElementById('request-screen');
+const privacyScreen = document.getElementById('privacy-screen');
+const termsScreen = document.getElementById('terms-screen');
+const helpScreen = document.getElementById('help-screen');
 const settingsScreen = document.getElementById('settings-screen');
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
 const screenButtons = document.querySelectorAll('[data-screen]');
@@ -65,6 +68,10 @@ const movieRequestInput = document.getElementById('movie-request-input');
 const submitRequestButton = document.getElementById('submit-request-button');
 const favoritesGrid = document.getElementById('favorites-grid');
 const authModal = document.getElementById('auth-modal');
+const profileLoggedIn = document.getElementById('profile-logged-in');
+const profileLoggedOut = document.getElementById('profile-logged-out');
+const profileLoginLink = document.getElementById('profile-login-link');
+const createAccountButton = document.getElementById('create-account-button');
 const showSignupLink = document.getElementById('show-signup-link');
 const showLoginLink = document.getElementById('show-login-link');
 const loginForm = document.getElementById('login-form');
@@ -76,6 +83,11 @@ const signupEmailInput = document.getElementById('signup-email');
 const signupPasswordInput = document.getElementById('signup-password');
 const signupButton = document.getElementById('signup-button');
 const socialLoginButtons = document.querySelectorAll('.social-button');
+const profileMyList = document.getElementById('profile-my-list');
+const profilePrivacy = document.getElementById('profile-privacy');
+const profileTerms = document.getElementById('profile-terms');
+const profileSubscription = document.getElementById('profile-subscription');
+const profileHelpCenter = document.getElementById('profile-help-center');
 
 let moviesData = [];
 let bannerMovies = [];
@@ -624,6 +636,51 @@ proStatusButton.addEventListener('click', async () => {
     }
 });
 
+createAccountButton.addEventListener('click', () => {
+    showModal(authModal);
+});
+
+profileLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    showModal(authModal);
+});
+
+premiumInfoCtaButton.addEventListener('click', () => {
+    closeModal(premiumInfoModal);
+    showModal(paymentModal);
+});
+
+premiumInfoLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeModal(premiumInfoModal);
+    showModal(authModal);
+});
+
+profileMyList.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser || currentUser.isAnonymous) {
+        showModal(authModal);
+    } else {
+        switchScreen('favorites-screen');
+    }
+});
+profilePrivacy.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('privacy-screen');
+});
+profileTerms.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('terms-screen');
+});
+profileSubscription.addEventListener('click', (e) => {
+    e.preventDefault();
+    showModal(paymentModal);
+});
+profileHelpCenter.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('help-screen');
+});
+
 // Email/Password and Social Authentication
 showSignupLink.addEventListener('click', (e) => {
     e.preventDefault();
@@ -640,10 +697,17 @@ showLoginLink.addEventListener('click', (e) => {
 signupButton.addEventListener('click', async () => {
     const email = signupEmailInput.value;
     const password = signupPasswordInput.value;
+    const termsAccepted = document.getElementById('terms-checkbox').checked;
+
+    if (!termsAccepted) {
+        alert('Debes aceptar los términos y condiciones para continuar.');
+        return;
+    }
+    
     try {
         await createUserWithEmailAndPassword(auth, email, password);
-        alert('¡Registro exitoso! Ya puedes iniciar sesión.');
         closeModal(authModal);
+        showModal(paymentModal);
     } catch (error) {
         console.error("Signup error:", error);
         alert(`Error al registrarse: ${error.message}`);
@@ -657,6 +721,7 @@ loginButton.addEventListener('click', async () => {
         await signInWithEmailAndPassword(auth, email, password);
         alert('¡Inicio de sesión exitoso!');
         closeModal(authModal);
+        switchScreen('profile-screen');
     } catch (error) {
         console.error("Login error:", error);
         alert(`Error al iniciar sesión: ${error.message}`);
@@ -704,7 +769,8 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     
     if (user && !user.isAnonymous) {
-        signoutButton.style.display = 'inline-block';
+        profileLoggedIn.style.display = 'block';
+        profileLoggedOut.style.display = 'none';
         
         const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
@@ -719,9 +785,8 @@ onAuthStateChanged(auth, async (user) => {
             proStatusButton.disabled = false;
         }
     } else {
-        signoutButton.style.display = 'none';
-        proStatusButton.textContent = 'Iniciar Sesión';
-        proStatusButton.disabled = false;
+        profileLoggedIn.style.display = 'none';
+        profileLoggedOut.style.display = 'block';
         if (!user) {
              await signInAnonymously(auth);
         }
