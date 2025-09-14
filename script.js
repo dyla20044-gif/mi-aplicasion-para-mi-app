@@ -26,7 +26,7 @@ const seriesScreen = document.getElementById('series-screen');
 const profileScreen = document.getElementById('profile-screen');
 const detailsScreen = document.getElementById('details-screen');
 const favoritesScreen = document.getElementById('favorites-screen');
-const requestScreen = document.getElementById('request-screen');
+const requestScreen = document = document.getElementById('request-screen');
 const privacyScreen = document.getElementById('privacy-screen');
 const termsScreen = document.getElementById('terms-screen');
 const helpScreen = document.getElementById('help-screen');
@@ -806,10 +806,13 @@ buyButtons.forEach(button => {
             });
 
             const data = await response.json();
+            
             if (response.ok && data.approval_url) {
+                // Si el pago se inicia correctamente, redirige al usuario a PayPal
                 window.location.href = data.approval_url;
             } else {
-                alert('Error al iniciar el pago con PayPal.');
+                // Maneja el error si el backend no devuelve una URL de aprobación
+                alert('Error al iniciar el pago con PayPal. Verifica la configuración en tu servidor.');
             }
         } catch (error) {
             console.error("Error processing payment:", error);
@@ -821,16 +824,11 @@ buyButtons.forEach(button => {
 // Lógica para los nuevos botones de pago
 if (buyWithPaypalButton) {
     buyWithPaypalButton.addEventListener('click', () => {
-        // Redirigir a la misma lógica de los planes para iniciar el flujo de PayPal
-        // Aquí necesitarás pasar la información del plan seleccionado, por simplicidad,
-        // puedes redirigirlos a los botones de plan primero.
         alert('Selecciona un plan antes de continuar con el pago.');
     });
 }
 if (buyWithBinanceButton) {
     buyWithBinanceButton.addEventListener('click', () => {
-        // En un entorno real, esta llamada iría a tu servidor de backend para generar el QR de Binance.
-        // Llamada simulada
         alert('Redirigiendo a Binance... (Funcionalidad simulada)');
     });
 }
