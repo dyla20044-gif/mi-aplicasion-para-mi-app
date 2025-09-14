@@ -26,7 +26,7 @@ const seriesScreen = document.getElementById('series-screen');
 const profileScreen = document.getElementById('profile-screen');
 const detailsScreen = document.getElementById('details-screen');
 const favoritesScreen = document.getElementById('favorites-screen');
-const requestScreen = document = document.getElementById('request-screen');
+const requestScreen = document.getElementById('request-screen');
 const privacyScreen = document.getElementById('privacy-screen');
 const termsScreen = document.getElementById('terms-screen');
 const helpScreen = document.getElementById('help-screen');
