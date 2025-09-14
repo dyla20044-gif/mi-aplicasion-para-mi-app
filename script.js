@@ -819,9 +819,6 @@ buyButtons.forEach(button => {
 });
 
 // Lógica para los nuevos botones de pago
-const buyWithPaypalButton = document.getElementById('buy-with-paypal');
-const buyWithBinanceButton = document.getElementById('buy-with-binance');
-
 if (buyWithPaypalButton) {
     buyWithPaypalButton.addEventListener('click', () => {
         // Redirigir a la misma lógica de los planes para iniciar el flujo de PayPal
