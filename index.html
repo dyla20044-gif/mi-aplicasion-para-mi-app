@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍿 Sala Cine</title>
+    <title>Sala Cine</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
 
     <header class="top-nav">
-        <div class="logo">🍿 Sala Cine</div>
+        <div class="logo">Sala Cine</div>
         <div class="search-container">
             <input type="text" id="search-input" placeholder="Buscar películas...">
             <i id="search-icon" class="fas fa-search search-icon-top"></i>
@@ -209,8 +209,9 @@
         <div id="details-screen" class="screen">
             <div id="details-poster-top">
                 <div class="poster-overlay">
-                    <button id="details-play-button" class="play-button"><i class="fas fa-play"></i></button>
-                </div>
+    <button id="details-play-button" class="play-button"><i class="fas fa-play"></i></button>
+    <button id="request-movie-button" class="play-button" style="display: none;"><i class="fas fa-paper-plane"></i> Pedir ahora</button>
+</div>
             </div>
             <div class="details-info-section">
                 <div class="movie-header">
@@ -240,7 +241,7 @@
         <div id="auth-screen" class="screen full-screen-auth">
             <header class="auth-header">
                 <a href="#" class="back-button" id="auth-back-button"><i class="fas fa-arrow-left"></i></a>
-                <div class="logo">🍿 Sala Cine</div>
+                <div class="logo">Sala Cine</div>
                 <a href="#" class="login-link" id="auth-login-link">Iniciar sesión</a>
             </header>
             <div class="auth-content-container">
@@ -335,3 +336,4 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
 </html>
+
