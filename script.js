@@ -286,7 +286,8 @@ async function showDetailsScreen(movie, type = 'movie') {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             title: movie.title || movie.name,
-                            poster_path: movie.poster_path
+                            poster_path: movie.poster_path,
+                            tmdbId: movie.id // Envía el ID de TMDB
                         })
                     });
                     
