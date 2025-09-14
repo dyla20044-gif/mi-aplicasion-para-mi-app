@@ -90,6 +90,8 @@ const profileSubscription = document.getElementById('profile-subscription');
 const profileHelpCenter = document.getElementById('profile-help-center');
 const authBackButton = document.getElementById('auth-back-button');
 const authLoginLink = document.getElementById('auth-login-link');
+const buyWithPaypalButton = document.getElementById('buy-with-paypal');
+const buyWithBinanceButton = document.getElementById('buy-with-binance');
 
 
 let moviesData = [];
@@ -788,21 +790,53 @@ socialLoginButtons.forEach(button => {
 buyButtons.forEach(button => {
     button.addEventListener('click', async (e) => {
         const plan = e.target.getAttribute('data-plan');
-        alert(`¡Gracias! Has seleccionado el ${plan} plan. Redirigiendo a la pasarela de pago... (Simulado)`);
-        
-        if (currentUser && !currentUser.isAnonymous) {
-            try {
-                const userRef = doc(db, 'users', currentUser.uid);
-                await setDoc(userRef, { isPro: true, proPlan: plan, subscribedAt: new Date() }, { merge: true });
-                alert('¡Felicidades! Tu cuenta Premium está activada.');
-                closeModal(paymentModal);
-            } catch (error) {
-                console.error("Error updating user status:", error);
-                alert('Hubo un error al procesar tu pago. Intenta de nuevo.');
+        const amount = (plan === 'annual') ? '19.99' : '1.99';
+
+        if (!currentUser || currentUser.isAnonymous) {
+            switchScreen('auth-screen');
+            return;
+        }
+
+        try {
+            // Llama a tu servidor de backend para procesar el pago con PayPal
+            const response = await fetch('https://serivisios.onrender.com/create-paypal-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan: plan, amount: amount })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.approval_url) {
+                window.location.href = data.approval_url;
+            } else {
+                alert('Error al iniciar el pago con PayPal.');
             }
+        } catch (error) {
+            console.error("Error processing payment:", error);
+            alert('Hubo un error al procesar tu pago. Intenta de nuevo.');
         }
     });
 });
+
+// Lógica para los nuevos botones de pago
+const buyWithPaypalButton = document.getElementById('buy-with-paypal');
+const buyWithBinanceButton = document.getElementById('buy-with-binance');
+
+if (buyWithPaypalButton) {
+    buyWithPaypalButton.addEventListener('click', () => {
+        // Redirigir a la misma lógica de los planes para iniciar el flujo de PayPal
+        // Aquí necesitarás pasar la información del plan seleccionado, por simplicidad,
+        // puedes redirigirlos a los botones de plan primero.
+        alert('Selecciona un plan antes de continuar con el pago.');
+    });
+}
+if (buyWithBinanceButton) {
+    buyWithBinanceButton.addEventListener('click', () => {
+        // En un entorno real, esta llamada iría a tu servidor de backend para generar el QR de Binance.
+        // Llamada simulada
+        alert('Redirigiendo a Binance... (Funcionalidad simulada)');
+    });
+}
 
 signoutButton.addEventListener('click', async () => {
     try {
