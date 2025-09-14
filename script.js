@@ -92,7 +92,7 @@ const authBackButton = document.getElementById('auth-back-button');
 const authLoginLink = document.getElementById('auth-login-link');
 const buyWithPaypalButton = document.getElementById('buy-with-paypal');
 const buyWithBinanceButton = document.getElementById('buy-with-binance');
-
+const requestMovieButton = document.getElementById('request-movie-button');
 
 let moviesData = [];
 let bannerMovies = [];
@@ -240,34 +240,64 @@ async function showDetailsScreen(movie, type = 'movie') {
         
         const localMovie = moviesData.find(m => m.tmdbId === movie.id);
         
-        if (detailsPlayButton) {
-            detailsPlayButton.onclick = () => {
-                if (localMovie && localMovie.videoLink) {
-                    if (localMovie.isPremium && (!currentUser || !currentUser.isPro)) {
-                         // Play 10-minute preview for non-pro users
-                        videoPlayer.src = localMovie.videoLink.replace('.mp4', '_preview.mp4');
-                        showModal(videoModal);
-                        videoPlayer.play();
+        // Lógica para el botón de Play y Pedir ahora
+        if (localMovie && localMovie.videoLink) {
+            detailsPlayButton.style.display = 'block';
+            requestMovieButton.style.display = 'none';
 
-                        setTimeout(() => {
-                            videoPlayer.pause();
-                            alert('Este contenido es Premium. ¡Suscríbete para ver la película completa y sin interrupciones!');
-                        }, 1000 * 60 * 10); // 10 minutes
-                    } else if (!localMovie.isPremium && (!currentUser || !currentUser.isPro)) {
-                         // Play ad for free movies for non-pro users
-                        playAd().then(() => {
-                            videoPlayer.src = localMovie.videoLink;
-                            showModal(videoModal);
-                            videoPlayer.play();
-                        });
-                    } else {
-                        // Play full movie for Pro users or free movies without ads
+            detailsPlayButton.onclick = () => {
+                if (localMovie.isPremium && (!currentUser || !currentUser.isPro)) {
+                    videoPlayer.src = localMovie.videoLink.replace('.mp4', '_preview.mp4');
+                    showModal(videoModal);
+                    videoPlayer.play();
+
+                    setTimeout(() => {
+                        videoPlayer.pause();
+                        alert('Este contenido es Premium. ¡Suscríbete para ver la película completa y sin interrupciones!');
+                    }, 1000 * 60 * 10);
+                } else if (!localMovie.isPremium && (!currentUser || !currentUser.isPro)) {
+                    playAd().then(() => {
                         videoPlayer.src = localMovie.videoLink;
                         showModal(videoModal);
                         videoPlayer.play();
-                    }
+                    });
                 } else {
-                    alert('Esta película no tiene un enlace de video disponible.');
+                    videoPlayer.src = localMovie.videoLink;
+                    showModal(videoModal);
+                    videoPlayer.play();
+                }
+            };
+        } else {
+            // Si no hay enlace de video, muestra el botón de Pedir ahora
+            detailsPlayButton.style.display = 'none';
+            requestMovieButton.style.display = 'block';
+            
+            requestMovieButton.onclick = async () => {
+                if (!auth.currentUser || auth.currentUser.isAnonymous) {
+                    alert('Debes iniciar sesión para solicitar una película.');
+                    switchScreen('auth-screen');
+                    return;
+                }
+                
+                // Enviar la solicitud a tu servidor de backend
+                try {
+                    const response = await fetch('https://serivisios.onrender.com/request-movie', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            title: movie.title || movie.name,
+                            poster_path: movie.poster_path
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        alert('¡Solicitud enviada! En unos minutos estará lista.');
+                    } else {
+                        alert('Hubo un error al enviar la solicitud. Intenta de nuevo.');
+                    }
+                } catch (error) {
+                    console.error('Error al solicitar la película:', error);
+                    alert('No se pudo conectar con el servidor para enviar la solicitud.');
                 }
             };
         }
