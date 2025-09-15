@@ -443,7 +443,566 @@ function renderRequestButton(tmdbItem) {
     playButtonContainer.appendChild(requestButton);
 }
 
-// ... (El resto de tu código que no cambia) ...
+// --- FUNCIÓN FINAL: Llama directamente a la API de TMDb ---
+async function fetchFromTMDB(endpoint, query = '') {
+    const API_KEY = "5eb8461b85d0d88c46d77cfe5436291f";
+    const BASE_URL = 'https://api.themoviedb.org/3/';
+    
+    let url = `${BASE_URL}${endpoint}`;
+    
+    if (url.includes('?')) {
+        url += `&api_key=${API_KEY}&language=es-ES`;
+    } else {
+        url += `?api_key=${API_KEY}&language=es-ES`;
+    }
+    
+    if (query) {
+        url += `&query=${encodeURIComponent(query)}`;
+    }
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Error de la API: ${response.status}`);
+        }
+        const data = await response.json();
+        return data.results || data.items || data;
+    } catch (error) {
+        console.error("Error en la llamada a fetchFromTMDB:", error);
+        throw error;
+    }
+}
+
+async function fetchHomeContent() {
+    showLoader();
+    try {
+        const popularMovies = await fetchFromTMDB('movie/popular');
+        renderCarousel('populares-movies', popularMovies, 'movie');
+
+        const trendingContent = await fetchFromTMDB('trending/all/day');
+        renderCarousel('tendencias-movies', trendingContent, 'movie');
+
+        const actionMovies = await fetchFromTMDB('discover/movie?with_genres=28');
+        renderCarousel('accion-movies', actionMovies, 'movie');
+
+        const terrorMovies = await fetchFromTMDB('discover/movie?with_genres=27,9648');
+        renderCarousel('terror-movies', terrorMovies, 'movie');
+        
+        const animacionMovies = await fetchFromTMDB('discover/movie?with_genres=16');
+        renderCarousel('animacion-movies', animacionMovies, 'movie');
+
+        const documentalesMovies = await fetchFromTMDB('discover/movie?with_genres=99');
+        renderCarousel('documentales-movies', documentalesMovies, 'movie');
+
+        const scifiMovies = await fetchFromTMDB('discover/movie?with_genres=878');
+        renderCarousel('scifi-movies', scifiMovies, 'movie');
+
+        const popularSeries = await fetchFromTMDB('tv/popular');
+        renderCarousel('populares-series', popularSeries, 'tv');
+        
+        bannerMovies = trendingContent.filter(m => m.backdrop_path);
+        renderBannerCarousel();
+    } catch (error) {
+        console.error("Error fetching home content:", error);
+        alert('Hubo un error al cargar el contenido principal. Por favor, recarga la página.');
+    } finally {
+        hideLoader();
+    }
+}
+
+function renderBannerCarousel() {
+    bannerList.innerHTML = '';
+    bannerMovies.forEach(movie => {
+        bannerList.appendChild(createBannerItem(movie));
+    });
+    startBannerAutoScroll();
+}
+
+// Lógica para pausar y reanudar el scroll automático del carrusel
+function stopBannerAutoScroll() {
+    clearInterval(bannerInterval);
+}
+
+function startBannerAutoScroll() {
+    let currentIndex = 0;
+    const scrollAmount = bannerList.clientWidth;
+    stopBannerAutoScroll();
+    bannerInterval = setInterval(() => {
+        if (currentIndex < bannerMovies.length - 1) {
+            currentIndex++;
+        } else {
+            currentIndex = 0;
+        }
+        bannerList.scrollTo({
+            left: currentIndex * scrollAmount,
+            behavior: 'smooth'
+        });
+    }, 3000);
+}
+
+bannerList.addEventListener('mousedown', stopBannerAutoScroll);
+bannerList.addEventListener('mouseup', startBannerAutoScroll);
+bannerList.addEventListener('touchstart', stopBannerAutoScroll);
+bannerList.addEventListener('touchend', startBannerAutoScroll);
+
+
+async function fetchAllGenres(type = 'movie') {
+    try {
+        const genres = await fetchFromTMDB(`genre/${type}/list`);
+        const genreMap = {};
+        genres.genres.forEach(genre => {
+            genreMap[genre.id] = genre.name;
+        });
+        if (type === 'movie') {
+            allMovieGenres = genreMap;
+        } else {
+            allTvGenres = genreMap;
+        }
+    } catch (error) {
+        console.error("Error fetching genres:", error);
+    }
+}
+
+function renderGenresModal(type) {
+    genresList.innerHTML = '';
+    const currentGenres = type === 'movie' ? allMovieGenres : allTvGenres;
+    for (const id in currentGenres) {
+        const genreButton = document.createElement('button');
+        genreButton.className = 'button secondary';
+        genreButton.textContent = currentGenres[id];
+        genreButton.onclick = () => {
+            fetchFromTMDB(`discover/${type}?with_genres=${id}`).then(items => {
+                renderGrid(type === 'movie' ? allMoviesGrid : allSeriesGrid, items, type);
+                document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+                if (type === 'movie') moviesScreen.classList.add('active');
+                else seriesScreen.classList.add('active');
+                closeModal(genresModal);
+            });
+        };
+        genresList.appendChild(genreButton);
+    }
+}
+
+// --- Search Logic ---
+searchIconTop.addEventListener('click', () => {
+    const query = searchInput.value;
+    if (query.length > 2) {
+        handleSearch(query);
+    }
+});
+
+searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        handleSearch(searchInput.value);
+    }
+});
+
+searchInput.addEventListener('input', (e) => {
+    const query = e.target.value;
+    if (query.length > 2) {
+        handleSearch(query);
+    } else if (query.length === 0) {
+        document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+        homeScreen.classList.add('active');
+    }
+});
+
+async function handleSearch(query) {
+    if (query.length > 2) {
+        showLoader();
+        try {
+            const searchResults = await fetchFromTMDB('search/multi', query);
+            const filteredResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
+            renderGrid(allMoviesGrid, filteredResults, 'movie');
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+            moviesScreen.classList.add('active');
+        } catch (error) {
+            console.error("Error performing search:", error);
+            alert('Hubo un error en la búsqueda. Por favor, intenta de nuevo.');
+        } finally {
+            hideLoader();
+        }
+    }
+}
+
+// --- Navegación (MODIFICADO) ---
+function switchScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+    
+    const targetScreen = document.getElementById(screenId);
+    if (targetScreen) {
+        targetScreen.classList.add('active');
+        const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
+        if (navItem) navItem.classList.add('active');
+    }
+
+    if (screenId === 'movies-screen') {
+        renderAllMovies();
+    } else if (screenId === 'series-screen') {
+        renderAllSeries();
+    } else if (screenId === 'home-screen') {
+        fetchHomeContent();
+    } else if (screenId === 'favorites-screen') {
+        fetchFavorites();
+    }
+    
+    // Ocultar barras de navegación para pantallas de detalles y autenticación
+    if (screenId === 'details-screen' || screenId === 'auth-screen') {
+        document.querySelector('.top-nav').style.display = 'none';
+        document.querySelector('.bottom-nav').style.display = 'none';
+        appContainer.style.paddingBottom = '0';
+    } else {
+        document.querySelector('.top-nav').style.display = 'flex';
+        document.querySelector('.bottom-nav').style.display = 'flex';
+        appContainer.style.paddingBottom = '70px';
+    }
+}
+// Manejo de historial para el botón de retroceso
+window.addEventListener('popstate', () => {
+    switchScreen(window.location.hash.substring(1) || 'home-screen');
+});
+document.querySelectorAll('.nav-item, .profile-button[data-screen]').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetScreenId = e.currentTarget.getAttribute('data-screen');
+        if (targetScreenId) {
+            previousScreen = currentScreen;
+            currentScreen = targetScreenId;
+            switchScreen(targetScreenId);
+        }
+    });
+});
+// Funcionalidad del botón de retroceso de la pantalla de autenticación
+authBackButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (previousScreen) {
+        switchScreen(previousScreen);
+    } else {
+        switchScreen('home-screen');
+    }
+});
+
+seeMoreButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const endpoint = e.currentTarget.getAttribute('data-endpoint');
+        const type = e.currentTarget.getAttribute('data-type');
+        
+        showLoader();
+        try {
+            const items = await fetchFromTMDB(endpoint);
+            if (type === 'movie') {
+                renderGrid(allMoviesGrid, items, 'movie');
+                switchScreen('movies-screen');
+            } else {
+                renderGrid(allSeriesGrid, items, 'tv');
+                switchScreen('series-screen');
+            }
+        } catch (error) {
+            console.error("Error loading 'See more' content:", error);
+            alert('No se pudo cargar el contenido. Intenta de nuevo.');
+        } finally {
+            hideLoader();
+        }
+    });
+});
+
+genresButton.addEventListener('click', () => {
+    renderGenresModal('movie');
+    showModal(genresModal);
+});
+seriesGenresButton.addEventListener('click', () => {
+    renderGenresModal('tv');
+    showModal(genresModal);
+});
+
+async function renderAllMovies() {
+    showLoader();
+    try {
+        const movies = await fetchFromTMDB('discover/movie?sort_by=popularity.desc');
+        renderGrid(allMoviesGrid, movies, 'movie');
+    } catch (error) {
+        console.error("Error rendering all movies:", error);
+        alert('No se pudieron cargar las películas. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function renderAllSeries() {
+    showLoader();
+    try {
+        const series = await fetchFromTMDB('discover/tv?sort_by=popularity.desc');
+        renderGrid(allSeriesGrid, series, 'tv');
+    } catch (error) {
+        console.error("Error rendering all series:", error);
+        alert('No se pudieron cargar las series. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+}
+
+// --- Funcionalidad de Favoritos (NUEVO) ---
+async function addToFavorites(movie) {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+        return;
+    }
+    try {
+        await addDoc(collection(db, "favorites"), {
+            userId: auth.currentUser.uid,
+            tmdbId: movie.id,
+            title: movie.title || movie.name,
+            poster_path: movie.poster_path,
+            type: movie.media_type || 'movie'
+        });
+        alert('Añadido a Mi lista');
+    } catch (e) {
+        console.error("Error adding favorite: ", e);
+        alert('No se pudo añadir a la lista.');
+    }
+}
+
+async function fetchFavorites() {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+        return;
+    }
+    showLoader();
+    try {
+        const q = query(collection(db, "favorites"), where("userId", "==", auth.currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const favorites = querySnapshot.docs.map(doc => doc.data());
+        renderGrid(favoritesGrid, favorites, 'movie');
+    } catch (e) {
+        console.error("Error fetching favorites: ", e);
+        alert('No se pudieron cargar los favoritos.');
+    } finally {
+        hideLoader();
+    }
+}
+
+// --- Funcionalidad de Anuncios (Simulada) ---
+async function playAd() {
+    return new Promise((resolve) => {
+        console.log("Simulating ad playback...");
+        alert('Anuncio: El video comenzará en breve.');
+        setTimeout(() => {
+            resolve();
+        }, 5000); // Ad duration
+    });
+}
+
+// --- Funcionalidad de Solicitud de Películas (NUEVO) ---
+submitRequestButton.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+        return;
+    }
+
+    const movieTitle = movieRequestInput.value.trim();
+    if (movieTitle === '') {
+        alert('Por favor, ingresa el título de la película.');
+        return;
+    }
+
+    try {
+        await addDoc(collection(db, "requests"), {
+            userId: auth.currentUser.uid,
+            userName: auth.currentUser.displayName || 'Anónimo',
+            movieTitle: movieTitle,
+            requestedAt: new Date()
+        });
+        alert('¡Solicitud enviada! Gracias por tu sugerencia.');
+        movieRequestInput.value = '';
+    } catch (e) {
+        console.error("Error adding movie request: ", e);
+        alert('No se pudo enviar la solicitud. Intenta de nuevo.');
+    }
+});
+
+// --- Lógica de Autenticación y Perfil (MEJORADO) ---
+proStatusButton.addEventListener('click', async () => {
+    if (!currentUser || currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+    } else {
+        showModal(paymentModal);
+    }
+});
+
+if (createAccountButton) {
+    createAccountButton.addEventListener('click', () => {
+        switchScreen('auth-screen');
+        loginForm.classList.remove('active-form');
+        signupForm.classList.add('active-form');
+    });
+}
+
+if (profileLoginLink) {
+    profileLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchScreen('auth-screen');
+        loginForm.classList.add('active-form');
+        signupForm.classList.remove('active-form');
+    });
+}
+
+if(authLoginLink){
+    authLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        loginForm.classList.add('active-form');
+        signupForm.classList.remove('active-form');
+    });
+}
+
+premiumInfoCtaButton.addEventListener('click', () => {
+    closeModal(premiumInfoModal);
+    showModal(paymentModal);
+});
+
+premiumInfoLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeModal(premiumInfoModal);
+    switchScreen('auth-screen');
+    loginForm.classList.add('active-form');
+    signupForm.classList.remove('active-form');
+});
+
+profileMyList.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser || currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+    } else {
+        switchScreen('favorites-screen');
+    }
+});
+profilePrivacy.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('privacy-screen');
+});
+profileTerms.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('terms-screen');
+});
+profileSubscription.addEventListener('click', (e) => {
+    e.preventDefault();
+    showModal(paymentModal);
+});
+profileHelpCenter.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('help-screen');
+});
+
+// Email/Password and Social Authentication
+showSignupLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginForm.classList.remove('active-form');
+    signupForm.classList.add('active-form');
+});
+
+showLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    signupForm.classList.remove('active-form');
+    loginForm.classList.add('active-form');
+});
+
+signupButton.addEventListener('click', async () => {
+    const email = signupEmailInput.value;
+    const password = signupPasswordInput.value;
+    const termsAccepted = document.getElementById('terms-checkbox').checked;
+
+    if (!termsAccepted) {
+        alert('Debes aceptar los términos y condiciones para continuar.');
+        return;
+    }
+    
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        switchScreen('profile-screen');
+        showModal(paymentModal);
+    } catch (error) {
+        console.error("Signup error:", error);
+        alert(`Error al registrarse: ${error.message}`);
+    }
+});
+
+loginButton.addEventListener('click', async () => {
+    const email = loginEmailInput.value;
+    const password = loginPasswordInput.value;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        alert('¡Inicio de sesión exitoso!');
+        switchScreen('profile-screen');
+    } catch (error) {
+        console.error("Login error:", error);
+        alert(`Error al iniciar sesión: ${error.message}`);
+    }
+});
+
+socialLoginButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        alert('Esta funcionalidad aún no está disponible.');
+    });
+});
+
+buyButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+        const plan = e.target.getAttribute('data-plan');
+        const amount = (plan === 'annual') ? '19.99' : '1.99';
+
+        if (!currentUser || currentUser.isAnonymous) {
+            switchScreen('auth-screen');
+            return;
+        }
+
+        try {
+            // Llama a tu servidor de backend para procesar el pago con PayPal
+            const response = await fetch('https://serivisios.onrender.com/create-paypal-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan: plan, amount: amount })
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.approval_url) {
+                // Si el pago se inicia correctamente, redirige al usuario a PayPal
+                window.location.href = data.approval_url;
+            } else {
+                // Maneja el error si el backend no devuelve una URL de aprobación
+                alert('Error al iniciar el pago con PayPal. Verifica la configuración en tu servidor.');
+            }
+        } catch (error) {
+            console.error("Error processing payment:", error);
+            alert('Hubo un error al procesar tu pago. Intenta de nuevo.');
+        }
+    });
+});
+
+// Lógica para los nuevos botones de pago
+if (buyWithPaypalButton) {
+    buyWithPaypalButton.addEventListener('click', () => {
+        alert('Selecciona un plan antes de continuar con el pago.');
+    });
+}
+if (buyWithBinanceButton) {
+    buyWithBinanceButton.addEventListener('click', () => {
+        alert('Redirigiendo a Binance... (Funcionalidad simulada)');
+    });
+}
+
+signoutButton.addEventListener('click', async () => {
+    try {
+        await signOut(auth);
+        alert('Has cerrado sesión.');
+        window.location.reload();
+    } catch (error) {
+        console.error("Sign out error:", error);
+        alert('No se pudo cerrar sesión. Intenta de nuevo.');
+    }
+});
 
 // --- Initialization ---
 showLoader();
