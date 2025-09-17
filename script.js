@@ -202,6 +202,7 @@ function playEmbeddedVideo(embedCode, isPremium, currentUser) {
 function renderMoviePlayButtons(localMovie, tmdbMovie) {
     playButtonContainer.innerHTML = ''; // Limpia el contenedor
 
+    // Verifica si la película tiene un código embed guardado en Firebase
     if (localMovie && (localMovie.freeEmbedCode || localMovie.proEmbedCode)) {
         const playButton = document.createElement('button');
         playButton.className = 'play-button';
@@ -1036,7 +1037,7 @@ signoutButton.addEventListener('click', async () => {
 });
 
 // --- Initialization ---
-showLoader();
+let isInitialized = false;
 onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     
@@ -1075,26 +1076,29 @@ onAuthStateChanged(auth, async (user) => {
              await signInAnonymously(auth);
         }
     }
-    
-    const moviesColRef = collection(db, 'movies');
-    onSnapshot(moviesColRef, (snapshot) => {
-        moviesData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-        fetchHomeContent();
-    });
-    
-    const seriesColRef = collection(db, 'series');
-    onSnapshot(seriesColRef, (snapshot) => {
-        seriesData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-    });
-    
-    await fetchAllGenres('movie');
-    await fetchAllGenres('tv');
 
-    hideLoader();
+    if (!isInitialized) {
+        isInitialized = true;
+        const moviesColRef = collection(db, 'movies');
+        onSnapshot(moviesColRef, (snapshot) => {
+            moviesData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            fetchHomeContent();
+        });
+        
+        const seriesColRef = collection(db, 'series');
+        onSnapshot(seriesColRef, (snapshot) => {
+            seriesData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+        });
+        
+        await fetchAllGenres('movie');
+        await fetchAllGenres('tv');
+
+        hideLoader();
+    }
 });
