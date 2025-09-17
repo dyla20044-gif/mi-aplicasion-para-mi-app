@@ -361,6 +361,22 @@ body {
     align-items: center;
 }
 
+/* NUEVA LÓGICA PARA MOSTRAR EL REPRODUCTOR INCRUSTADO */
+#details-poster-top.playing .poster-overlay,
+#details-poster-top.playing #details-play-button-container {
+    display: none;
+}
+
+#details-poster-top.playing #video-embed-container {
+    display: block !important;
+}
+
+#video-embed-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
 .play-button {
     background-color: rgba(255, 255, 255, 0.2);
     border: 2px solid #ffffff;
