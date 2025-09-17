@@ -1,367 +1,367 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cine</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cine</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
 
-    <header class="top-nav">
-        <div class="logo">Cine</div>
-        <div class="search-container">
-            <input type="text" id="search-input" placeholder="Buscar películas...">
-            <i id="search-icon" class="fas fa-search search-icon-top"></i>
-        </div>
-    </header>
+    <header class="top-nav">
+        <div class="logo">Cine</div>
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Buscar películas...">
+            <i id="search-icon" class="fas fa-search search-icon-top"></i>
+        </div>
+    </header>
 
-    <main id="app-container">
-        <div id="home-screen" class="screen active">
-            <section class="hero-banner-carousel">
-                <div id="banner-list" class="movie-list horizontal-scroll"></div>
-            </section>
+    <main id="app-container">
+        <div id="home-screen" class="screen active">
+            <section class="hero-banner-carousel">
+                <div id="banner-list" class="movie-list horizontal-scroll"></div>
+            </section>
 
-            <div id="carousels-container">
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Populares</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="movie/popular" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="populares-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-                
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Tendencias</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="trending/all/day" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="tendencias-movies" class="movie-list horizontal-scroll"></div>
-                </section>
+            <div id="carousels-container">
+                <section class="category-section">
+                    <div class="category-header">
+                        <h2>Populares</h2>
+                        <a href="#" class="see-more-btn" data-endpoint="movie/popular" data-type="movie">Ver más</a>
+                    </div>
+                    <div id="populares-movies" class="movie-list horizontal-scroll"></div>
+                </section>
+                
+                <section class="category-section">
+                    <div class="category-header">
+                        <h2>Tendencias</h2>
+                        <a href="#" class="see-more-btn" data-endpoint="trending/all/day" data-type="movie">Ver más</a>
+                    </div>
+                    <div id="tendencias-movies" class="movie-list horizontal-scroll"></div>
+                </section>
 
-                 <section class="category-section">
-                    <div class="category-header">
-                        <h2>Acción y Aventura</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=28" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="accion-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-                
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Terror y Misterio</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=27,9648" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="terror-movies" class="movie-list horizontal-scroll"></div>
-                </section>
+                 <section class="category-section">
+                    <div class="category-header">
+                        <h2>Acción y Aventura</h2>
+                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=28" data-type="movie">Ver más</a>
+                    </div>
+                    <div id="accion-movies" class="movie-list horizontal-scroll"></div>
+                </section>
+                
+                <section class="category-section">
+                    <div class="category-header">
+                        <h2>Terror y Misterio</h2>
+                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=27,9648" data-type="movie">Ver más</a>
+                    </div>
+                    <div id="terror-movies" class="movie-list horizontal-scroll"></div>
+                </section>
 
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Animación</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=16" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="animacion-movies" class="movie-list horizontal-scroll"></div>
-                </section>
+                <section class="category-section">
+                    <div class="category-header">
+                        <h2>Animación</h2>
+                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=16" data-type="movie">Ver más</a>
+                    </div>
+                    <div id="animacion-movies" class="movie-list horizontal-scroll"></div>
+                </section>
 
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Documentales</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=99" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="documentales-movies" class="movie-list horizontal-scroll"></div>
-                </section>
+                <section class="category-section">
+                    <div class="category-header">
+                        <h2>Documentales</h2>
+                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=99" data-type="movie">Ver más</a>
+                    </div>
+                    <div id="documentales-movies" class="movie-list horizontal-scroll"></div>
+                </section>
 
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Ciencia Ficción</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with-genres=878" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="scifi-movies" class="movie-list horizontal-scroll"></div>
-                </section>
+                <section class="category-section">
+                    <div class="category-header">
+                        <h2>Ciencia Ficción</h2>
+                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with-genres=878" data-type="movie">Ver más</a>
+                    </div>
+                    <div id="scifi-movies" class="movie-list horizontal-scroll"></div>
+                </section>
 
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Series Populares</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="tv/popular" data-type="tv">Ver más</a>
-                    </div>
-                    <div id="populares-series" class="movie-list horizontal-scroll"></div>
-                </section>
-            </div>
-        </div>
+                <section class="category-section">
+                    <div class="category-header">
+                        <h2>Series Populares</h2>
+                        <a href="#" class="see-more-btn" data-endpoint="tv/popular" data-type="tv">Ver más</a>
+                    </div>
+                    <div id="populares-series" class="movie-list horizontal-scroll"></div>
+                </section>
+            </div>
+        </div>
 
-        <div id="movies-screen" class="screen">
-            <div class="screen-header">
-                <h2>Películas</h2>
-                <button id="genres-button" class="icon-button"><i class="fas fa-ellipsis-v"></i></button>
-            </div>
-            <div id="all-movies-grid" class="movie-grid"></div>
-        </div>
+        <div id="movies-screen" class="screen">
+            <div class="screen-header">
+                <h2>Películas</h2>
+                <button id="genres-button" class="icon-button"><i class="fas fa-ellipsis-v"></i></button>
+            </div>
+            <div id="all-movies-grid" class="movie-grid"></div>
+        </div>
 
-        <div id="series-screen" class="screen">
-            <div class="screen-header">
-                <h2>Series de TV</h2>
-                <button id="series-genres-button" class="icon-button"><i class="fas fa-ellipsis-v"></i></button>
-            </div>
-            <div id="all-series-grid" class="movie-grid"></div>
-        </div>
+        <div id="series-screen" class="screen">
+            <div class="screen-header">
+                <h2>Series de TV</h2>
+                <button id="series-genres-button" class="icon-button"><i class="fas fa-ellipsis-v"></i></button>
+            </div>
+            <div id="all-series-grid" class="movie-grid"></div>
+        </div>
 
-        <div id="profile-screen" class="screen">
-            <div id="profile-logged-in" style="display: none;">
-                <div class="screen-header">
-                    <h2>Mi Perfil</h2>
-                    <button id="signout-button" class="icon-button"><i class="fas fa-sign-out-alt"></i></button>
-                </div>
-                <div class="profile-options">
-                    <button id="pro-status-button" class="button profile-button"><i class="fas fa-crown"></i> <span>Activar Cuenta Pro</span></button>
-                    <button id="favorites-button" class="button secondary profile-button" data-screen="favorites-screen"><i class="fas fa-heart"></i> <span>Mis Favoritos</span></button>
-                    <button id="request-button" class="button secondary profile-button" data-screen="request-screen"><i class="fas fa-plus-circle"></i> <span>Solicitar Película</span></button>
-                    <button id="settings-button" class="button secondary profile-button" data-screen="settings-screen"><i class="fas fa-cog"></i> <span>Configuración</span></button>
-                </div>
-            </div>
-            <div id="profile-logged-out" style="display: block;">
-                <div class="screen-header">
-                    <h2>Mi Perfil</h2>
-                    <a href="#" id="profile-login-link" class="text-button">Iniciar sesión</a>
-                </div>
-                <div class="profile-cta">
-                    <h2 class="profile-cta-title">Con Premium tienes más</h2>
-                    <div class="premium-benefits">
-                        <p><i class="fas fa-check"></i> Series y Películas Premium</p>
-                        <p><i class="fas fa-check"></i> Más contenido que cualquier otro streaming</p>
-                        <p><i class="fas fa-check"></i> Cancela cuando quieras</p>
-                        <p><i class="fas fa-check"></i> Sin anuncios</p>
-                    </div>
-                    <button class="button profile-cta-button" id="create-account-button">Crea tu cuenta Premium</button>
-                </div>
-                <div class="profile-footer-links">
-                    <a href="#" id="profile-my-list" class="profile-link">Mi lista</a>
-                    <a href="#" id="profile-privacy" class="profile-link">Política de privacidad</a>
-                    <a href="#" id="profile-terms" class="profile-link">Términos de uso</a>
-                    <a href="#" id="profile-subscription" class="profile-link">Condiciones de Suscripción</a>
-                    <a href="#" id="profile-help-center" class="profile-link">Centro de ayuda</a>
-                </div>
-            </div>
-        </div>
+        <div id="profile-screen" class="screen">
+            <div id="profile-logged-in" style="display: none;">
+                <div class="screen-header">
+                    <h2>Mi Perfil</h2>
+                    <button id="signout-button" class="icon-button"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+                <div class="profile-options">
+                    <button id="pro-status-button" class="button profile-button"><i class="fas fa-crown"></i> <span>Activar Cuenta Pro</span></button>
+                    <button id="favorites-button" class="button secondary profile-button" data-screen="favorites-screen"><i class="fas fa-heart"></i> <span>Mis Favoritos</span></button>
+                    <button id="request-button" class="button secondary profile-button" data-screen="request-screen"><i class="fas fa-plus-circle"></i> <span>Solicitar Película</span></button>
+                    <button id="settings-button" class="button secondary profile-button" data-screen="settings-screen"><i class="fas fa-cog"></i> <span>Configuración</span></button>
+                </div>
+            </div>
+            <div id="profile-logged-out" style="display: block;">
+                <div class="screen-header">
+                    <h2>Mi Perfil</h2>
+                    <a href="#" id="profile-login-link" class="text-button">Iniciar sesión</a>
+                </div>
+                <div class="profile-cta">
+                    <h2 class="profile-cta-title">Con Premium tienes más</h2>
+                    <div class="premium-benefits">
+                        <p><i class="fas fa-check"></i> Series y Películas Premium</p>
+                        <p><i class="fas fa-check"></i> Más contenido que cualquier otro streaming</p>
+                        <p><i class="fas fa-check"></i> Cancela cuando quieras</p>
+                        <p><i class="fas fa-check"></i> Sin anuncios</p>
+                    </div>
+                    <button class="button profile-cta-button" id="create-account-button">Crea tu cuenta Premium</button>
+                </div>
+                <div class="profile-footer-links">
+                    <a href="#" id="profile-my-list" class="profile-link">Mi lista</a>
+                    <a href="#" id="profile-privacy" class="profile-link">Política de privacidad</a>
+                    <a href="#" id="profile-terms" class="profile-link">Términos de uso</a>
+                    <a href="#" id="profile-subscription" class="profile-link">Condiciones de Suscripción</a>
+                    <a href="#" id="profile-help-center" class="profile-link">Centro de ayuda</a>
+                </div>
+            </div>
+        </div>
 
-        <div id="favorites-screen" class="screen">
-            <div class="screen-header">
-                <h2>Mis Favoritos</h2>
-            </div>
-            <div id="favorites-grid" class="movie-grid"></div>
-        </div>
+        <div id="favorites-screen" class="screen">
+            <div class="screen-header">
+                <h2>Mis Favoritos</h2>
+            </div>
+            <div id="favorites-grid" class="movie-grid"></div>
+        </div>
 
-        <div id="request-screen" class="screen">
-            <div class="screen-header">
-                <h2>Solicitar Película</h2>
-            </div>
-            <div class="request-form">
-                <input type="text" id="movie-request-input" placeholder="Nombre de la película o serie...">
-                <button id="submit-request-button" class="button">Enviar Solicitud</button>
-            </div>
-        </div>
+        <div id="request-screen" class="screen">
+            <div class="screen-header">
+                <h2>Solicitar Película</h2>
+            </div>
+            <div class="request-form">
+                <input type="text" id="movie-request-input" placeholder="Nombre de la película o serie...">
+                <button id="submit-request-button" class="button">Enviar Solicitud</button>
+            </div>
+        </div>
 
-        <div id="privacy-screen" class="screen">
-            <div class="screen-header">
-                <h2>Política de Privacidad</h2>
-            </div>
-            <div class="policy-content">
-                <p>En Sala Cine, la seguridad y privacidad de tus datos es nuestra máxima prioridad. Recopilamos la información mínima necesaria para ofrecerte un servicio personalizado y proteger tu cuenta. Toda tu información está resguardada con los más altos estándares de seguridad y puedes cancelar tu suscripción en cualquier momento.</p>
-                <p>Nuestra plataforma se actualiza diariamente con nuevas funciones y medidas de seguridad para garantizar una experiencia óptima y segura para todos nuestros usuarios.</p>
-            </div>
-        </div>
+        <div id="privacy-screen" class="screen">
+            <div class="screen-header">
+                <h2>Política de Privacidad</h2>
+            </div>
+            <div class="policy-content">
+                <p>En Sala Cine, la seguridad y privacidad de tus datos es nuestra máxima prioridad. Recopilamos la información mínima necesaria para ofrecerte un servicio personalizado y proteger tu cuenta. Toda tu información está resguardada con los más altos estándares de seguridad y puedes cancelar tu suscripción en cualquier momento.</p>
+                <p>Nuestra plataforma se actualiza diariamente con nuevas funciones y medidas de seguridad para garantizar una experiencia óptima y segura para todos nuestros usuarios.</p>
+            </div>
+        </div>
 
-        <div id="terms-screen" class="screen">
-            <div class="screen-header">
-                <h2>Términos de Uso</h2>
-            </div>
-            <div class="policy-content">
-                <p>Bienvenido a Sala Cine. Al usar nuestros servicios, aceptas cumplir con los siguientes términos de uso. Sala Cine te ofrece una plataforma de streaming de contenido bajo demanda, incluyendo películas y series. El acceso a contenido Premium requiere una suscripción de pago. Nos reservamos el derecho de modificar estos términos en cualquier momento.</p>
-                <p>No se permite el uso no autorizado de nuestro contenido, incluyendo la descarga, distribución o copia sin permiso. El incumplimiento de estos términos puede resultar en la suspensión de tu cuenta.</p>
-            </div>
-        </div>
+        <div id="terms-screen" class="screen">
+            <div class="screen-header">
+                <h2>Términos de Uso</h2>
+            </div>
+            <div class="policy-content">
+                <p>Bienvenido a Sala Cine. Al usar nuestros servicios, aceptas cumplir con los siguientes términos de uso. Sala Cine te ofrece una plataforma de streaming de contenido bajo demanda, incluyendo películas y series. El acceso a contenido Premium requiere una suscripción de pago. Nos reservamos el derecho de modificar estos términos en cualquier momento.</p>
+                <p>No se permite el uso no autorizado de nuestro contenido, incluyendo la descarga, distribución o copia sin permiso. El incumplimiento de estos términos puede resultar en la suspensión de tu cuenta.</p>
+            </div>
+        </div>
 
-        <div id="help-screen" class="screen">
-            <div class="screen-header">
-                <h2>Centro de Ayuda</h2>
-            </div>
-            <div class="help-content">
-                <div class="help-options">
-                    <button class="help-option-button">Error en reproducción de video</button>
-                    <button class="help-option-button">Problemas con el inicio de sesión</button>
-                    <button class="help-option-button">Problemas con la app</button>
-                    <button class="help-option-button">Cambiar mi plan Premium</button>
-                </div>
-                <a href="https://t.me/tu-usuario-de-telegram" target="_blank" class="button contact-button">Contáctate con nosotros</a>
-            </div>
-        </div>
-        
-        <div id="settings-screen" class="screen">
-            <div class="screen-header">
-                <h2>Configuración</h2>
-            </div>
-            <div class="settings-content">
-                <p>Aquí puedes ajustar las configuraciones de tu cuenta.</p>
-            </div>
-        </div>
+        <div id="help-screen" class="screen">
+            <div class="screen-header">
+                <h2>Centro de Ayuda</h2>
+            </div>
+            <div class="help-content">
+                <div class="help-options">
+                    <button class="help-option-button">Error en reproducción de video</button>
+                    <button class="help-option-button">Problemas con el inicio de sesión</button>
+                    <button class="help-option-button">Problemas con la app</button>
+                    <button class="help-option-button">Cambiar mi plan Premium</button>
+                </div>
+                <a href="https://t.me/tu-usuario-de-telegram" target="_blank" class="button contact-button">Contáctate con nosotros</a>
+            </div>
+        </div>
+        
+        <div id="settings-screen" class="screen">
+            <div class="screen-header">
+                <h2>Configuración</h2>
+            </div>
+            <div class="settings-content">
+                <p>Aquí puedes ajustar las configuraciones de tu cuenta.</p>
+            </div>
+        </div>
 
 
-        <div id="details-screen" class="screen">
-            <div id="details-poster-top">
-                <div id="embedded-player-container" style="display: none;"></div>
-                <div class="poster-overlay">
-                    <div id="details-play-button-container">
-                        <button id="details-play-button" class="play-button"><i class="fas fa-play"></i></button>
-                        <button id="request-movie-button" class="play-button" style="display: none;"><i class="fas fa-paper-plane"></i> Pedir ahora</button>
-                    </div>
-                </div>
-            </div>
-            <div class="details-info-section">
-                <div class="movie-header">
-                    <h2 id="details-title"></h2>
-                    <div class="movie-actions">
-                        <i id="share-button" class="fas fa-share-alt"></i>
-                        <i id="favorite-button" class="fas fa-heart"></i>
-                    </div>
-                </div>
-                <div class="movie-metadata">
-                    <span id="details-year"></span>
-                    <span id="details-genres"></span>
-                </div>
-                <p id="details-sinopsis"></p>
-                <button id="read-more-button" class="text-button">Ver más</button>
-                <div id="movie-cast-info" class="movie-cast">
-                    <p>Director: <span id="director-name"></span></p>
-                    <p>Actores: <span id="actors-list"></span></p>
-                </div>
-                
-                <div id="seasons-container" class="episode-select-container" style="display:none;"></div>
-                <div id="episodes-container"></div>
+        <div id="details-screen" class="screen">
+            <div id="details-poster-top">
+                <div id="embedded-player-container" style="display: none;"></div>
+                <div class="poster-overlay">
+                    <div id="details-play-button-container">
+                        <button id="details-play-button" class="play-button"><i class="fas fa-play"></i></button>
+                        <button id="request-movie-button" class="play-button" style="display: none;"><i class="fas fa-paper-plane"></i> Pedir ahora</button>
+                    </div>
+                </div>
+            </div>
+            <div class="details-info-section">
+                <div class="movie-header">
+                    <h2 id="details-title"></h2>
+                    <div class="movie-actions">
+                        <i id="share-button" class="fas fa-share-alt"></i>
+                        <i id="favorite-button" class="fas fa-heart"></i>
+                    </div>
+                </div>
+                <div class="movie-metadata">
+                    <span id="details-year"></span>
+                    <span id="details-genres"></span>
+                </div>
+                <p id="details-sinopsis"></p>
+                <button id="read-more-button" class="text-button">Ver más</button>
+                <div id="movie-cast-info" class="movie-cast">
+                    <p>Director: <span id="director-name"></span></p>
+                    <p>Actores: <span id="actors-list"></span></p>
+                </div>
+                
+                <div id="seasons-container" class="episode-select-container" style="display:none;"></div>
+                <div id="episodes-container"></div>
 
-                <section class="related-section">
-                    <h3>También podría gustarte</h3>
-                    <div id="related-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-            </div>
-        </div>
-        
-        <div id="auth-screen" class="screen full-screen-auth">
-            <header class="auth-header">
-                <a href="#" class="back-button" id="auth-back-button"><i class="fas fa-arrow-left"></i></a>
-                <div class="auth-header-title">Sala Cine</div>
-                <a href="#" class="login-link" id="auth-login-link">Iniciar sesión</a>
-            </header>
-            <div class="auth-content-container">
-                <div id="login-form" class="auth-form active-form">
-                    <h2 class="auth-title">Inicia sesión</h2>
-                    <input type="email" id="login-email" placeholder="Correo electrónico">
-                    <div class="password-container">
-                        <input type="password" id="login-password" placeholder="Contraseña">
-                        <i class="fas fa-eye password-toggle"></i>
-                    </div>
-                    <button class="button auth-button primary" id="login-button">Iniciar sesión</button>
-                    <p class="auth-separator">o</p>
-                    <p class="switch-form-text">¿No tienes cuenta? <a href="#" id="show-signup-link">Crea una</a></p>
-                    <a href="#" class="forgot-password-link">¿Olvidaste tu contraseña?</a>
-                </div>
-                <div id="signup-form" class="auth-form">
-                    <h2 class="auth-title">Crea tu cuenta</h2>
-                    <input type="email" id="signup-email" placeholder="ejemplo@email.com">
-                    <div class="password-container">
-                        <input type="password" id="signup-password" placeholder="Contraseña">
-                        <i class="fas fa-eye password-toggle"></i>
-                    </div>
-                    <div class="terms-checkbox">
-                        <input type="checkbox" id="terms-checkbox">
-                        <label for="terms-checkbox" class="terms-label">Acepto los Términos de Uso de Sala Cine y reconozco que mi información personal será utilizada conforme al Aviso de Privacidad de Sala Cine.</label>
-                    </div>
-                    <button class="button auth-button primary" id="signup-button">Comenzar</button>
-                    <p class="auth-separator">o</p>
-                    <p class="switch-form-text">¿Ya tienes cuenta? <a href="#" id="show-login-link">Inicia sesión</a></p>
-                </div>
-            </div>
-        </div>
-    </main>
+                <section class="related-section">
+                    <h3>También podría gustarte</h3>
+                    <div id="related-movies" class="movie-list horizontal-scroll"></div>
+                </section>
+            </div>
+        </div>
+        
+        <div id="auth-screen" class="screen full-screen-auth">
+            <header class="auth-header">
+                <a href="#" class="back-button" id="auth-back-button"><i class="fas fa-arrow-left"></i></a>
+                <div class="auth-header-title">Sala Cine</div>
+                <a href="#" class="login-link" id="auth-login-link">Iniciar sesión</a>
+            </header>
+            <div class="auth-content-container">
+                <div id="login-form" class="auth-form active-form">
+                    <h2 class="auth-title">Inicia sesión</h2>
+                    <input type="email" id="login-email" placeholder="Correo electrónico">
+                    <div class="password-container">
+                        <input type="password" id="login-password" placeholder="Contraseña">
+                        <i class="fas fa-eye password-toggle"></i>
+                    </div>
+                    <button class="button auth-button primary" id="login-button">Iniciar sesión</button>
+                    <p class="auth-separator">o</p>
+                    <p class="switch-form-text">¿No tienes cuenta? <a href="#" id="show-signup-link">Crea una</a></p>
+                    <a href="#" class="forgot-password-link">¿Olvidaste tu contraseña?</a>
+                </div>
+                <div id="signup-form" class="auth-form">
+                    <h2 class="auth-title">Crea tu cuenta</h2>
+                    <input type="email" id="signup-email" placeholder="ejemplo@email.com">
+                    <div class="password-container">
+                        <input type="password" id="signup-password" placeholder="Contraseña">
+                        <i class="fas fa-eye password-toggle"></i>
+                    </div>
+                    <div class="terms-checkbox">
+                        <input type="checkbox" id="terms-checkbox">
+                        <label for="terms-checkbox" class="terms-label">Acepto los Términos de Uso de Sala Cine y reconozco que mi información personal será utilizada conforme al Aviso de Privacidad de Sala Cine.</label>
+                    </div>
+                    <button class="button auth-button primary" id="signup-button">Comenzar</button>
+                    <p class="auth-separator">o</p>
+                    <p class="switch-form-text">¿Ya tienes cuenta? <a href="#" id="show-login-link">Inicia sesión</a></p>
+                </div>
+            </div>
+        </div>
+    </main>
 
-    <nav class="bottom-nav">
-        <a href="#" class="nav-item active" data-screen="home-screen">
-            <i class="fas fa-home"></i>
-            <span>Inicio</span>
-        </a>
-        <a href="#" class="nav-item" data-screen="movies-screen">
-            <i class="fas fa-film"></i>
-            <span>Películas</span>
-        </a>
-        <a href="#" class="nav-item" data-screen="series-screen">
-            <i class="fas fa-tv"></i>
-            <span>Series</span>
-        </a>
-        <a href="#" class="nav-item" data-screen="profile-screen">
-            <i class="fas fa-user"></i>
-            <span>Perfil</span>
-        </a>
-    </nav>
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active" data-screen="home-screen">
+            <i class="fas fa-home"></i>
+            <span>Inicio</span>
+        </a>
+        <a href="#" class="nav-item" data-screen="movies-screen">
+            <i class="fas fa-film"></i>
+            <span>Películas</span>
+        </a>
+        <a href="#" class="nav-item" data-screen="series-screen">
+            <i class="fas fa-tv"></i>
+            <span>Series</span>
+        </a>
+        <a href="#" class="nav-item" data-screen="profile-screen">
+            <i class="fas fa-user"></i>
+            <span>Perfil</span>
+        </a>
+    </nav>
 
-    <div id="video-modal" class="modal">
-        <div class="modal-content video-content">
-            <span class="close-button">&times;</span>
-            <video id="video-player" controls></video>
-        </div>
-    </div>
-    
-    <div id="premium-info-modal" class="modal-from-bottom">
-        <div class="modal-content">
-            <span class="close-button" id="premium-info-close">&times;</span>
-            <h2 class="premium-info-title">Con Premium tienes más</h2>
-            <div class="premium-benefits">
-                <p><i class="fas fa-check"></i> Series y Películas Premium</p>
-                <p><i class="fas fa-check"></i> Más novelas que cualquier otro streaming</p>
-                <p><i class="fas fa-check"></i> Cancela cuando quieras</p>
-                <p><i class="fas fa-check"></i> Sin anuncios</p>
-            </div>
-            <button class="button premium-cta-button" id="premium-info-cta">Empezar ya</button>
-            <p class="premium-info-login">Ya tengo plan Premium, <a href="#" id="premium-info-login-link">iniciar sesión</a>.</p>
-        </div>
-    </div>
+    <div id="video-modal" class="modal">
+        <div class="modal-content video-content">
+            <span class="close-button">&times;</span>
+            <video id="video-player" controls></video>
+        </div>
+    </div>
+    
+    <div id="premium-info-modal" class="modal-from-bottom">
+        <div class="modal-content">
+            <span class="close-button" id="premium-info-close">&times;</span>
+            <h2 class="premium-info-title">Con Premium tienes más</h2>
+            <div class="premium-benefits">
+                <p><i class="fas fa-check"></i> Series y Películas Premium</p>
+                <p><i class="fas fa-check"></i> Más novelas que cualquier otro streaming</p>
+                <p><i class="fas fa-check"></i> Cancela cuando quieras</p>
+                <p><i class="fas fa-check"></i> Sin anuncios</p>
+            </div>
+            <button class="button premium-cta-button" id="premium-info-cta">Empezar ya</button>
+            <p class="premium-info-login">Ya tengo plan Premium, <a href="#" id="premium-info-login-link">iniciar sesión</a>.</p>
+        </div>
+    </div>
 
-    <div id="payment-modal" class="modal">
-        <div class="modal-content payment-content">
-            <span class="close-button" id="payment-close">&times;</span>
-            <h2>Activar Cuenta Premium</h2>
-            <p>Disfruta de nuestra selección Premium sin anuncios y con acceso anticipado a nuevas películas y series. Protegemos tus datos con los más altos estándares de seguridad, al igual que plataformas como Netflix y Disney Plus.</p>
-            <div class="plans-container">
-                <div class="plan-card">
-                    <h3>Plan Mensual</h3>
-                    <p>1 mes por $1.99</p>
-                    <button class="button buy-button" data-plan="monthly">Comprar</button>
-                </div>
-                <div class="plan-card">
-                    <h3>Plan Anual</h3>
-                    <p>1 año por $19.99</p>
-                    <button class="button buy-button" data-plan="annual">Comprar</button>
-                </div>
-            </div>
-            <p class="legal-text">© Cine. Todos los derechos reservados. Su suscripción se renueva automáticamente. Puede cancelar en cualquier momento.</p>
-        </div>
-    </div>
-    
-    <div id="free-ad-modal" class="modal-from-bottom">
-        <div class="modal-content">
-            <span class="close-button free-modal-close-button">&times;</span>
-            <h2 class="modal-title-ad">Versión Gratis con Publicidad</h2>
-            <p class="modal-text-ad">Estás a punto de ver la versión gratis de esta película. Tendrás un poco de publicidad durante la reproducción.</p>
-            <div class="modal-buttons-ad">
-                <button id="ver-gratis-button" class="button">Ver Gratis</button>
-                <button id="ver-pro-button" class="button secondary">Ver PRO (sin anuncios)</button>
-            </div>
-            <p class="modal-small-text">¡El plan PRO es muy accesible!</p>
-        </div>
-    </div>
+    <div id="payment-modal" class="modal">
+        <div class="modal-content payment-content">
+            <span class="close-button" id="payment-close">&times;</span>
+            <h2>Activar Cuenta Premium</h2>
+            <p>Disfruta de nuestra selección Premium sin anuncios y con acceso anticipado a nuevas películas y series. Protegemos tus datos con los más altos estándares de seguridad, al igual que plataformas como Netflix y Disney Plus.</p>
+            <div class="plans-container">
+                <div class="plan-card">
+                    <h3>Plan Mensual</h3>
+                    <p>1 mes por $1.99</p>
+                    <button class="button buy-button" data-plan="monthly">Comprar</button>
+                </div>
+                <div class="plan-card">
+                    <h3>Plan Anual</h3>
+                    <p>1 año por $19.99</p>
+                    <button class="button buy-button" data-plan="annual">Comprar</button>
+                </div>
+            </div>
+            <p class="legal-text">© Cine. Todos los derechos reservados. Su suscripción se renueva automáticamente. Puede cancelar en cualquier momento.</p>
+        </div>
+    </div>
+    
+    <div id="free-ad-modal" class="modal-from-bottom">
+        <div class="modal-content">
+            <span class="close-button free-modal-close-button">&times;</span>
+            <h2 class="modal-title-ad">Versión Gratis con Publicidad</h2>
+            <p class="modal-text-ad">Estás a punto de ver la versión gratis de esta película. Tendrás un poco de publicidad durante la reproducción.</p>
+            <div class="modal-buttons-ad">
+                <button id="ver-gratis-button" class="button">Ver Gratis</button>
+                <button id="ver-pro-button" class="button secondary">Ver PRO (sin anuncios)</button>
+            </div>
+            <p class="modal-small-text">¡El plan PRO es muy accesible!</p>
+        </div>
+    </div>
 
-    <div class="footer-text">©Cine. Todos los derechos reservados.</div>
-    <div id="loader" style="display: none;"><div class="loader-spinner"></div><p>Cargando...</p></div>
+    <div class="footer-text">©Cine. Todos los derechos reservados.</div>
+    <div id="loader" style="display: none;"><div class="loader-spinner"></div><p>Cargando...</p></div>
 
-    <script type="module" src="script.js"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script type="module" src="script.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
 </html>
