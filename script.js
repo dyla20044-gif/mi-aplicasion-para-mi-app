@@ -56,7 +56,6 @@ const allMoviesGrid = document.getElementById('all-movies-grid');
 const allSeriesGrid = document.getElementById('all-series-grid');
 const bannerList = document.getElementById('banner-list');
 const loader = document.getElementById('loader');
-const seeMoreButtons = document.querySelectorAll('.see-more-btn');
 const premiumInfoModal = document.getElementById('premium-info-modal');
 const premiumInfoCtaButton = document.getElementById('premium-info-cta');
 const premiumInfoCloseButton = document.getElementById('premium-info-close');
@@ -92,11 +91,15 @@ const authBackButton = document.getElementById('auth-back-button');
 const authLoginLink = document.getElementById('auth-login-link');
 const buyWithPaypalButton = document.getElementById('buy-with-paypal');
 const buyWithBinanceButton = document.getElementById('buy-with-binance');
-const requestMovieButton = document.getElementById('request-movie-button');
 const seasonsContainer = document.getElementById('seasons-container');
 const episodesContainer = document.getElementById('episodes-container');
 const playButtonContainer = document.getElementById('details-play-button-container');
 const embeddedPlayerContainer = document.getElementById('embedded-player-container');
+const freeAdModal = document.getElementById('free-ad-modal');
+const verGratisButton = document.getElementById('ver-gratis-button');
+const verProButton = document.getElementById('ver-pro-button');
+const freeModalCloseButton = document.querySelector('.free-modal-close-button');
+
 
 let moviesData = [];
 let seriesData = [];
@@ -146,7 +149,37 @@ window.addEventListener('click', (event) => {
     }
 });
 
-// --- Funciones principales y de renderizado (Reorganizado) ---
+// --- Funciones principales y de renderizado ---
+
+/**
+ * Muestra el modal de aviso para usuarios gratuitos.
+ * @param {string} freeEmbedCode - El código embed del video gratuito.
+ */
+function showFreeAdModal(freeEmbedCode) {
+    showModal(freeAdModal);
+    setupFreeAdModalButtons(freeEmbedCode);
+}
+
+/**
+ * Configura los botones del modal de aviso gratuito.
+ * @param {string} freeEmbedCode - El código embed del video gratuito.
+ */
+function setupFreeAdModalButtons(freeEmbedCode) {
+    verGratisButton.onclick = () => {
+        closeModal(freeAdModal);
+        playEmbeddedVideo(freeEmbedCode, false, currentUser);
+    };
+
+    verProButton.onclick = () => {
+        closeModal(freeAdModal);
+        showModal(paymentModal);
+    };
+    
+    freeModalCloseButton.onclick = () => {
+        closeModal(freeAdModal);
+    };
+}
+
 
 // === NUEVA FUNCIÓN PARA REPRODUCIR EL VIDEO EMBEBIDO ===
 function playEmbeddedVideo(embedCode, isPremium, currentUser) {
@@ -169,23 +202,31 @@ function playEmbeddedVideo(embedCode, isPremium, currentUser) {
 function renderMoviePlayButtons(localMovie, tmdbMovie) {
     playButtonContainer.innerHTML = ''; // Limpia el contenedor
 
-    // Verifica si la película tiene un código embed guardado en Firebase
-    if (localMovie && localMovie.embedCode) {
+    if (localMovie && (localMovie.freeEmbedCode || localMovie.proEmbedCode)) {
         const playButton = document.createElement('button');
         playButton.className = 'play-button';
         playButton.innerHTML = `<i class="fas fa-play"></i> ${localMovie.isPremium ? 'Ver Premium' : 'Ver ahora'}`;
 
         playButton.onclick = async () => {
-             // Llama a tu servidor para obtener el código HTML dinámicamente
             showLoader();
             try {
-                const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}`);
-                const data = await response.json();
-
-                if (data.embedCode) {
-                    playEmbeddedVideo(data.embedCode, localMovie.isPremium, currentUser);
-                } else {
-                    alert('No se encontró un reproductor para esta película.');
+                // Si el usuario es PRO, reproduce el video PRO directamente.
+                if (currentUser && currentUser.isPro) {
+                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=true`);
+                    const data = await response.json();
+                    if (data.embedCode) {
+                        playEmbeddedVideo(data.embedCode, localMovie.isPremium, currentUser);
+                    } else {
+                        alert('No se encontró un reproductor PRO para esta película.');
+                    }
+                } else { // Si no es PRO, muestra el modal de publicidad.
+                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=false`);
+                    const data = await response.json();
+                    if (data.embedCode) {
+                        showFreeAdModal(data.embedCode);
+                    } else {
+                        alert('No se encontró un reproductor gratuito para esta película.');
+                    }
                 }
             } catch (error) {
                 console.error('Error al obtener el código del reproductor:', error);
@@ -196,7 +237,6 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
         };
         playButtonContainer.appendChild(playButton);
     } else {
-        // Si no hay código embed, muestra el botón para solicitarla
         renderRequestButton(tmdbMovie);
     }
 }
@@ -225,8 +265,30 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                 
                 const localEpisode = localSeries && localSeries.seasons && localSeries.seasons[season.season_number] && localSeries.seasons[season.season_number].episodes && localSeries.seasons[season.season_number].episodes[episode.episode_number];
                 
-                if (localEpisode && localEpisode.embedCode) {
-                     episodeButton.onclick = () => playEmbeddedVideo(localEpisode.embedCode, localSeries.isPremium, currentUser);
+                if (localEpisode && (localEpisode.freeEmbedCode || localEpisode.proEmbedCode)) {
+                     episodeButton.onclick = async () => {
+                        showLoader();
+                        try {
+                            const isProUser = currentUser && currentUser.isPro;
+                            const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localSeries.tmdbId}&season=${season.season_number}&episode=${episode.episode_number}&isPro=${isProUser}`);
+                            const data = await response.json();
+                            
+                            if (data.embedCode) {
+                                if (isProUser) {
+                                    playEmbeddedVideo(data.embedCode, localSeries.isPremium, currentUser);
+                                } else {
+                                    showFreeAdModal(data.embedCode);
+                                }
+                            } else {
+                                alert('No se encontró un reproductor para este episodio.');
+                            }
+                        } catch(error) {
+                            console.error('Error al obtener el código del reproductor:', error);
+                            alert('Hubo un error al cargar el reproductor. Intenta de nuevo.');
+                        } finally {
+                            hideLoader();
+                        }
+                     };
                 } else {
                     episodeButton.disabled = true;
                     episodeButton.textContent = `E${episode.episode_number} (Próximamente)`;
@@ -239,6 +301,7 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
         seasonsContainer.appendChild(seasonButton);
     });
 }
+
 
 // === BOTÓN PEDIR AHORA (MODIFICADO) ===
 function renderRequestButton(tmdbItem) {
@@ -392,7 +455,7 @@ function createBannerItem(movie) {
     
     const localMovie = moviesData.find(m => m.tmdbId === movie.id);
     const isPremium = localMovie && localMovie.isPremium;
-    const hasEmbedCode = localMovie && localMovie.embedCode;
+    const hasEmbedCode = localMovie && (localMovie.freeEmbedCode || localMovie.proEmbedCode);
 
     let buttonHtml = '';
     if (hasEmbedCode) {
@@ -409,7 +472,13 @@ function createBannerItem(movie) {
     if (playButton) {
         playButton.addEventListener('click', (e) => {
             e.stopPropagation();
-            playEmbeddedVideo(localMovie.embedCode, isPremium, currentUser);
+            if (currentUser && currentUser.isPro) {
+                // Si es PRO, reproduce directamente.
+                playEmbeddedVideo(localMovie.proEmbedCode, isPremium, currentUser);
+            } else {
+                // Si no es PRO, muestra el modal de publicidad.
+                showFreeAdModal(localMovie.freeEmbedCode);
+            }
         });
     }
 
