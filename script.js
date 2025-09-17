@@ -96,8 +96,6 @@ const requestMovieButton = document.getElementById('request-movie-button');
 const seasonsContainer = document.getElementById('seasons-container');
 const episodesContainer = document.getElementById('episodes-container');
 const playButtonContainer = document.getElementById('details-play-button-container');
-// NUEVA CONSTANTE PARA EL CONTENEDOR DEL REPRODUCTOR
-const videoEmbedContainer = document.getElementById('video-embed-container');
 
 let moviesData = [];
 let seriesData = [];
@@ -248,11 +246,17 @@ async function playVideoWithMirrors(mirrors, isPremium, currentUser) {
 
     showLoader();
     let videoUrl = null;
+    let successfulMirror = null;
+    let quality = 'SD';
     
     // Primero intenta con 1080p Pro si existe
     const proMirror = mirrors.find(m => m.quality === '1080p_pro');
     if (proMirror) {
         videoUrl = await fetchDirectVideoUrl(proMirror.url);
+        if (videoUrl) {
+            successfulMirror = proMirror;
+            quality = '1080p Pro';
+        }
     }
 
     // Si no funcionó el 1080p, intenta con los demás
@@ -261,6 +265,8 @@ async function playVideoWithMirrors(mirrors, isPremium, currentUser) {
         for (const mirror of otherMirrors) {
             videoUrl = await fetchDirectVideoUrl(mirror.url);
             if (videoUrl) {
+                successfulMirror = mirror;
+                quality = mirror.quality;
                 break;
             }
         }
@@ -269,42 +275,23 @@ async function playVideoWithMirrors(mirrors, isPremium, currentUser) {
     hideLoader();
 
     if (videoUrl) {
-        // Lógica para reproducir el video con anuncios o sin ellos
         if (isPremium && (!currentUser || !currentUser.isPro)) {
             alert('Este contenido es Premium. Suscríbete para ver el video completo.');
             showModal(premiumInfoModal);
         } else if (!isPremium && (!currentUser || !currentUser.isPro)) {
             playAd().then(() => {
-                embedVideoPlayer(videoUrl);
+                videoPlayer.src = videoUrl;
+                showModal(videoModal);
+                videoPlayer.play();
             });
         } else {
-            embedVideoPlayer(videoUrl);
+            videoPlayer.src = videoUrl;
+            showModal(videoModal);
+            videoPlayer.play();
         }
     } else {
         alert('No se pudo encontrar un enlace de reproducción válido. Intenta de nuevo más tarde.');
     }
-}
-
-
-// === NUEVA FUNCIÓN PARA INCRUSTAR EL REPRODUCTOR ===
-function embedVideoPlayer(videoUrl) {
-    if (!videoUrl) return;
-
-    // Crear el iframe con el enlace directo
-    const iframe = document.createElement('iframe');
-    iframe.src = videoUrl;
-    iframe.allowFullscreen = true;
-    iframe.scrolling = 'no';
-    iframe.frameborder = '0';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-
-    // Limpiar el contenedor y agregar el nuevo iframe
-    videoEmbedContainer.innerHTML = '';
-    videoEmbedContainer.appendChild(iframe);
-
-    // Ocultar el botón de play y mostrar el contenedor del reproductor
-    detailsPosterTop.classList.add('playing');
 }
 
 async function showDetailsScreen(item, type = 'movie') {
@@ -318,10 +305,6 @@ async function showDetailsScreen(item, type = 'movie') {
     episodesContainer.innerHTML = '';
     seasonsContainer.style.display = 'none';
 
-    // Restablecer el estado del banner
-    detailsPosterTop.classList.remove('playing');
-    videoEmbedContainer.innerHTML = '';
-    
     try {
         const posterPath = item.backdrop_path || item.poster_path;
         const posterUrl = posterPath ? `https://image.tmdb.org/t/p/original${posterPath}` : 'https://placehold.co/500x750?text=No+Poster';
