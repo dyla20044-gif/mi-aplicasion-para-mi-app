@@ -176,10 +176,12 @@ function createBannerItem(movie) {
     
     const localMovie = moviesData.find(m => m.tmdbId === movie.id);
     const isPremium = localMovie && localMovie.isPremium;
-    const hasMirrors = localMovie && localMovie.mirrors && localMovie.mirrors.length > 0;
+    // ✅ Corregido: Ahora buscamos el campo 'embedCode' en lugar de 'mirrors'
+    const hasEmbedCode = localMovie && localMovie.embedCode;
 
     let buttonHtml = '';
-    if (hasMirrors) {
+    // ✅ Corregido: La condición para mostrar el botón se basa en el 'embedCode'
+    if (hasEmbedCode) {
         buttonHtml = `<button class="banner-button red"><i class="fas fa-play"></i> ${isPremium ? 'Ver Premium' : 'Ver ahora'}</button>`;
     }
 
@@ -193,7 +195,8 @@ function createBannerItem(movie) {
     if (playButton) {
         playButton.addEventListener('click', (e) => {
             e.stopPropagation();
-            playVideoWithMirrors(localMovie.mirrors, isPremium, currentUser);
+            // Lógica de reproducción para el banner, llamando a la función correcta
+            playEmbeddedVideo(localMovie.embedCode, isPremium, currentUser);
         });
     }
 
@@ -218,27 +221,6 @@ function renderGrid(container, movies, type = 'movie') {
     });
 }
 
-// === LÓGICA DE REPRODUCCIÓN Y SERVIDORES (MODIFICADO) ===
-async function fetchDirectVideoUrl(mirrorUrl) {
-    try {
-        const response = await fetch('https://serivisios.onrender.com/api/extract-video', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: mirrorUrl })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Error en el servidor: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.videoUrl;
-    } catch (error) {
-        console.error('Error al extraer el enlace del video:', error);
-        return null;
-    }
-}
-
 // === NUEVA FUNCIÓN PARA REPRODUCIR EL VIDEO EMBEBIDO ===
 function playEmbeddedVideo(embedCode, isPremium, currentUser) {
     if (isPremium && (!currentUser || !currentUser.isPro)) {
@@ -256,152 +238,38 @@ function playEmbeddedVideo(embedCode, isPremium, currentUser) {
     }
 }
 
-async function playVideoWithMirrors(mirrors, isPremium, currentUser) {
-    if (!mirrors || mirrors.length === 0) {
-        alert('No hay enlaces de video disponibles para este contenido.');
-        return;
-    }
-
-    showLoader();
-    let videoUrl = null;
-    let successfulMirror = null;
-    let quality = 'SD';
-    
-    // Primero intenta con 1080p Pro si existe
-    const proMirror = mirrors.find(m => m.quality === '1080p_pro');
-    if (proMirror) {
-        videoUrl = await fetchDirectVideoUrl(proMirror.url);
-        if (videoUrl) {
-            successfulMirror = proMirror;
-            quality = '1080p Pro';
-        }
-    }
-
-    // Si no funcionó el 1080p, intenta con los demás
-    if (!videoUrl) {
-        const otherMirrors = mirrors.filter(m => m.quality !== '1080p_pro');
-        for (const mirror of otherMirrors) {
-            videoUrl = await fetchDirectVideoUrl(mirror.url);
-            if (videoUrl) {
-                successfulMirror = mirror;
-                quality = mirror.quality;
-                break;
-            }
-        }
-    }
-    
-    hideLoader();
-
-    if (videoUrl) {
-        if (isPremium && (!currentUser || !currentUser.isPro)) {
-            alert('Este contenido es Premium. Suscríbete para ver el video completo.');
-            showModal(premiumInfoModal);
-        } else if (!isPremium && (!currentUser || !currentUser.isPro)) {
-            playAd().then(() => {
-                videoPlayer.src = videoUrl;
-                showModal(videoModal);
-                videoPlayer.play();
-            });
-        } else {
-            videoPlayer.src = videoUrl;
-            showModal(videoModal);
-            videoPlayer.play();
-        }
-    } else {
-        alert('No se pudo encontrar un enlace de reproducción válido. Intenta de nuevo más tarde.');
-    }
-}
-
-async function showDetailsScreen(item, type = 'movie') {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    detailsScreen.classList.add('active');
-    appContainer.scrollTo({ top: 0, behavior: 'smooth' });
-    showLoader();
-    
-    // Ocultar la botonera de series por defecto
-    seasonsContainer.innerHTML = '';
-    episodesContainer.innerHTML = '';
-    seasonsContainer.style.display = 'none';
-    
-    // Restablecer el estado del banner y el contenedor del reproductor
-    detailsPosterTop.style.backgroundImage = 'none';
-    detailsPosterTop.style.backgroundColor = 'transparent';
-    playButtonContainer.style.display = 'flex';
-    embeddedPlayerContainer.style.display = 'none';
-    embeddedPlayerContainer.innerHTML = '';
-
-
-    try {
-        const posterPath = item.backdrop_path || item.poster_path;
-        const posterUrl = posterPath ? `https://image.tmdb.org/t/p/original${posterPath}` : 'https://placehold.co/500x750?text=No+Poster';
-        detailsPosterTop.style.backgroundImage = `url('${posterUrl}')`;
-
-        detailsTitle.textContent = item.title || item.name;
-        detailsSinopsis.textContent = item.overview || 'Sin sinopsis disponible.';
-        detailsYear.textContent = (item.release_date || item.first_air_date) ? (item.release_date || item.first_air_date).substring(0, 4) : '';
-        
-        const genreNames = item.genre_ids ? item.genre_ids.map(id => (type === 'movie' ? allMovieGenres[id] : allTvGenres[id])).filter(Boolean).join(', ') : '';
-        detailsGenres.textContent = genreNames;
-
-        const credits = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/credits` : `tv/${item.id}/credits`);
-        
-        const director = credits.crew.find(c => c.job === 'Director');
-        directorName.textContent = director ? director.name : 'No disponible';
-        const actors = credits.cast.slice(0, 3).map(a => a.name).join(', ');
-        actorsList.textContent = actors || 'No disponible';
-        
-        const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id);
-        
-        // Renderizar la botonera de películas o de series
-        if (type === 'movie') {
-            renderMoviePlayButtons(localData, item);
-        } else if (type === 'tv') {
-            await renderSeriesButtons(localData, item);
-        }
-
-        const related = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/similar` : `tv/${item.id}/similar`);
-        renderCarousel('related-movies', related, type);
-
-    } catch (error) {
-        console.error("Error showing details:", error);
-        alert('Hubo un error al cargar los detalles. Intenta de nuevo.');
-    } finally {
-        hideLoader();
-    }
-}
-
-// === NUEVA LÓGICA DE REPRODUCCIÓN (PELÍCULAS) ===
+// === LÓGICA DE REPRODUCCIÓN (PELÍCULAS) ===
 function renderMoviePlayButtons(localMovie, tmdbMovie) {
     playButtonContainer.innerHTML = ''; // Limpia el contenedor
-    
-    // Botón de 1080p Pro
-    const proMirror = localMovie && localMovie.mirrors ? localMovie.mirrors.find(m => m.quality === '1080p_pro') : null;
-    if (proMirror) {
-        const proButton = document.createElement('button');
-        proButton.className = 'play-button';
-        proButton.innerHTML = `<i class="fas fa-play"></i> 1080p Pro`;
-        // Modificación: Llamar a la nueva función de reproducción incrustada
-        proButton.onclick = () => {
-             // Reemplaza el valor de "YOUR_EMBED_CODE" con el código HTML de tu reproductor
-            const embedCode = `<iframe src="https://example.com/embed/${localMovie.tmdbId}" frameborder="0" allowfullscreen></iframe>`;
-            playEmbeddedVideo(embedCode, localMovie.isPremium, currentUser);
-        };
-        playButtonContainer.appendChild(proButton);
-    }
-    
-    // Botón de Play principal
-    if (localMovie && localMovie.mirrors && localMovie.mirrors.length > 0) {
+
+    // Verifica si la película tiene un código embed guardado en Firebase
+    if (localMovie && localMovie.embedCode) {
         const playButton = document.createElement('button');
         playButton.className = 'play-button';
         playButton.innerHTML = `<i class="fas fa-play"></i> ${localMovie.isPremium ? 'Ver Premium' : 'Ver ahora'}`;
-        // Modificación: Llamar a la nueva función de reproducción incrustada
-        playButton.onclick = () => {
-            // Reemplaza el valor de "YOUR_EMBED_CODE" con el código HTML de tu reproductor
-            const embedCode = `<iframe src="https://example.com/embed/${localMovie.tmdbId}" frameborder="0" allowfullscreen></iframe>`;
-            playEmbeddedVideo(embedCode, localMovie.isPremium, currentUser);
+
+        playButton.onclick = async () => {
+             // Llama a tu servidor para obtener el código HTML dinámicamente
+            showLoader();
+            try {
+                const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}`);
+                const data = await response.json();
+
+                if (data.embedCode) {
+                    playEmbeddedVideo(data.embedCode, localMovie.isPremium, currentUser);
+                } else {
+                    alert('No se encontró un reproductor para esta película.');
+                }
+            } catch (error) {
+                console.error('Error al obtener el código del reproductor:', error);
+                alert('Hubo un error al cargar el reproductor. Intenta de nuevo.');
+            } finally {
+                hideLoader();
+            }
         };
         playButtonContainer.appendChild(playButton);
     } else {
+        // Si no hay código embed, muestra el botón para solicitarla
         renderRequestButton(tmdbMovie);
     }
 }
@@ -428,10 +296,11 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                 episodeButton.className = 'episode-button';
                 episodeButton.textContent = `E${episode.episode_number}`;
                 
-                const localEpisode = localSeries && localSeries.seasons && localSeries.seasons[season.season_number] && localSeries.seasons[season.season_number].episodes[episode.episode_number];
+                // ✅ Corregido: Buscamos el campo 'embedCode' para series
+                const localEpisode = localSeries && localSeries.seasons && localSeries.seasons[season.season_number] && localSeries.seasons[season.season_number].episodes && localSeries.seasons[season.season_number].episodes[episode.episode_number];
                 
-                if (localEpisode) {
-                    episodeButton.onclick = () => playVideoWithMirrors(localEpisode.mirrors, localSeries.isPremium, currentUser);
+                if (localEpisode && localEpisode.embedCode) {
+                     episodeButton.onclick = () => playEmbeddedVideo(localEpisode.embedCode, localSeries.isPremium, currentUser);
                 } else {
                     episodeButton.disabled = true;
                     episodeButton.textContent = `E${episode.episode_number} (Próximamente)`;
@@ -834,6 +703,7 @@ async function playAd() {
 submitRequestButton.addEventListener('click', async (e) => {
     e.preventDefault();
     if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        alert('Debes iniciar sesión para solicitar un contenido.');
         switchScreen('auth-screen');
         return;
     }
