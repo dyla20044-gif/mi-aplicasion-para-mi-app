@@ -704,17 +704,20 @@ body {
 }
 .terms-checkbox {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+    padding: 0 10px;
 }
 .terms-checkbox input {
     width: auto;
-    margin-top: 5px;
+    margin-right: 10px;
 }
 .terms-label {
+    text-align: center;
     font-size: 0.8em;
     color: #ccc;
-    text-align: left;
+    line-height: 1.4;
 }
 
 /* Nuevo Estilo para el flujo de registro */
@@ -920,7 +923,7 @@ body {
 }
 
 .plan-header .back-button {
-    color: #fff;
+    color: #e50914;
     font-size: 1.5em;
     text-decoration: none;
 }
