@@ -146,80 +146,7 @@ window.addEventListener('click', (event) => {
     }
 });
 
-// --- Funciones de Renderizado ---
-function createMovieCard(movie, type = 'movie') {
-    const movieCard = document.createElement('div');
-    movieCard.className = 'movie-card';
-    const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://placehold.co/500x750?text=No+Poster';
-    
-    // Agrega el badge "Top" a las películas populares
-    let badgeHtml = '';
-    const isPopular = movie.popularity > 100; // Puedes ajustar el valor de popularidad
-    if (isPopular) {
-        badgeHtml = `<div class="badge">TOP</div>`;
-    }
-    
-    movieCard.innerHTML = `
-        ${badgeHtml}
-        <img src="${posterUrl}" alt="${movie.title || movie.name}" class="movie-poster">
-    `;
-    
-    movieCard.addEventListener('click', () => showDetailsScreen(movie, type));
-    return movieCard;
-}
-
-function createBannerItem(movie) {
-    const bannerItem = document.createElement('div');
-    bannerItem.className = 'banner-item';
-    const backdropUrl = movie.backdrop_path ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}` : 'https://placehold.co/1080x600?text=No+Banner';
-    bannerItem.style.backgroundImage = `url('${backdropUrl}')`;
-    
-    const localMovie = moviesData.find(m => m.tmdbId === movie.id);
-    const isPremium = localMovie && localMovie.isPremium;
-    // ✅ Corregido: Ahora buscamos el campo 'embedCode' en lugar de 'mirrors'
-    const hasEmbedCode = localMovie && localMovie.embedCode;
-
-    let buttonHtml = '';
-    // ✅ Corregido: La condición para mostrar el botón se basa en el 'embedCode'
-    if (hasEmbedCode) {
-        buttonHtml = `<button class="banner-button red"><i class="fas fa-play"></i> ${isPremium ? 'Ver Premium' : 'Ver ahora'}</button>`;
-    }
-
-    bannerItem.innerHTML = `
-        <div class="banner-buttons-container">
-            ${buttonHtml}
-        </div>
-    `;
-    
-    const playButton = bannerItem.querySelector('.red');
-    if (playButton) {
-        playButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // Lógica de reproducción para el banner, llamando a la función correcta
-            playEmbeddedVideo(localMovie.embedCode, isPremium, currentUser);
-        });
-    }
-
-    bannerItem.addEventListener('click', () => showDetailsScreen(movie, movie.media_type || 'movie'));
-    return bannerItem;
-}
-
-function renderCarousel(containerId, movies, type = 'movie') {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.innerHTML = '';
-    movies.forEach(movie => {
-        container.appendChild(createMovieCard(movie, type));
-    });
-}
-
-function renderGrid(container, movies, type = 'movie') {
-    if (!container) return;
-    container.innerHTML = '';
-    movies.forEach(movie => {
-        container.appendChild(createMovieCard(movie, type));
-    });
-}
+// --- Funciones principales y de renderizado (Reorganizado) ---
 
 // === NUEVA FUNCIÓN PARA REPRODUCIR EL VIDEO EMBEBIDO ===
 function playEmbeddedVideo(embedCode, isPremium, currentUser) {
@@ -296,7 +223,6 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                 episodeButton.className = 'episode-button';
                 episodeButton.textContent = `E${episode.episode_number}`;
                 
-                // ✅ Corregido: Buscamos el campo 'embedCode' para series
                 const localEpisode = localSeries && localSeries.seasons && localSeries.seasons[season.season_number] && localSeries.seasons[season.season_number].episodes && localSeries.seasons[season.season_number].episodes[episode.episode_number];
                 
                 if (localEpisode && localEpisode.embedCode) {
@@ -348,6 +274,66 @@ function renderRequestButton(tmdbItem) {
     playButtonContainer.appendChild(requestButton);
 }
 
+// === FUNCIÓN PARA MOSTRAR LA PANTALLA DE DETALLES (Reorganizado) ===
+async function showDetailsScreen(item, type = 'movie') {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    detailsScreen.classList.add('active');
+    appContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    showLoader();
+    
+    // Ocultar la botonera de series por defecto
+    seasonsContainer.innerHTML = '';
+    episodesContainer.innerHTML = '';
+    seasonsContainer.style.display = 'none';
+
+    // Restablecer el estado del banner y el contenedor del reproductor
+    detailsPosterTop.style.backgroundImage = 'none';
+    detailsPosterTop.style.backgroundColor = 'transparent';
+    playButtonContainer.style.display = 'flex';
+    if (document.getElementById('embedded-player-container')) {
+        document.getElementById('embedded-player-container').style.display = 'none';
+        document.getElementById('embedded-player-container').innerHTML = '';
+    }
+
+    try {
+        const posterPath = item.backdrop_path || item.poster_path;
+        const posterUrl = posterPath ? `https://image.tmdb.org/t/p/original${posterPath}` : 'https://placehold.co/500x750?text=No+Poster';
+        detailsPosterTop.style.backgroundImage = `url('${posterUrl}')`;
+
+        detailsTitle.textContent = item.title || item.name;
+        detailsSinopsis.textContent = item.overview || 'Sin sinopsis disponible.';
+        detailsYear.textContent = (item.release_date || item.first_air_date) ? (item.release_date || item.first_air_date).substring(0, 4) : '';
+        
+        const genreNames = item.genre_ids ? item.genre_ids.map(id => (type === 'movie' ? allMovieGenres[id] : allTvGenres[id])).filter(Boolean).join(', ') : '';
+        detailsGenres.textContent = genreNames;
+
+        const credits = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/credits` : `tv/${item.id}/credits`);
+        
+        const director = credits.crew.find(c => c.job === 'Director');
+        directorName.textContent = director ? director.name : 'No disponible';
+        const actors = credits.cast.slice(0, 3).map(a => a.name).join(', ');
+        actorsList.textContent = actors || 'No disponible';
+        
+        const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id);
+        
+        // Renderizar la botonera de películas o de series
+        if (type === 'movie') {
+            renderMoviePlayButtons(localData, item);
+        } else if (type === 'tv') {
+            await renderSeriesButtons(localData, item);
+        }
+
+        const related = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/similar` : `tv/${item.id}/similar`);
+        renderCarousel('related-movies', related, type);
+
+    } catch (error) {
+        console.error("Error showing details:", error);
+        alert('Hubo un error al cargar los detalles. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+}
+
 // --- FUNCIÓN FINAL: Llama directamente a la API de TMDb ---
 async function fetchFromTMDB(endpoint, query = '') {
     const API_KEY = "5eb8461b85d0d88c46d77cfe5436291f";
@@ -376,6 +362,76 @@ async function fetchFromTMDB(endpoint, query = '') {
         console.error("Error en la llamada a fetchFromTMDB:", error);
         throw error;
     }
+}
+
+function createMovieCard(movie, type = 'movie') {
+    const movieCard = document.createElement('div');
+    movieCard.className = 'movie-card';
+    const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://placehold.co/500x750?text=No+Poster';
+    
+    let badgeHtml = '';
+    const isPopular = movie.popularity > 100;
+    if (isPopular) {
+        badgeHtml = `<div class="badge">TOP</div>`;
+    }
+    
+    movieCard.innerHTML = `
+        ${badgeHtml}
+        <img src="${posterUrl}" alt="${movie.title || movie.name}" class="movie-poster">
+    `;
+    
+    movieCard.addEventListener('click', () => showDetailsScreen(movie, type));
+    return movieCard;
+}
+
+function createBannerItem(movie) {
+    const bannerItem = document.createElement('div');
+    bannerItem.className = 'banner-item';
+    const backdropUrl = movie.backdrop_path ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}` : 'https://placehold.co/1080x600?text=No+Banner';
+    bannerItem.style.backgroundImage = `url('${backdropUrl}')`;
+    
+    const localMovie = moviesData.find(m => m.tmdbId === movie.id);
+    const isPremium = localMovie && localMovie.isPremium;
+    const hasEmbedCode = localMovie && localMovie.embedCode;
+
+    let buttonHtml = '';
+    if (hasEmbedCode) {
+        buttonHtml = `<button class="banner-button red"><i class="fas fa-play"></i> ${isPremium ? 'Ver Premium' : 'Ver ahora'}</button>`;
+    }
+
+    bannerItem.innerHTML = `
+        <div class="banner-buttons-container">
+            ${buttonHtml}
+        </div>
+    `;
+    
+    const playButton = bannerItem.querySelector('.red');
+    if (playButton) {
+        playButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            playEmbeddedVideo(localMovie.embedCode, isPremium, currentUser);
+        });
+    }
+
+    bannerItem.addEventListener('click', () => showDetailsScreen(movie, movie.media_type || 'movie'));
+    return bannerItem;
+}
+
+function renderCarousel(containerId, movies, type = 'movie') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    movies.forEach(movie => {
+        container.appendChild(createMovieCard(movie, type));
+    });
+}
+
+function renderGrid(container, movies, type = 'movie') {
+    if (!container) return;
+    container.innerHTML = '';
+    movies.forEach(movie => {
+        container.appendChild(createMovieCard(movie, type));
+    });
 }
 
 async function fetchHomeContent() {
