@@ -28,7 +28,7 @@ const favoritesScreen = document.getElementById('favorites-screen');
 const requestScreen = document.getElementById('request-screen');
 const privacyScreen = document.getElementById('privacy-screen');
 const termsScreen = document.getElementById('terms-screen');
-const helpScreen = document = document.getElementById('help-screen');
+const helpScreen = document.getElementById('help-screen');
 const settingsScreen = document.getElementById('settings-screen');
 const authScreen = document.getElementById('auth-screen');
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
