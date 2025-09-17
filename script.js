@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- Configuración de Firebase ---
 const firebaseConfig = {
@@ -16,7 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
 
 // --- Elementos del DOM ---
 const appContainer = document.getElementById('app-container');
@@ -40,7 +39,6 @@ const videoModal = document.getElementById('video-modal');
 const videoPlayer = document.getElementById('video-player');
 const closeButtons = document.querySelectorAll('.close-button');
 const detailsPosterTop = document.getElementById('details-poster-top');
-const detailsPlayButton = document.getElementById('details-play-button');
 const detailsTitle = document.getElementById('details-title');
 const detailsYear = document.getElementById('details-year');
 const detailsGenres = document.getElementById('details-genres');
@@ -99,6 +97,7 @@ const freeAdModal = document.getElementById('free-ad-modal');
 const verGratisButton = document.getElementById('ver-gratis-button');
 const verProButton = document.getElementById('ver-pro-button');
 const freeModalCloseButton = document.querySelector('.free-modal-close-button');
+const seeMoreButtons = document.querySelectorAll('.see-more-btn');
 
 
 let moviesData = [];
@@ -108,6 +107,7 @@ let allMovieGenres = {};
 let allTvGenres = {};
 let bannerInterval;
 let currentUser = null;
+
 let currentScreen = 'home-screen';
 let previousScreen = '';
 
@@ -115,10 +115,6 @@ let previousScreen = '';
 function closeModal(modal) {
     if (modal) {
         modal.classList.remove('active');
-        if (modal.id === 'video-modal') {
-            videoPlayer.pause();
-            videoPlayer.currentTime = 0;
-        }
     }
 }
 function showModal(modal) {
@@ -202,7 +198,7 @@ function playEmbeddedVideo(embedCode, isPremium, currentUser) {
 function renderMoviePlayButtons(localMovie, tmdbMovie) {
     playButtonContainer.innerHTML = ''; // Limpia el contenedor
 
-    // Verifica si la película tiene un código embed guardado en Firebase
+    // ✅ CORREGIDO: Verificamos los nuevos campos de embedCode
     if (localMovie && (localMovie.freeEmbedCode || localMovie.proEmbedCode)) {
         const playButton = document.createElement('button');
         playButton.className = 'play-button';
@@ -264,7 +260,8 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                 episodeButton.className = 'episode-button';
                 episodeButton.textContent = `E${episode.episode_number}`;
                 
-                const localEpisode = localSeries && localSeries.seasons && localSeries.seasons[season.season_number] && localSeries.seasons[season.season_number].episodes && localSeries.seasons[season.season_number].episodes[episode.episode_number];
+                // ✅ CORREGIDO: Buscamos los nuevos campos de embedCode para series
+                const localEpisode = localSeries?.seasons?.[season.season_number]?.episodes?.[episode.episode_number];
                 
                 if (localEpisode && (localEpisode.freeEmbedCode || localEpisode.proEmbedCode)) {
                      episodeButton.onclick = async () => {
@@ -1077,6 +1074,7 @@ onAuthStateChanged(auth, async (user) => {
         }
     }
 
+    // ✅ CORREGIDO: Lógica de inicialización para cargar el contenido una sola vez.
     if (!isInitialized) {
         isInitialized = true;
         const moviesColRef = collection(db, 'movies');
@@ -1098,7 +1096,6 @@ onAuthStateChanged(auth, async (user) => {
         
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
-
         hideLoader();
     }
 });
