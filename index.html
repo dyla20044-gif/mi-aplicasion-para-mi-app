@@ -75,7 +75,7 @@
                 <section class="category-section">
                     <div class="category-header">
                         <h2>Ciencia Ficción</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=878" data-type="movie">Ver más</a>
+                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with-genres=878" data-type="movie">Ver más</a>
                     </div>
                     <div id="scifi-movies" class="movie-list horizontal-scroll"></div>
                 </section>
@@ -337,6 +337,19 @@
         </div>
     </div>
     
+    <div id="free-ad-modal" class="modal-from-bottom">
+        <div class="modal-content">
+            <span class="close-button free-modal-close-button">&times;</span>
+            <h2 class="modal-title-ad">Versión Gratis con Publicidad</h2>
+            <p class="modal-text-ad">Estás a punto de ver la versión gratis de esta película. Tendrás un poco de publicidad durante la reproducción.</p>
+            <div class="modal-buttons-ad">
+                <button id="ver-gratis-button" class="button">Ver Gratis</button>
+                <button id="ver-pro-button" class="button secondary">Ver PRO (sin anuncios)</button>
+            </div>
+            <p class="modal-small-text">¡El plan PRO es muy accesible!</p>
+        </div>
+    </div>
+
     <div class="footer-text">© Sala Cine. Todos los derechos reservados.</div>
     <div id="loader" style="display: none;"><div class="loader-spinner"></div><p>Cargando...</p></div>
 
