@@ -202,7 +202,7 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
     if (localMovie && (localMovie.freeEmbedCode || localMovie.proEmbedCode)) {
         const playButton = document.createElement('button');
         playButton.className = 'play-button';
-        playButton.innerHTML = `<i class="fas fa-play"></i> ${localMovie.isPremium ? 'Ver Premium' : 'Ver ahora'}`;
+        playButton.innerHTML = `<i class="fas fa-play"></i>`; // Eliminado el texto "Ver ahora"
 
         playButton.onclick = async () => {
             showLoader();
@@ -457,7 +457,7 @@ function createBannerItem(movie) {
 
     let buttonHtml = '';
     if (hasEmbedCode) {
-        buttonHtml = `<button class="banner-button red"><i class="fas fa-play"></i> ${isPremium ? 'Ver Premium' : 'Ver ahora'}</button>`;
+        buttonHtml = `<button class="banner-button red"><i class="fas fa-play"></i></button>`; // Eliminado el texto "Ver ahora"
     }
 
     bannerItem.innerHTML = `
@@ -1077,6 +1077,7 @@ onAuthStateChanged(auth, async (user) => {
     // ✅ CORREGIDO: Lógica de inicialización para cargar el contenido una sola vez.
     if (!isInitialized) {
         isInitialized = true;
+        showLoader(); // Muestra el loader al iniciar
         const moviesColRef = collection(db, 'movies');
         onSnapshot(moviesColRef, (snapshot) => {
             moviesData = snapshot.docs.map(doc => ({
@@ -1096,6 +1097,5 @@ onAuthStateChanged(auth, async (user) => {
         
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
-        hideLoader();
     }
 });
