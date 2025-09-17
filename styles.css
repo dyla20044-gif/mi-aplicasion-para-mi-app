@@ -1121,3 +1121,9 @@ body {
     color: #888;
     margin-top: 10px;
 }
+.auth-form {
+    display: none;
+}
+.auth-form.active-form {
+    display: block;
+}
