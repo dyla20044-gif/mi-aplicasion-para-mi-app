@@ -96,6 +96,7 @@ const requestMovieButton = document.getElementById('request-movie-button');
 const seasonsContainer = document.getElementById('seasons-container');
 const episodesContainer = document.getElementById('episodes-container');
 const playButtonContainer = document.getElementById('details-play-button-container');
+const embeddedPlayerContainer = document.getElementById('embedded-player-container');
 
 let moviesData = [];
 let seriesData = [];
@@ -238,6 +239,23 @@ async function fetchDirectVideoUrl(mirrorUrl) {
     }
 }
 
+// === NUEVA FUNCIÓN PARA REPRODUCIR EL VIDEO EMBEBIDO ===
+function playEmbeddedVideo(embedCode, isPremium, currentUser) {
+    if (isPremium && (!currentUser || !currentUser.isPro)) {
+        alert('Este contenido es Premium. Suscríbete para ver el video completo.');
+        showModal(premiumInfoModal);
+    } else {
+        // Ocultar el poster y el botón de play
+        detailsPosterTop.style.backgroundImage = 'none';
+        detailsPosterTop.style.backgroundColor = '#000';
+        playButtonContainer.style.display = 'none';
+        
+        // Mostrar el contenedor de video e inyectar el código
+        embeddedPlayerContainer.style.display = 'block';
+        embeddedPlayerContainer.innerHTML = embedCode;
+    }
+}
+
 async function playVideoWithMirrors(mirrors, isPremium, currentUser) {
     if (!mirrors || mirrors.length === 0) {
         alert('No hay enlaces de video disponibles para este contenido.');
@@ -304,6 +322,14 @@ async function showDetailsScreen(item, type = 'movie') {
     seasonsContainer.innerHTML = '';
     episodesContainer.innerHTML = '';
     seasonsContainer.style.display = 'none';
+    
+    // Restablecer el estado del banner y el contenedor del reproductor
+    detailsPosterTop.style.backgroundImage = 'none';
+    detailsPosterTop.style.backgroundColor = 'transparent';
+    playButtonContainer.style.display = 'flex';
+    embeddedPlayerContainer.style.display = 'none';
+    embeddedPlayerContainer.innerHTML = '';
+
 
     try {
         const posterPath = item.backdrop_path || item.poster_path;
@@ -354,7 +380,12 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
         const proButton = document.createElement('button');
         proButton.className = 'play-button';
         proButton.innerHTML = `<i class="fas fa-play"></i> 1080p Pro`;
-        proButton.onclick = () => playVideoWithMirrors([proMirror], localMovie.isPremium, currentUser);
+        // Modificación: Llamar a la nueva función de reproducción incrustada
+        proButton.onclick = () => {
+             // Reemplaza el valor de "YOUR_EMBED_CODE" con el código HTML de tu reproductor
+            const embedCode = `<iframe src="https://example.com/embed/${localMovie.tmdbId}" frameborder="0" allowfullscreen></iframe>`;
+            playEmbeddedVideo(embedCode, localMovie.isPremium, currentUser);
+        };
         playButtonContainer.appendChild(proButton);
     }
     
@@ -363,7 +394,12 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
         const playButton = document.createElement('button');
         playButton.className = 'play-button';
         playButton.innerHTML = `<i class="fas fa-play"></i> ${localMovie.isPremium ? 'Ver Premium' : 'Ver ahora'}`;
-        playButton.onclick = () => playVideoWithMirrors(localMovie.mirrors, localMovie.isPremium, currentUser);
+        // Modificación: Llamar a la nueva función de reproducción incrustada
+        playButton.onclick = () => {
+            // Reemplaza el valor de "YOUR_EMBED_CODE" con el código HTML de tu reproductor
+            const embedCode = `<iframe src="https://example.com/embed/${localMovie.tmdbId}" frameborder="0" allowfullscreen></iframe>`;
+            playEmbeddedVideo(embedCode, localMovie.isPremium, currentUser);
+        };
         playButtonContainer.appendChild(playButton);
     } else {
         renderRequestButton(tmdbMovie);
