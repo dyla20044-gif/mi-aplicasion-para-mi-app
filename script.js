@@ -853,6 +853,18 @@ submitRequestButton.addEventListener('click', async (e) => {
 });
 
 // --- Lógica de Autenticación y Perfil (MEJORADO) ---
+// Toggle password visibility
+const passwordToggles = document.querySelectorAll('.password-toggle');
+passwordToggles.forEach(toggle => {
+    toggle.addEventListener('click', () => {
+        const passwordInput = toggle.previousElementSibling;
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        toggle.classList.toggle('fa-eye');
+        toggle.classList.toggle('fa-eye-slash');
+    });
+});
+
 proStatusButton.addEventListener('click', async () => {
     if (!currentUser || currentUser.isAnonymous) {
         switchScreen('auth-screen');
