@@ -363,7 +363,7 @@ function renderRequestButton(tmdbItem) {
     playButtonContainer.appendChild(requestButton);
 }
 
-async function showDetailsScreen(item, type = 'movie') {
+async function showDetailsScreen(tmdbId, type = 'movie') {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     detailsScreen.classList.add('active');
     appContainer.scrollTo({ top: 0, behavior: 'smooth' });
@@ -382,6 +382,8 @@ async function showDetailsScreen(item, type = 'movie') {
     }
 
     try {
+        const item = await fetchFromTMDB(type === 'movie' ? `movie/${tmdbId}` : `tv/${tmdbId}`);
+        
         const posterPath = item.backdrop_path || item.poster_path;
         const posterUrl = posterPath ? `https://image.tmdb.org/t/p/original${posterPath}` : 'https://placehold.co/500x750?text=No+Poster';
         detailsPosterTop.style.backgroundImage = `url('${posterUrl}')`;
@@ -390,7 +392,7 @@ async function showDetailsScreen(item, type = 'movie') {
         detailsSinopsis.textContent = item.overview || 'Sin sinopsis disponible.';
         detailsYear.textContent = (item.release_date || item.first_air_date) ? (item.release_date || item.first_air_date).substring(0, 4) : '';
         
-        const genreNames = item.genre_ids ? item.genre_ids.map(id => (type === 'movie' ? allMovieGenres[id] : allTvGenres[id])).filter(Boolean).join(', ') : '';
+        const genreNames = item.genres ? item.genres.map(genre => genre.name).filter(Boolean).join(', ') : '';
         detailsGenres.textContent = genreNames;
 
         const credits = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/credits` : `tv/${item.id}/credits`);
@@ -411,8 +413,10 @@ async function showDetailsScreen(item, type = 'movie') {
         }
 
         const related = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/similar` : `tv/${item.id}/similar`);
-        renderGrid('related-movies', related, type); // Se usa renderGrid aquí
-
+        const relatedList = document.getElementById('related-movies');
+        if (relatedList) {
+            renderCarousel(relatedList.id, related, type);
+        }
         
         // Agregar funcionalidad de compartir y favoritos
         shareButton.onclick = () => shareItem(item, type);
@@ -445,19 +449,7 @@ async function handleSharedLink() {
         const parts = hash.split('_');
         const type = parts[1];
         const tmdbId = parts[2];
-
-        showLoader();
-        try {
-            const endpoint = (type === 'movie') ? `movie/${tmdbId}` : `tv/${tmdbId}`;
-            const item = await fetchFromTMDB(endpoint);
-            showDetailsScreen(item, type);
-        } catch (error) {
-            console.error("Error loading shared link:", error);
-            alert("No se pudo cargar el contenido del enlace. Por favor, revisa la URL.");
-            switchScreen('home-screen');
-        } finally {
-            hideLoader();
-        }
+        showDetailsScreen(tmdbId, type);
     }
 }
 
@@ -506,7 +498,7 @@ function createMovieCard(movie, type = 'movie') {
         <img src="${posterUrl}" alt="${movie.title || movie.name}" class="movie-poster">
     `;
     
-    movieCard.addEventListener('click', () => showDetailsScreen(movie, type));
+    movieCard.addEventListener('click', () => showDetailsScreen(movie.id, type));
     return movieCard;
 }
 
@@ -537,11 +529,11 @@ function createBannerItem(movie) {
     if (playButton) {
         playButton.addEventListener('click', (e) => {
             e.stopPropagation();
-            showDetailsScreen(movie, movie.media_type || 'movie');
+            showDetailsScreen(movie.id, movie.media_type || 'movie');
         });
     }
 
-    bannerItem.addEventListener('click', () => showDetailsScreen(movie, movie.media_type || 'movie'));
+    bannerItem.addEventListener('click', () => showDetailsScreen(movie.id, movie.media_type || 'movie'));
     return bannerItem;
 }
 
@@ -567,6 +559,7 @@ async function fetchHistory() {
         historyScreen.style.display = 'none';
         return;
     }
+    showLoader();
     try {
         const q = query(collection(db, "history"), where("userId", "==", auth.currentUser.uid), orderBy("timestamp", "desc"), limit(10));
         const querySnapshot = await getDocs(q);
@@ -580,6 +573,8 @@ async function fetchHistory() {
     } catch (e) {
         console.error("Error al obtener el historial: ", e);
         historyScreen.style.display = 'none';
+    } finally {
+        hideLoader();
     }
 }
 
@@ -767,12 +762,8 @@ function switchScreen(screenId) {
         appContainer.style.paddingBottom = '70px';
     }
     
-    // Si la pantalla es de detalles, actualizamos la URL sin recargar
-    if (screenId === 'details-screen') {
-        const item = currentMovieOrSeries;
-        const type = item?.media_type || 'movie';
-        window.history.pushState(null, '', `#details-screen_${type}_${item.id}`);
-    } else {
+    // Si la pantalla es de detalles, no actualizamos el hash en esta función, se hace en showDetailsScreen
+    if (screenId !== 'details-screen') {
         window.history.pushState(null, '', `#${screenId}`);
     }
 }
