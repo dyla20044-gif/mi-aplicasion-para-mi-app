@@ -1,385 +1,1136 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cine</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
-<body>
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// --- Configuración de Firebase ---
+const firebaseConfig = {
+    apiKey: "AIzaSyCF5lyEIFkKhzgc4kOMebWZ7oZrxWDNw2Y",
+    authDomain: "app-aeff2.firebaseapp.com",
+    projectId: "app-aeff2",
+    storageBucket: "app-aeff2.firebasestorage.app",
+    messagingSenderId: "12229598213",
+    appId: "1:12229598213:web:80555d9d22c30b69ddd06c",
+    measurementId: "G-ZMQN0D6D4S"
+};
 
-    <header class="top-nav">
-        <div class="logo">Cine</div>
-        <div class="search-container">
-            <input type="text" id="search-input" placeholder="Buscar películas...">
-            <i id="search-icon" class="fas fa-search search-icon-top"></i>
-        </div>
-    </header>
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-    <main id="app-container">
-        <div id="home-screen" class="screen active">
-            <section class="hero-banner-carousel">
-                <div id="banner-list" class="movie-list horizontal-scroll"></div>
-            </section>
-
-            <div id="carousels-container">
-                <section class="category-section" id="history-section" style="display:none;">
-                    <div class="category-header">
-                        <h2>Historial</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="history" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="history-list" class="movie-list horizontal-scroll"></div>
-                </section>
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Populares</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="movie/popular" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="populares-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-                
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Tendencias</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="trending/all/day" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="tendencias-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-
-                 <section class="category-section">
-                    <div class="category-header">
-                        <h2>Acción y Aventura</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=28" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="accion-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-                
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Terror y Misterio</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=27,9648" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="terror-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Animación</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=16" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="animacion-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Documentales</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with_genres=99" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="documentales-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Ciencia Ficción</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="discover/movie?with-genres=878" data-type="movie">Ver más</a>
-                    </div>
-                    <div id="scifi-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-
-                <section class="category-section">
-                    <div class="category-header">
-                        <h2>Series Populares</h2>
-                        <a href="#" class="see-more-btn" data-endpoint="tv/popular" data-type="tv">Ver más</a>
-                    </div>
-                    <div id="populares-series" class="movie-list horizontal-scroll"></div>
-                </section>
-            </div>
-        </div>
-
-        <div id="movies-screen" class="screen">
-            <div class="screen-header">
-                <h2>Películas</h2>
-                <button id="genres-button" class="icon-button"><i class="fas fa-ellipsis-v"></i></button>
-            </div>
-            <div id="all-movies-grid" class="movie-grid"></div>
-        </div>
-
-        <div id="series-screen" class="screen">
-            <div class="screen-header">
-                <h2>Series de TV</h2>
-                <button id="series-genres-button" class="icon-button"><i class="fas fa-ellipsis-v"></i></button>
-            </div>
-            <div id="all-series-grid" class="movie-grid"></div>
-        </div>
-
-        <div id="profile-screen" class="screen">
-            <div id="profile-logged-in" style="display: none;">
-                <div class="screen-header">
-                    <h2>Mi Perfil</h2>
-                    <button id="signout-button" class="icon-button"><i class="fas fa-sign-out-alt"></i></button>
-                </div>
-                <div class="profile-options">
-                    <button id="pro-status-button" class="button profile-button"><i class="fas fa-crown"></i> <span>Activar Cuenta Pro</span></button>
-                    <button id="favorites-button" class="button secondary profile-button" data-screen="favorites-screen"><i class="fas fa-heart"></i> <span>Mis Favoritos</span></button>
-                    <button id="request-button" class="button secondary profile-button" data-screen="request-screen"><i class="fas fa-plus-circle"></i> <span>Solicitar Película</span></button>
-                    <button id="settings-button" class="button secondary profile-button" data-screen="settings-screen"><i class="fas fa-cog"></i> <span>Configuración</span></button>
-                </div>
-            </div>
-            <div id="profile-logged-out" style="display: block;">
-                <div class="screen-header">
-                    <h2>Mi Perfil</h2>
-                    <a href="#" id="profile-login-link" class="text-button">Iniciar sesión</a>
-                </div>
-                <div class="profile-cta">
-                    <h2 class="profile-cta-title">Con Premium tienes más</h2>
-                    <div class="premium-benefits">
-                        <p><i class="fas fa-check"></i> Series y Películas Premium</p>
-                        <p><i class="fas fa-check"></i> Más contenido que cualquier otro streaming</p>
-                        <p><i class="fas fa-check"></i> Cancela cuando quieras</p>
-                        <p><i class="fas fa-check"></i> Sin anuncios</p>
-                    </div>
-                    <button class="button profile-cta-button" id="create-account-button">Crea tu cuenta Premium</button>
-                </div>
-                <div class="profile-footer-links">
-                    <a href="#" id="profile-my-list" class="profile-link">Mi lista</a>
-                    <a href="#" id="profile-privacy" class="profile-link">Política de privacidad</a>
-                    <a href="#" id="profile-terms" class="profile-link">Términos de uso</a>
-                    <a href="#" id="profile-subscription" class="profile-link">Condiciones de Suscripción</a>
-                    <a href="#" id="profile-help-center" class="profile-link">Centro de ayuda</a>
-                </div>
-            </div>
-        </div>
-
-        <div id="favorites-screen" class="screen">
-            <div class="screen-header">
-                <h2>Mis Favoritos</h2>
-            </div>
-            <div id="favorites-grid" class="movie-grid"></div>
-        </div>
-
-        <div id="request-screen" class="screen">
-            <div class="screen-header">
-                <h2>Solicitar Película</h2>
-            </div>
-            <div class="request-form">
-                <input type="text" id="movie-request-input" placeholder="Nombre de la película o serie...">
-                <button id="submit-request-button" class="button">Enviar Solicitud</button>
-            </div>
-        </div>
-
-        <div id="privacy-screen" class="screen">
-            <div class="screen-header">
-                <h2>Política de Privacidad</h2>
-            </div>
-            <div class="policy-content">
-                <p>En Cine, la seguridad y privacidad de tus datos es nuestra máxima prioridad. Recopilamos la información mínima necesaria para ofrecerte un servicio personalizado y proteger tu cuenta. Toda tu información está resguardada con los más altos estándares de seguridad y puedes cancelar tu suscripción en cualquier momento.</p>
-                <p>Nuestra plataforma se actualiza diariamente con nuevas funciones y medidas de seguridad para garantizar una experiencia óptima y segura para todos nuestros usuarios.</p>
-            </div>
-        </div>
-
-        <div id="terms-screen" class="screen">
-            <div class="screen-header">
-                <h2>Términos de Uso</h2>
-            </div>
-            <div class="policy-content">
-                <p>Bienvenido a Cine. Al usar nuestros servicios, aceptas cumplir con los siguientes términos de uso. Sala Cine te ofrece una plataforma de streaming de contenido bajo demanda, incluyendo películas y series. El acceso a contenido Premium requiere una suscripción de pago. Nos reservamos el derecho de modificar estos términos en cualquier momento.</p>
-                <p>No se permite el uso no autorizado de nuestro contenido, incluyendo la descarga, distribución o copia sin permiso. El incumplimiento de estos términos puede resultar en la suspensión de tu cuenta.</p>
-            </div>
-        </div>
-
-        <div id="help-screen" class="screen">
-            <div class="screen-header">
-                <h2>Centro de Ayuda</h2>
-            </div>
-            <div class="help-content">
-                <div class="help-options">
-                    <button class="help-option-button">Error en reproducción de video</button>
-                    <button class="help-option-button">Problemas con el inicio de sesión</button>
-                    <button class="help-option-button">Problemas con la app</button>
-                    <button class="help-option-button">Cambiar mi plan Premium</button>
-                </div>
-                <a href="https://t.me/tu-usuario-de-telegram" target="_blank" class="button contact-button">Contáctate con nosotros</a>
-            </div>
-        </div>
-        
-        <div id="settings-screen" class="screen">
-            <div class="screen-header">
-                <h2>Configuración</h2>
-            </div>
-            <div class="settings-content">
-                <p>Aquí puedes ajustar las configuraciones de tu cuenta.</p>
-            </div>
-        </div>
+// --- Elementos del DOM ---
+const appContainer = document.getElementById('app-container');
+const homeScreen = document.getElementById('home-screen');
+const moviesScreen = document.getElementById('movies-screen');
+const seriesScreen = document.getElementById('series-screen');
+const profileScreen = document.getElementById('profile-screen');
+const detailsScreen = document.getElementById('details-screen');
+const favoritesScreen = document.getElementById('favorites-screen');
+const requestScreen = document.getElementById('request-screen');
+const privacyScreen = document.getElementById('privacy-screen');
+const termsScreen = document.getElementById('terms-screen');
+const helpScreen = document.getElementById('help-screen');
+const settingsScreen = document.getElementById('settings-screen');
+const authScreen = document.getElementById('auth-screen');
+const navItems = document.querySelectorAll('.bottom-nav .nav-item');
+const screenButtons = document.querySelectorAll('[data-screen]');
+const searchInput = document.getElementById('search-input');
+const searchIconTop = document.getElementById('search-icon');
+const videoModal = document.getElementById('video-modal');
+const videoPlayer = document.getElementById('video-player');
+const closeButtons = document.querySelectorAll('.close-button');
+const detailsPosterTop = document.getElementById('details-poster-top');
+const detailsTitle = document.getElementById('details-title');
+const detailsYear = document.getElementById('details-year');
+const detailsGenres = document.getElementById('details-genres');
+const detailsSinopsis = document.getElementById('details-sinopsis');
+const directorName = document.getElementById('director-name');
+const actorsList = document.getElementById('actors-list');
+const relatedMoviesContainer = document.getElementById('related-movies');
+const genresButton = document.getElementById('genres-button');
+const seriesGenresButton = document.getElementById('series-genres-button');
+const genresModal = document.getElementById('genres-modal');
+const genresList = document.getElementById('genres-list');
+const allMoviesGrid = document.getElementById('all-movies-grid');
+const allSeriesGrid = document.getElementById('all-series-grid');
+const bannerList = document.getElementById('banner-list');
+const loader = document.getElementById('loader');
+const premiumInfoModal = document.getElementById('premium-info-modal');
+const premiumInfoCtaButton = document.getElementById('premium-info-cta');
+const premiumInfoCloseButton = document.getElementById('premium-info-close');
+const premiumInfoLoginLink = document.getElementById('premium-info-login-link');
+const paymentModal = document.getElementById('payment-modal');
+const proStatusButton = document.getElementById('pro-status-button');
+const signoutButton = document.getElementById('signout-button');
+const buyButtons = document.querySelectorAll('.buy-button');
+const movieRequestInput = document.getElementById('movie-request-input');
+const submitRequestButton = document.getElementById('submit-request-button');
+const favoritesGrid = document.getElementById('favorites-grid');
+const profileLoggedIn = document.getElementById('profile-logged-in');
+const profileLoggedOut = document.getElementById('profile-logged-out');
+const profileLoginLink = document.getElementById('profile-login-link');
+const createAccountButton = document.getElementById('create-account-button');
+const showSignupLink = document.getElementById('show-signup-link');
+const showLoginLink = document.getElementById('show-login-link');
+const loginForm = document.getElementById('login-form');
+const signupForm = document.getElementById('signup-form');
+const loginEmailInput = document.getElementById('login-email');
+const loginPasswordInput = document.getElementById('login-password');
+const loginButton = document.getElementById('login-button');
+const signupEmailInput = document.getElementById('signup-email');
+const signupPasswordInput = document.getElementById('signup-password');
+const signupButton = document.getElementById('signup-button');
+const socialLoginButtons = document.querySelectorAll('.social-button');
+const profileMyList = document.getElementById('profile-my-list');
+const profilePrivacy = document.getElementById('profile-privacy');
+const profileTerms = document.getElementById('profile-terms');
+const profileSubscription = document.getElementById('profile-subscription');
+const profileHelpCenter = document.getElementById('profile-help-center');
+const authBackButton = document.getElementById('auth-back-button');
+const authLoginLink = document.getElementById('auth-login-link');
+const buyWithPaypalButton = document.getElementById('buy-with-paypal');
+const buyWithBinanceButton = document.getElementById('buy-with-binance');
+const seasonsContainer = document.getElementById('seasons-container');
+const episodesContainer = document.getElementById('episodes-container');
+const playButtonContainer = document.getElementById('details-play-button-container');
+const embeddedPlayerContainer = document.getElementById('embedded-player-container');
+const freeAdModal = document.getElementById('free-ad-modal');
+const verGratisButton = document.getElementById('ver-gratis-button');
+const verProButton = document.getElementById('ver-pro-button');
+const freeModalCloseButton = document.querySelector('.free-modal-close-button');
+const seeMoreButtons = document.querySelectorAll('.see-more-btn');
+const proRestrictionModal = document.getElementById('pro-restriction-modal');
+const proModalCta = document.getElementById('pro-modal-cta');
+const proModalText = document.getElementById('pro-modal-text');
+const historyList = document.getElementById('history-list');
+const historySection = document.getElementById('history-section');
 
 
-        <div id="details-screen" class="screen">
-            <div id="details-poster-top">
-                <div id="embedded-player-container" style="display: none;"></div>
-                <div class="poster-overlay">
-                    <div id="details-play-button-container">
-                        <button id="details-play-button" class="play-button"><i class="fas fa-play"></i></button>
-                        <button id="request-movie-button" class="play-button" style="display: none;"><i class="fas fa-paper-plane"></i> Pedir ahora</button>
-                    </div>
-                </div>
-            </div>
-            <div class="details-info-section">
-                <div class="movie-header">
-                    <h2 id="details-title"></h2>
-                    <div class="movie-actions">
-                        <i id="share-button" class="fas fa-share-alt"></i>
-                        <i id="favorite-button" class="fas fa-heart"></i>
-                    </div>
-                </div>
-                <div class="movie-metadata">
-                    <span id="details-year"></span>
-                    <span id="details-genres"></span>
-                </div>
-                <p id="details-sinopsis"></p>
-                <button id="read-more-button" class="text-button">Ver más</button>
-                <div id="movie-cast-info" class="movie-cast">
-                    <p>Director: <span id="director-name"></span></p>
-                    <p>Actores: <span id="actors-list"></span></p>
-                </div>
-                
-                <div id="seasons-container" class="episode-select-container" style="display:none;"></div>
-                <div id="episodes-container"></div>
+let moviesData = [];
+let seriesData = [];
+let bannerMovies = [];
+let allMovieGenres = {};
+let allTvGenres = {};
+let bannerInterval;
+let currentUser = null;
+let currentScreen = 'home-screen';
+let previousScreen = '';
+let currentMovieOrSeries = null;
 
-                <section class="related-section">
-                    <h3>También podría gustarte</h3>
-                    <div id="related-movies" class="movie-list horizontal-scroll"></div>
-                </section>
-            </div>
-        </div>
-        
-        <div id="auth-screen" class="screen full-screen-auth">
-            <header class="auth-header">
-                <a href="#" class="back-button" id="auth-back-button"><i class="fas fa-arrow-left"></i></a>
-                <div class="auth-header-title">Cine</div>
-                <a href="#" class="login-link" id="auth-login-link">Iniciar sesión</a>
-            </header>
-            <div class="auth-content-container">
-                <div id="login-form" class="auth-form active-form">
-                    <h2 class="auth-title">Inicia sesión</h2>
-                    <input type="email" id="login-email" placeholder="Correo electrónico">
-                    <div class="password-container">
-                        <input type="password" id="login-password" placeholder="Contraseña">
-                        <i class="fas fa-eye password-toggle"></i>
-                    </div>
-                    <button class="button auth-button primary" id="login-button">Iniciar sesión</button>
-                    <p class="auth-separator">o</p>
-                    <p class="switch-form-text">¿No tienes cuenta? <a href="#" id="show-signup-link">Crea una</a></p>
-                    <a href="#" class="forgot-password-link">¿Olvidaste tu contraseña?</a>
-                </div>
-                <div id="signup-form" class="auth-form">
-                    <h2 class="auth-title">Crea tu cuenta</h2>
-                    <input type="email" id="signup-email" placeholder="ejemplo@email.com">
-                    <div class="password-container">
-                        <input type="password" id="signup-password" placeholder="Contraseña">
-                        <i class="fas fa-eye password-toggle"></i>
-                    </div>
-                    <div class="terms-checkbox">
-                        <input type="checkbox" id="terms-checkbox">
-                        <label for="terms-checkbox" class="terms-label">Acepto los Términos de Uso de Sala Cine y reconozco que mi información personal será utilizada conforme al Aviso de Privacidad de Cine.</label>
-                    </div>
-                    <button class="button auth-button primary" id="signup-button">Comenzar</button>
-                    <p class="auth-separator">o</p>
-                    <p class="switch-form-text">¿Ya tienes cuenta? <a href="#" id="show-login-link">Inicia sesión</a></p>
-                </div>
-            </div>
-        </div>
-    </main>
+// --- Funciones para manejar Modales y Carga ---
+function closeModal(modal) {
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+function showModal(modal) {
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
 
-    <nav class="bottom-nav">
-        <a href="#" class="nav-item active" data-screen="home-screen">
-            <i class="fas fa-home"></i>
-            <span>Inicio</span>
-        </a>
-        <a href="#" class="nav-item" data-screen="movies-screen">
-            <i class="fas fa-film"></i>
-            <span>Películas</span>
-        </a>
-        <a href="#" class="nav-item" data-screen="series-screen">
-            <i class="fas fa-tv"></i>
-            <span>Series</span>
-        </a>
-        <a href="#" class="nav-item" data-screen="profile-screen">
-            <i class="fas fa-user"></i>
-            <span>Perfil</span>
-        </a>
-    </nav>
+function showLoader() {
+    if (loader) loader.style.display = 'flex';
+}
 
-    <div id="video-modal" class="modal">
-        <div class="modal-content video-content">
-            <span class="close-button">&times;</span>
-            <video id="video-player" controls></video>
-        </div>
-    </div>
+function hideLoader() {
+    if (loader) loader.style.display = 'none';
+}
+
+closeButtons.forEach(button => {
+    button.addEventListener('click', (event) => {
+        const modal = event.target.closest('.modal') || event.target.closest('.modal-from-bottom');
+        if (modal) {
+            closeModal(modal);
+        }
+    });
+});
+window.addEventListener('click', (event) => {
+    if (event.target.classList.contains('modal') || event.target.classList.contains('modal-from-bottom')) {
+        closeModal(event.target);
+    }
+});
+
+// --- Funciones principales y de renderizado ---
+
+function showFreeAdModal(freeEmbedCode) {
+    showModal(freeAdModal);
+    setupFreeAdModalButtons(freeEmbedCode);
+}
+
+function setupFreeAdModalButtons(freeEmbedCode) {
+    verGratisButton.onclick = () => {
+        closeModal(freeAdModal);
+        playEmbeddedVideo(freeEmbedCode, false, currentUser, currentMovieOrSeries);
+    };
+
+    verProButton.onclick = () => {
+        closeModal(freeAdModal);
+        showModal(paymentModal);
+    };
     
-    <div id="premium-info-modal" class="modal-from-bottom">
-        <div class="modal-content">
-            <span class="close-button" id="premium-info-close">&times;</span>
-            <h2 class="premium-info-title">Con Premium tienes más</h2>
-            <div class="premium-benefits">
-                <p><i class="fas fa-check"></i> Series y Películas Premium</p>
-                <p><i class="fas fa-check"></i> Más novelas que cualquier otro streaming</p>
-                <p><i class="fas fa-check"></i> Cancela cuando quieras</p>
-                <p><i class="fas fa-check"></i> Sin anuncios</p>
-            </div>
-            <button class="button premium-cta-button" id="premium-info-cta">Empezar ya</button>
-            <p class="premium-info-login">Ya tengo plan Premium, <a href="#" id="premium-info-login-link">iniciar sesión</a>.</p>
-        </div>
-    </div>
+    freeModalCloseButton.onclick = () => {
+        closeModal(freeAdModal);
+    };
+}
+function showProRestrictionModal() {
+    showModal(proRestrictionModal);
+}
+proModalCta.addEventListener('click', () => {
+    closeModal(proRestrictionModal);
+    showModal(paymentModal);
+});
 
-    <div id="payment-modal" class="modal">
-        <div class="modal-content payment-content">
-            <span class="close-button" id="payment-close">&times;</span>
-            <h2>Activar Cuenta Premium</h2>
-            <p>Disfruta de nuestra selección Premium sin anuncios y con acceso anticipado a nuevas películas y series. Protegemos tus datos con los más altos estándares de seguridad, al igual que plataformas como Netflix y Disney Plus.</p>
-            <div class="plans-container">
-                <div class="plan-card">
-                    <h3>Plan Mensual</h3>
-                    <p>1 mes por $1.99</p>
-                    <button class="button buy-button" data-plan="monthly">Comprar</button>
-                </div>
-                <div class="plan-card">
-                    <h3>Plan Anual</h3>
-                    <p>1 año por $19.99</p>
-                    <button class="button buy-button" data-plan="annual">Comprar</button>
-                </div>
-            </div>
-            <p class="legal-text">© Cine. Todos los derechos reservados. Su suscripción se renueva automáticamente. Puede cancelar en cualquier momento.</p>
-        </div>
-    </div>
+async function addMovieToHistory(item) {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        return;
+    }
+    try {
+        const historyRef = collection(db, 'history');
+        const existingDocs = await getDocs(query(historyRef, where('userId', '==', auth.currentUser.uid), where('tmdbId', '==', item.id)));
+        if (existingDocs.empty) {
+            await addDoc(historyRef, {
+                userId: auth.currentUser.uid,
+                tmdbId: item.id,
+                title: item.title || item.name,
+                poster_path: item.poster_path,
+                type: item.media_type || 'movie',
+                timestamp: new Date()
+            });
+        }
+    } catch (e) {
+        console.error("Error al agregar al historial: ", e);
+    }
+}
+
+function playEmbeddedVideo(embedCode, isPremium, currentUser, item) {
+    if (isPremium && (!currentUser || !currentUser.isPro)) {
+        showProRestrictionModal();
+    } else {
+        detailsPosterTop.style.backgroundImage = 'none';
+        detailsPosterTop.style.backgroundColor = '#000';
+        playButtonContainer.style.display = 'none';
+        embeddedPlayerContainer.style.display = 'block';
+        embeddedPlayerContainer.innerHTML = embedCode;
+        addMovieToHistory(item);
+    }
+}
+
+function renderMoviePlayButtons(localMovie, tmdbMovie) {
+    playButtonContainer.innerHTML = '';
+    if (localMovie && (localMovie.freeEmbedCode || localMovie.proEmbedCode)) {
+        const playButton = document.createElement('button');
+        playButton.className = 'play-button';
+        playButton.innerHTML = `<i class="fas fa-play"></i>`;
+
+        playButton.onclick = async () => {
+            showLoader();
+            try {
+                // Lógica de reproducción basada en si la película es PRO y si el usuario es PRO
+                if (localMovie.isPremium) {
+                    if (currentUser && currentUser.isPro) {
+                         // Usuario PRO ve película PRO
+                        const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=true`);
+                        const data = await response.json();
+                        if (data.embedCode) {
+                            playEmbeddedVideo(data.embedCode, true, currentUser, tmdbMovie);
+                        } else {
+                            alert('No se encontró un reproductor PRO para esta película.');
+                        }
+                    } else {
+                        // Usuario NO PRO intenta ver película PRO
+                        showProRestrictionModal();
+                    }
+                } else {
+                     // Película NO PRO, se muestra el modal de publicidad
+                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=false`);
+                    const data = await response.json();
+                    if (data.embedCode) {
+                        showFreeAdModal(data.embedCode);
+                    } else {
+                        alert('No se encontró un reproductor gratuito para esta película.');
+                    }
+                }
+            } catch (error) {
+                console.error('Error al obtener el código del reproductor:', error);
+                alert('Hubo un error al cargar el reproductor. Intenta de nuevo.');
+            } finally {
+                hideLoader();
+            }
+        };
+        playButtonContainer.appendChild(playButton);
+    } else {
+        renderRequestButton(tmdbMovie);
+    }
+}
+
+async function renderSeriesButtons(localSeries, tmdbSeries) {
+    playButtonContainer.innerHTML = '';
+    seasonsContainer.style.display = 'block';
+    seasonsContainer.innerHTML = '<h3>Temporadas</h3>';
     
-    <div id="free-ad-modal" class="modal-from-bottom">
-        <div class="modal-content">
-            <span class="close-button free-modal-close-button">&times;</span>
-            <h2 class="modal-title-ad">Versión Gratis con Publicidad</h2>
-            <p class="modal-text-ad">Estás a punto de ver la versión gratis de esta película. Tendrás un poco de publicidad durante la reproducción calidad 720p.</p>
-            <div class="modal-buttons-ad">
-                <button id="ver-gratis-button" class="button">Ver Gratis 720p</button>
-                <button id="ver-pro-button" class="button secondary">Ver PRO 1080p (sin anuncios)</button>
-            </div>
-            <p class="modal-small-text">Los planes están desde $1,99 mensua</p>
+    const seriesDetails = await fetchFromTMDB(`tv/${tmdbSeries.id}`);
+    
+    seriesDetails.seasons.forEach(season => {
+        const seasonButton = document.createElement('button');
+        seasonButton.className = 'season-button';
+        seasonButton.textContent = `Temporada ${season.season_number}`;
+        seasonButton.onclick = async () => {
+            episodesContainer.innerHTML = '<h3>Episodios</h3><div class="episodes-grid"></div>';
+            const episodesGrid = episodesContainer.querySelector('.episodes-grid');
+            const seasonDetails = await fetchFromTMDB(`tv/${tmdbSeries.id}/season/${season.season_number}`);
+            
+            seasonDetails.episodes.forEach(episode => {
+                const episodeButton = document.createElement('button');
+                episodeButton.className = 'episode-button';
+                episodeButton.textContent = `E${episode.episode_number}`;
+                
+                const localEpisode = localSeries?.seasons?.[season.season_number]?.episodes?.[episode.episode_number];
+                
+                if (localEpisode && (localEpisode.freeEmbedCode || localEpisode.proEmbedCode)) {
+                     episodeButton.onclick = async () => {
+                        showLoader();
+                        try {
+                            const isProUser = currentUser && currentUser.isPro;
+                            if (localSeries.isPremium && !isProUser) {
+                                showProRestrictionModal();
+                                return;
+                            }
+                            const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localSeries.tmdbId}&season=${season.season_number}&episode=${episode.episode_number}&isPro=${isProUser}`);
+                            const data = await response.json();
+                            
+                            if (data.embedCode) {
+                                if (localSeries.isPremium) {
+                                    playEmbeddedVideo(data.embedCode, localSeries.isPremium, currentUser, episode);
+                                } else {
+                                    showFreeAdModal(data.embedCode);
+                                }
+                            } else {
+                                alert('No se encontró un reproductor para este episodio.');
+                            }
+                        } catch(error) {
+                            console.error('Error al obtener el código del reproductor:', error);
+                            alert('Hubo un error al cargar el reproductor. Intenta de nuevo.');
+                        } finally {
+                            hideLoader();
+                        }
+                     };
+                } else {
+                    episodeButton.disabled = true;
+                    episodeButton.textContent = `E${episode.episode_number} (Próximamente)`;
+                    episodeButton.style.backgroundColor = '#333';
+                    episodeButton.style.cursor = 'not-allowed';
+                }
+                episodesGrid.appendChild(episodeButton);
+            });
+        };
+        seasonsContainer.appendChild(seasonButton);
+    });
+}
+
+
+function renderRequestButton(tmdbItem) {
+    const requestButton = document.createElement('button');
+    requestButton.className = 'request-movie-button';
+    requestButton.innerHTML = `<i class="fas fa-paper-plane"></i> Pedir ahora`;
+    requestButton.onclick = async () => {
+        if (!auth.currentUser || auth.currentUser.isAnonymous) {
+            alert('Debes iniciar sesión para solicitar un contenido.');
+            switchScreen('auth-screen');
+            return;
+        }
+        try {
+            const response = await fetch('https://serivisios.onrender.com/request-movie', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: tmdbItem.title || tmdbItem.name,
+                    poster_path: tmdbItem.poster_path,
+                    tmdbId: tmdbItem.id
+                })
+            });
+            if (response.ok) {
+                alert('¡Solicitud enviada! Nos pondremos a trabajar en ello.');
+            } else {
+                alert('Hubo un error al enviar la solicitud. Intenta de nuevo.');
+            }
+        } catch (error) {
+            console.error('Error al solicitar el contenido:', error);
+            alert('No se pudo conectar con el servidor para enviar la solicitud.');
+        }
+    };
+    playButtonContainer.appendChild(requestButton);
+}
+
+async function showDetailsScreen(item, type = 'movie') {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    detailsScreen.classList.add('active');
+    appContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    showLoader();
+    
+    seasonsContainer.innerHTML = '';
+    episodesContainer.innerHTML = '';
+    seasonsContainer.style.display = 'none';
+
+    detailsPosterTop.style.backgroundImage = 'none';
+    detailsPosterTop.style.backgroundColor = 'transparent';
+    playButtonContainer.style.display = 'flex';
+    if (document.getElementById('embedded-player-container')) {
+        document.getElementById('embedded-player-container').style.display = 'none';
+        document.getElementById('embedded-player-container').innerHTML = '';
+    }
+
+    try {
+        const posterPath = item.backdrop_path || item.poster_path;
+        const posterUrl = posterPath ? `https://image.tmdb.org/t/p/original${posterPath}` : 'https://placehold.co/500x750?text=No+Poster';
+        detailsPosterTop.style.backgroundImage = `url('${posterUrl}')`;
+
+        detailsTitle.textContent = item.title || item.name;
+        detailsSinopsis.textContent = item.overview || 'Sin sinopsis disponible.';
+        detailsYear.textContent = (item.release_date || item.first_air_date) ? (item.release_date || item.first_air_date).substring(0, 4) : '';
+        
+        const genreNames = item.genre_ids ? item.genre_ids.map(id => (type === 'movie' ? allMovieGenres[id] : allTvGenres[id])).filter(Boolean).join(', ') : '';
+        detailsGenres.textContent = genreNames;
+
+        const credits = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/credits` : `tv/${item.id}/credits`);
+        
+        const director = credits.crew.find(c => c.job === 'Director');
+        directorName.textContent = director ? director.name : 'No disponible';
+        const actors = credits.cast.slice(0, 3).map(a => a.name).join(', ');
+        actorsList.textContent = actors || 'No disponible';
+        
+        const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id);
+        
+        currentMovieOrSeries = localData;
+
+        if (type === 'movie') {
+            renderMoviePlayButtons(localData, item);
+        } else if (type === 'tv') {
+            await renderSeriesButtons(localData, item);
+        }
+
+        const related = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/similar` : `tv/${item.id}/similar`);
+        renderCarousel('related-movies', related, type);
+
+    } catch (error) {
+        console.error("Error showing details:", error);
+        alert('Hubo un error al cargar los detalles. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function fetchFromTMDB(endpoint, query = '') {
+    const API_KEY = "5eb8461b85d0d88c46d77cfe5436291f";
+    const BASE_URL = 'https://api.themoviedb.org/3/';
+    
+    let url = `${BASE_URL}${endpoint}`;
+    
+    if (url.includes('?')) {
+        url += `&api_key=${API_KEY}&language=es-ES`;
+    } else {
+        url += `?api_key=${API_KEY}&language=es-ES`;
+    }
+    
+    if (query) {
+        url += `&query=${encodeURIComponent(query)}`;
+    }
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Error de la API: ${response.status}`);
+        }
+        const data = await response.json();
+        return data.results || data.items || data;
+    } catch (error) {
+        console.error("Error en la llamada a fetchFromTMDB:", error);
+        throw error;
+    }
+}
+
+function createMovieCard(movie, type = 'movie') {
+    const movieCard = document.createElement('div');
+    movieCard.className = 'movie-card';
+    const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://placehold.co/500x750?text=No+Poster';
+    
+    let badgeHtml = '';
+    const isPopular = movie.popularity > 100;
+    if (isPopular) {
+        badgeHtml = `<div class="badge">TOP</div>`;
+    }
+    
+    movieCard.innerHTML = `
+        ${badgeHtml}
+        <img src="${posterUrl}" alt="${movie.title || movie.name}" class="movie-poster">
+    `;
+    
+    movieCard.addEventListener('click', () => showDetailsScreen(movie, type));
+    return movieCard;
+}
+
+function createBannerItem(movie) {
+    const bannerItem = document.createElement('div');
+    bannerItem.className = 'banner-item';
+    const backdropUrl = movie.backdrop_path ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}` : 'https://placehold.co/1080x600?text=No+Banner';
+    bannerItem.style.backgroundImage = `url('${backdropUrl}')`;
+    
+    const localMovie = moviesData.find(m => m.tmdbId === movie.id);
+    const isPremium = localMovie && localMovie.isPremium;
+    const hasEmbedCode = localMovie && (localMovie.freeEmbedCode || localMovie.proEmbedCode);
+
+    let buttonHtml = '';
+    if (hasEmbedCode) {
+        const buttonText = isPremium ? '<i class="fas fa-play"></i> Ver ahora (Versión PRO)' : '<i class="fas fa-play"></i> Ver ahora';
+        buttonHtml = `<button class="banner-button red">${buttonText}</button>`;
+    }
+
+    bannerItem.innerHTML = `
+        <div class="banner-buttons-container">
+            ${buttonHtml}
+            ${isPremium ? `<span class="pro-badge">PRO</span>` : ''}
         </div>
-    </div>
+    `;
 
-    <div id="pro-restriction-modal" class="modal-from-bottom">
-        <div class="modal-content">
-            <span class="close-button free-modal-close-button">&times;</span>
-            <h2 class="modal-title-ad">¡Esta película solo está disponible en la versión PRO!</h2>
-            <p class="modal-small-text" id="pro-modal-text">Los planes están desde $1,99 mensual.</p>
-            <div class="modal-buttons-ad">
-                <button id="pro-modal-cta" class="button red">Ver ahora PRO</button>
-            </div>
-        </div>
-    </div>
+    const playButton = bannerItem.querySelector('.red');
+    if (playButton) {
+        playButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showDetailsScreen(movie, movie.media_type || 'movie');
+        });
+    }
 
-    <div class="footer-text">©Cine. Todos los derechos reservados.</div>
-    <div id="loader" style="display: none;"><div class="loader-spinner"></div><p>Cargando...</p></div>
+    bannerItem.addEventListener('click', () => showDetailsScreen(movie, movie.media_type || 'movie'));
+    return bannerItem;
+}
 
-    <script type="module" src="script.js"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-</body>
-</html>
+function renderCarousel(containerId, movies, type = 'movie') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    movies.forEach(movie => {
+        container.appendChild(createMovieCard(movie, type));
+    });
+}
+
+function renderGrid(container, movies, type = 'movie') {
+    if (!container) return;
+    container.innerHTML = '';
+    movies.forEach(movie => {
+        container.appendChild(createMovieCard(movie, type));
+    });
+}
+
+async function fetchHistory() {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        historySection.style.display = 'none';
+        return;
+    }
+    try {
+        const q = query(collection(db, "history"), where("userId", "==", auth.currentUser.uid), orderBy("timestamp", "desc"), limit(10));
+        const querySnapshot = await getDocs(q);
+        const history = querySnapshot.docs.map(doc => doc.data());
+        if (history.length > 0) {
+            historySection.style.display = 'block';
+            renderCarousel('history-list', history, 'movie');
+        } else {
+            historySection.style.display = 'none';
+        }
+    } catch (e) {
+        console.error("Error al obtener el historial: ", e);
+        historySection.style.display = 'none';
+    }
+}
+
+async function fetchHomeContent() {
+    showLoader();
+    try {
+        await fetchHistory();
+
+        const popularMovies = await fetchFromTMDB('movie/popular');
+        renderCarousel('populares-movies', popularMovies, 'movie');
+
+        const trendingContent = await fetchFromTMDB('trending/all/day');
+        renderCarousel('tendencias-movies', trendingContent, 'movie');
+
+        const actionMovies = await fetchFromTMDB('discover/movie?with_genres=28');
+        renderCarousel('accion-movies', actionMovies, 'movie');
+
+        const terrorMovies = await fetchFromTMDB('discover/movie?with_genres=27,9648');
+        renderCarousel('terror-movies', terrorMovies, 'movie');
+        
+        const animacionMovies = await fetchFromTMDB('discover/movie?with_genres=16');
+        renderCarousel('animacion-movies', animacionMovies, 'movie');
+
+        const documentalesMovies = await fetchFromTMDB('discover/movie?with_genres=99');
+        renderCarousel('documentales-movies', documentalesMovies, 'movie');
+
+        const scifiMovies = await fetchFromTMDB('discover/movie?with-genres=878');
+        renderCarousel('scifi-movies', scifiMovies, 'movie');
+
+        const popularSeries = await fetchFromTMDB('tv/popular');
+        renderCarousel('populares-series', popularSeries, 'tv');
+        
+        bannerMovies = trendingContent.filter(m => m.backdrop_path);
+        renderBannerCarousel();
+    } catch (error) {
+        console.error("Error fetching home content:", error);
+        alert('Hubo un error al cargar el contenido principal. Por favor, recarga la página.');
+    } finally {
+        hideLoader();
+    }
+}
+
+function renderBannerCarousel() {
+    bannerList.innerHTML = '';
+    bannerMovies.forEach(movie => {
+        bannerList.appendChild(createBannerItem(movie));
+    });
+    startBannerAutoScroll();
+}
+
+function stopBannerAutoScroll() {
+    clearInterval(bannerInterval);
+}
+
+function startBannerAutoScroll() {
+    let currentIndex = 0;
+    const scrollAmount = bannerList.clientWidth;
+    stopBannerAutoScroll();
+    bannerInterval = setInterval(() => {
+        if (currentIndex < bannerMovies.length - 1) {
+            currentIndex++;
+        } else {
+            currentIndex = 0;
+        }
+        bannerList.scrollTo({
+            left: currentIndex * scrollAmount,
+            behavior: 'smooth'
+        });
+    }, 3000);
+}
+
+bannerList.addEventListener('mousedown', stopBannerAutoScroll);
+bannerList.addEventListener('mouseup', startBannerAutoScroll);
+bannerList.addEventListener('touchstart', stopBannerAutoScroll);
+bannerList.addEventListener('touchend', startBannerAutoScroll);
+
+
+async function fetchAllGenres(type = 'movie') {
+    try {
+        const genres = await fetchFromTMDB(`genre/${type}/list`);
+        const genreMap = {};
+        genres.genres.forEach(genre => {
+            genreMap[genre.id] = genre.name;
+        });
+        if (type === 'movie') {
+            allMovieGenres = genreMap;
+        } else {
+            allTvGenres = genreMap;
+        }
+    } catch (error) {
+        console.error("Error fetching genres:", error);
+    }
+}
+
+function renderGenresModal(type) {
+    genresList.innerHTML = '';
+    const currentGenres = type === 'movie' ? allMovieGenres : allTvGenres;
+    for (const id in currentGenres) {
+        const genreButton = document.createElement('button');
+        genreButton.className = 'button secondary';
+        genreButton.textContent = currentGenres[id];
+        genreButton.onclick = () => {
+            fetchFromTMDB(`discover/${type}?with_genres=${id}`).then(items => {
+                renderGrid(type === 'movie' ? allMoviesGrid : allSeriesGrid, items, type);
+                document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+                if (type === 'movie') moviesScreen.classList.add('active');
+                else seriesScreen.classList.add('active');
+                closeModal(genresModal);
+            });
+        };
+        genresList.appendChild(genreButton);
+    }
+}
+
+searchInput.addEventListener('click', () => {
+    const query = searchInput.value;
+    if (query.length > 2) {
+        handleSearch(query);
+    }
+});
+
+searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        handleSearch(searchInput.value);
+    }
+});
+
+searchInput.addEventListener('input', (e) => {
+    const query = e.target.value;
+    if (query.length > 2) {
+        handleSearch(query);
+    } else if (query.length === 0) {
+        document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+        homeScreen.classList.add('active');
+    }
+});
+
+async function handleSearch(query) {
+    if (query.length > 2) {
+        showLoader();
+        try {
+            const searchResults = await fetchFromTMDB('search/multi', query);
+            const filteredResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
+            renderGrid(allMoviesGrid, filteredResults, 'movie');
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+            moviesScreen.classList.add('active');
+        } catch (error) {
+            console.error("Error performing search:", error);
+            alert('Hubo un error en la búsqueda. Por favor, intenta de nuevo.');
+        } finally {
+            hideLoader();
+        }
+    }
+}
+
+function switchScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+    
+    const targetScreen = document.getElementById(screenId);
+    if (targetScreen) {
+        targetScreen.classList.add('active');
+        const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
+        if (navItem) navItem.classList.add('active');
+    }
+
+    if (screenId === 'movies-screen') {
+        renderAllMovies();
+    } else if (screenId === 'series-screen') {
+        renderAllSeries();
+    } else if (screenId === 'home-screen') {
+        fetchHomeContent();
+    } else if (screenId === 'favorites-screen') {
+        fetchFavorites();
+    }
+    
+    if (screenId === 'details-screen' || screenId === 'auth-screen') {
+        document.querySelector('.top-nav').style.display = 'none';
+        document.querySelector('.bottom-nav').style.display = 'none';
+        appContainer.style.paddingBottom = '0';
+    } else {
+        document.querySelector('.top-nav').style.display = 'flex';
+        document.querySelector('.bottom-nav').style.display = 'flex';
+        appContainer.style.paddingBottom = '70px';
+    }
+}
+window.addEventListener('popstate', () => {
+    switchScreen(window.location.hash.substring(1) || 'home-screen');
+});
+document.querySelectorAll('.nav-item, .profile-button[data-screen]').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetScreenId = e.currentTarget.getAttribute('data-screen');
+        if (targetScreenId) {
+            previousScreen = currentScreen;
+            currentScreen = targetScreenId;
+            switchScreen(targetScreenId);
+        }
+    });
+});
+authBackButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (previousScreen) {
+        switchScreen(previousScreen);
+    } else {
+        switchScreen('home-screen');
+    }
+});
+
+seeMoreButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const endpoint = e.currentTarget.getAttribute('data-endpoint');
+        const type = e.currentTarget.getAttribute('data-type');
+        
+        showLoader();
+        try {
+            const items = await fetchFromTMDB(endpoint);
+            if (type === 'movie') {
+                renderGrid(allMoviesGrid, items, 'movie');
+                switchScreen('movies-screen');
+            } else {
+                renderGrid(allSeriesGrid, items, 'tv');
+                switchScreen('series-screen');
+            }
+        } catch (error) {
+            console.error("Error loading 'See more' content:", error);
+            alert('No se pudo cargar el contenido. Intenta de nuevo.');
+        } finally {
+            hideLoader();
+        }
+    });
+});
+
+genresButton.addEventListener('click', () => {
+    renderGenresModal('movie');
+    showModal(genresModal);
+});
+seriesGenresButton.addEventListener('click', () => {
+    renderGenresModal('tv');
+    showModal(genresModal);
+});
+
+async function renderAllMovies() {
+    showLoader();
+    try {
+        const movies = await fetchFromTMDB('discover/movie?sort_by=popularity.desc');
+        renderGrid(allMoviesGrid, movies, 'movie');
+    } catch (error) {
+        console.error("Error rendering all movies:", error);
+        alert('No se pudieron cargar las películas. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function renderAllSeries() {
+    showLoader();
+    try {
+        const series = await fetchFromTMDB('discover/tv?sort_by=popularity.desc');
+        renderGrid(allSeriesGrid, series, 'tv');
+    } catch (error) {
+        console.error("Error rendering all series:", error);
+        alert('No se pudieron cargar las series. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function addToFavorites(movie) {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+        return;
+    }
+    try {
+        await addDoc(collection(db, "favorites"), {
+            userId: auth.currentUser.uid,
+            tmdbId: movie.id,
+            title: movie.title || movie.name,
+            poster_path: movie.poster_path,
+            type: movie.media_type || 'movie'
+        });
+        alert('Añadido a Mi lista');
+    } catch (e) {
+        console.error("Error adding favorite: ", e);
+        alert('No se pudo añadir a la lista.');
+    }
+}
+
+async function fetchFavorites() {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+        return;
+    }
+    showLoader();
+    try {
+        const q = query(collection(db, "favorites"), where("userId", "==", auth.currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const favorites = querySnapshot.docs.map(doc => doc.data());
+        renderGrid(favoritesGrid, favorites, 'movie');
+    } catch (e) {
+        console.error("Error fetching favorites: ", e);
+        alert('No se pudieron cargar los favoritos.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function playAd() {
+    return new Promise((resolve) => {
+        console.log("Simulating ad playback...");
+        alert('Anuncio: El video comenzará en breve.');
+        setTimeout(() => {
+            resolve();
+        }, 5000);
+    });
+}
+
+submitRequestButton.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        alert('Debes iniciar sesión para solicitar un contenido.');
+        switchScreen('auth-screen');
+        return;
+    }
+
+    const movieTitle = movieRequestInput.value.trim();
+    if (movieTitle === '') {
+        alert('Por favor, ingresa el título de la película.');
+        return;
+    }
+
+    try {
+        await addDoc(collection(db, "requests"), {
+            userId: auth.currentUser.uid,
+            userName: auth.currentUser.displayName || 'Anónimo',
+            movieTitle: movieTitle,
+            requestedAt: new Date()
+        });
+        alert('¡Solicitud enviada! Gracias por tu sugerencia.');
+        movieRequestInput.value = '';
+    } catch (e) {
+        console.error("Error adding movie request: ", e);
+        alert('No se pudo enviar la solicitud. Intenta de nuevo.');
+    }
+});
+
+const passwordToggles = document.querySelectorAll('.password-toggle');
+passwordToggles.forEach(toggle => {
+    toggle.addEventListener('click', () => {
+        const passwordInput = toggle.previousElementSibling;
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        toggle.classList.toggle('fa-eye');
+        toggle.classList.toggle('fa-eye-slash');
+    });
+});
+
+proStatusButton.addEventListener('click', async () => {
+    if (!currentUser || currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+    } else {
+        showModal(paymentModal);
+    }
+});
+
+if (createAccountButton) {
+    createAccountButton.addEventListener('click', () => {
+        switchScreen('auth-screen');
+        loginForm.classList.remove('active-form');
+        signupForm.classList.add('active-form');
+    });
+}
+
+if (profileLoginLink) {
+    profileLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchScreen('auth-screen');
+        loginForm.classList.add('active-form');
+        signupForm.classList.remove('active-form');
+    });
+}
+
+if(authLoginLink){
+    authLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        loginForm.classList.add('active-form');
+        signupForm.classList.remove('active-form');
+    });
+}
+
+premiumInfoCtaButton.addEventListener('click', () => {
+    closeModal(premiumInfoModal);
+    showModal(paymentModal);
+});
+
+premiumInfoLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeModal(premiumInfoModal);
+    switchScreen('auth-screen');
+    loginForm.classList.add('active-form');
+    signupForm.classList.remove('active-form');
+});
+
+profileMyList.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser || currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+    } else {
+        switchScreen('favorites-screen');
+    }
+});
+profilePrivacy.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('privacy-screen');
+});
+profileTerms.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('terms-screen');
+});
+profileSubscription.addEventListener('click', (e) => {
+    e.preventDefault();
+    showModal(paymentModal);
+});
+profileHelpCenter.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('help-screen');
+});
+
+showSignupLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginForm.classList.remove('active-form');
+    signupForm.classList.add('active-form');
+});
+
+showLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    signupForm.classList.remove('active-form');
+    loginForm.classList.add('active-form');
+});
+
+signupButton.addEventListener('click', async () => {
+    const email = signupEmailInput.value;
+    const password = signupPasswordInput.value;
+    const termsAccepted = document.getElementById('terms-checkbox').checked;
+
+    if (!termsAccepted) {
+        alert('Debes aceptar los términos y condiciones para continuar.');
+        return;
+    }
+    
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        switchScreen('profile-screen');
+        showModal(paymentModal);
+    } catch (error) {
+        console.error("Signup error:", error);
+        alert(`Error al registrarse: ${error.message}`);
+    }
+});
+
+loginButton.addEventListener('click', async () => {
+    const email = loginEmailInput.value;
+    const password = loginPasswordInput.value;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        alert('¡Inicio de sesión exitoso!');
+        switchScreen('profile-screen');
+    } catch (error) {
+        console.error("Login error:", error);
+        alert(`Error al iniciar sesión: ${error.message}`);
+    }
+});
+
+socialLoginButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        alert('Esta funcionalidad aún no está disponible.');
+    });
+});
+
+buyButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+        const plan = e.target.getAttribute('data-plan');
+        const amount = (plan === 'annual') ? '19.99' : '1.99';
+
+        if (!currentUser || currentUser.isAnonymous) {
+            switchScreen('auth-screen');
+            return;
+        }
+
+        try {
+            const response = await fetch('https://serivisios.onrender.com/create-paypal-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan: plan, amount: amount })
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.approval_url) {
+                window.location.href = data.approval_url;
+            } else {
+                alert('Error al iniciar el pago con PayPal. Verifica la configuración en tu servidor.');
+            }
+        } catch (error) {
+            console.error("Error processing payment:", error);
+            alert('Hubo un error al procesar tu pago. Intenta de nuevo.');
+        }
+    });
+});
+
+if (buyWithPaypalButton) {
+    buyWithPaypalButton.addEventListener('click', () => {
+        alert('Selecciona un plan antes de continuar con el pago.');
+    });
+}
+if (buyWithBinanceButton) {
+    buyWithBinanceButton.addEventListener('click', () => {
+        alert('Redirigiendo a Binance... (Funcionalidad simulada)');
+    });
+}
+
+signoutButton.addEventListener('click', async () => {
+    try {
+        await signOut(auth);
+        alert('Has cerrado sesión.');
+        window.location.reload();
+    } catch (error) {
+        console.error("Sign out error:", error);
+        alert('No se pudo cerrar sesión. Intenta de nuevo.');
+    }
+});
+
+let isInitialized = false;
+onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    
+    if (user && !user.isAnonymous) {
+        if (profileLoggedIn) {
+            profileLoggedIn.style.display = 'block';
+        }
+        if (profileLoggedOut) {
+            profileLoggedOut.style.display = 'none';
+        }
+        
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (userDocSnap.exists() && userDocSnap.data().isPro) {
+            currentUser.isPro = true;
+            if (proStatusButton) {
+                proStatusButton.textContent = 'Cuenta Premium Activada';
+                proStatusButton.disabled = true;
+            }
+        } else {
+            currentUser.isPro = false;
+            if (proStatusButton) {
+                proStatusButton.textContent = 'Activar Cuenta Premium';
+                proStatusButton.disabled = false;
+            }
+        }
+    } else {
+        if (profileLoggedIn) {
+            profileLoggedIn.style.display = 'none';
+        }
+        if (profileLoggedOut) {
+            profileLoggedOut.style.display = 'block';
+        }
+        if (!user) {
+             await signInAnonymously(auth);
+        }
+    }
+
+    if (!isInitialized) {
+        isInitialized = true;
+        showLoader();
+        const moviesColRef = collection(db, 'movies');
+        onSnapshot(moviesColRef, (snapshot) => {
+            moviesData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            fetchHomeContent();
+        });
+        
+        const seriesColRef = collection(db, 'series');
+        onSnapshot(seriesColRef, (snapshot) => {
+            seriesData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+        });
+        
+        await fetchAllGenres('movie');
+        await fetchAllGenres('tv');
+    }
+});
