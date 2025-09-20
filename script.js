@@ -404,7 +404,7 @@ async function showDetailsScreen(tmdbId, type = 'movie') {
         
         const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id);
         
-        currentMovieOrSeries = localData;
+        currentMovieOrSeries = item;
 
         if (type === 'movie') {
             renderMoviePlayButtons(localData, item);
@@ -415,7 +415,7 @@ async function showDetailsScreen(tmdbId, type = 'movie') {
         const related = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/similar` : `tv/${item.id}/similar`);
         const relatedList = document.getElementById('related-movies');
         if (relatedList) {
-            renderCarousel(relatedList.id, related, type);
+            renderCarousel('related-movies', related, type);
         }
         
         // Agregar funcionalidad de compartir y favoritos
@@ -566,7 +566,7 @@ async function fetchHistory() {
         const history = querySnapshot.docs.map(doc => doc.data());
         if (history.length > 0) {
             historyScreen.style.display = 'block';
-            renderGrid(historyList, history, 'movie'); // Se usa renderGrid aquí
+            renderGrid(historyList, history, 'movie');
         } else {
             historyScreen.style.display = 'none';
         }
@@ -581,7 +581,6 @@ async function fetchHistory() {
 async function fetchHomeContent() {
     showLoader();
     try {
-        // Se elimina la llamada a fetchHistory() de aquí
         const popularMovies = await fetchFromTMDB('movie/popular');
         renderCarousel('populares-movies', popularMovies, 'movie');
 
