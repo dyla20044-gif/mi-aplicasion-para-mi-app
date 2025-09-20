@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 // --- Configuración de Firebase ---
 const firebaseConfig = {
     apiKey: "AIzaSyCF5lyEIFkKhzgc4kOMebWZ7oZrxWDNw2Y",
@@ -97,6 +97,11 @@ const verGratisButton = document.getElementById('ver-gratis-button');
 const verProButton = document.getElementById('ver-pro-button');
 const freeModalCloseButton = document.querySelector('.free-modal-close-button');
 const seeMoreButtons = document.querySelectorAll('.see-more-btn');
+const proRestrictionModal = document.getElementById('pro-restriction-modal');
+const proModalCta = document.getElementById('pro-modal-cta');
+const proModalText = document.getElementById('pro-modal-text');
+const historyList = document.getElementById('history-list');
+const historySection = document.getElementById('history-section');
 
 
 let moviesData = [];
@@ -106,7 +111,6 @@ let allMovieGenres = {};
 let allTvGenres = {};
 let bannerInterval;
 let currentUser = null;
-
 let currentScreen = 'home-screen';
 let previousScreen = '';
 
@@ -146,19 +150,11 @@ window.addEventListener('click', (event) => {
 
 // --- Funciones principales y de renderizado ---
 
-/**
- * Muestra el modal de aviso para usuarios gratuitos.
- * @param {string} freeEmbedCode - El código embed del video gratuito.
- */
 function showFreeAdModal(freeEmbedCode) {
     showModal(freeAdModal);
     setupFreeAdModalButtons(freeEmbedCode);
 }
 
-/**
- * Configura los botones del modal de aviso gratuito.
- * @param {string} freeEmbedCode - El código embed del video gratuito.
- */
 function setupFreeAdModalButtons(freeEmbedCode) {
     verGratisButton.onclick = () => {
         closeModal(freeAdModal);
@@ -174,54 +170,69 @@ function setupFreeAdModalButtons(freeEmbedCode) {
         closeModal(freeAdModal);
     };
 }
+function showProRestrictionModal() {
+    showModal(proRestrictionModal);
+}
+proModalCta.addEventListener('click', () => {
+    closeModal(proRestrictionModal);
+    showModal(paymentModal);
+});
 
-
-// === NUEVA FUNCIÓN PARA REPRODUCIR EL VIDEO EMBEBIDO ===
-function playEmbeddedVideo(embedCode, isPremium, currentUser) {
-    if (isPremium && (!currentUser || !currentUser.isPro)) {
-        alert('Este contenido es Premium. Suscríbete para ver el video completo.');
-        showModal(premiumInfoModal);
-    } else {
-        // Ocultar el poster y el botón de play
-        detailsPosterTop.style.backgroundImage = 'none';
-        detailsPosterTop.style.backgroundColor = '#000';
-        playButtonContainer.style.display = 'none';
-        
-        // Mostrar el contenedor de video e inyectar el código
-        embeddedPlayerContainer.style.display = 'block';
-        embeddedPlayerContainer.innerHTML = embedCode;
+async function addMovieToHistory(item) {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        return;
+    }
+    try {
+        const historyRef = collection(db, 'history');
+        const existingDocs = await getDocs(query(historyRef, where('userId', '==', auth.currentUser.uid), where('tmdbId', '==', item.id)));
+        if (existingDocs.empty) {
+            await addDoc(historyRef, {
+                userId: auth.currentUser.uid,
+                tmdbId: item.id,
+                title: item.title || item.name,
+                poster_path: item.poster_path,
+                type: item.media_type || 'movie',
+                timestamp: new Date()
+            });
+        }
+    } catch (e) {
+        console.error("Error al agregar al historial: ", e);
     }
 }
 
-// === LÓGICA DE REPRODUCCIÓN (PELÍCULAS) ===
-function renderMoviePlayButtons(localMovie, tmdbMovie) {
-    playButtonContainer.innerHTML = ''; // Limpia el contenedor
+function playEmbeddedVideo(embedCode, isPremium, currentUser, item) {
+    if (isPremium && (!currentUser || !currentUser.isPro)) {
+        showProRestrictionModal();
+    } else {
+        detailsPosterTop.style.backgroundImage = 'none';
+        detailsPosterTop.style.backgroundColor = '#000';
+        playButtonContainer.style.display = 'none';
+        embeddedPlayerContainer.style.display = 'block';
+        embeddedPlayerContainer.innerHTML = embedCode;
+        addMovieToHistory(item);
+    }
+}
 
-    // ✅ CORREGIDO: Verificamos los nuevos campos de embedCode
+function renderMoviePlayButtons(localMovie, tmdbMovie) {
+    playButtonContainer.innerHTML = '';
     if (localMovie && (localMovie.freeEmbedCode || localMovie.proEmbedCode)) {
         const playButton = document.createElement('button');
         playButton.className = 'play-button';
-        playButton.innerHTML = `<i class="fas fa-play"></i>`; // Eliminado el texto "Ver ahora"
+        playButton.innerHTML = `<i class="fas fa-play"></i>`;
 
         playButton.onclick = async () => {
             showLoader();
             try {
-                // Si el usuario es PRO, reproduce el video PRO directamente.
-                if (currentUser && currentUser.isPro) {
-                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=true`);
+                if (localMovie.isPremium && (!currentUser || !currentUser.isPro)) {
+                    showProRestrictionModal();
+                } else {
+                    const isPro = currentUser && currentUser.isPro;
+                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=${isPro}`);
                     const data = await response.json();
                     if (data.embedCode) {
-                        playEmbeddedVideo(data.embedCode, localMovie.isPremium, currentUser);
+                        playEmbeddedVideo(data.embedCode, localMovie.isPremium, currentUser, tmdbMovie);
                     } else {
-                        alert('No se encontró un reproductor PRO para esta película.');
-                    }
-                } else { // Si no es PRO, muestra el modal de publicidad.
-                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=false`);
-                    const data = await response.json();
-                    if (data.embedCode) {
-                        showFreeAdModal(data.embedCode);
-                    } else {
-                        alert('No se encontró un reproductor gratuito para esta película.');
+                        alert('No se encontró un reproductor para esta película.');
                     }
                 }
             } catch (error) {
@@ -237,7 +248,6 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
     }
 }
 
-// === LÓGICA DE REPRODUCCIÓN (SERIES) ===
 async function renderSeriesButtons(localSeries, tmdbSeries) {
     playButtonContainer.innerHTML = '';
     seasonsContainer.style.display = 'block';
@@ -259,7 +269,6 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                 episodeButton.className = 'episode-button';
                 episodeButton.textContent = `E${episode.episode_number}`;
                 
-                // ✅ CORREGIDO: Buscamos los nuevos campos de embedCode para series
                 const localEpisode = localSeries?.seasons?.[season.season_number]?.episodes?.[episode.episode_number];
                 
                 if (localEpisode && (localEpisode.freeEmbedCode || localEpisode.proEmbedCode)) {
@@ -267,15 +276,15 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                         showLoader();
                         try {
                             const isProUser = currentUser && currentUser.isPro;
+                            if (localSeries.isPremium && !isProUser) {
+                                showProRestrictionModal();
+                                return;
+                            }
                             const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localSeries.tmdbId}&season=${season.season_number}&episode=${episode.episode_number}&isPro=${isProUser}`);
                             const data = await response.json();
                             
                             if (data.embedCode) {
-                                if (isProUser) {
-                                    playEmbeddedVideo(data.embedCode, localSeries.isPremium, currentUser);
-                                } else {
-                                    showFreeAdModal(data.embedCode);
-                                }
+                                playEmbeddedVideo(data.embedCode, localSeries.isPremium, currentUser, episode);
                             } else {
                                 alert('No se encontró un reproductor para este episodio.');
                             }
@@ -300,7 +309,6 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
 }
 
 
-// === BOTÓN PEDIR AHORA (MODIFICADO) ===
 function renderRequestButton(tmdbItem) {
     const requestButton = document.createElement('button');
     requestButton.className = 'request-movie-button';
@@ -334,19 +342,16 @@ function renderRequestButton(tmdbItem) {
     playButtonContainer.appendChild(requestButton);
 }
 
-// === FUNCIÓN PARA MOSTRAR LA PANTALLA DE DETALLES (Reorganizado) ===
 async function showDetailsScreen(item, type = 'movie') {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     detailsScreen.classList.add('active');
     appContainer.scrollTo({ top: 0, behavior: 'smooth' });
     showLoader();
     
-    // Ocultar la botonera de series por defecto
     seasonsContainer.innerHTML = '';
     episodesContainer.innerHTML = '';
     seasonsContainer.style.display = 'none';
 
-    // Restablecer el estado del banner y el contenedor del reproductor
     detailsPosterTop.style.backgroundImage = 'none';
     detailsPosterTop.style.backgroundColor = 'transparent';
     playButtonContainer.style.display = 'flex';
@@ -376,7 +381,6 @@ async function showDetailsScreen(item, type = 'movie') {
         
         const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id);
         
-        // Renderizar la botonera de películas o de series
         if (type === 'movie') {
             renderMoviePlayButtons(localData, item);
         } else if (type === 'tv') {
@@ -394,7 +398,6 @@ async function showDetailsScreen(item, type = 'movie') {
     }
 }
 
-// --- FUNCIÓN FINAL: Llama directamente a la API de TMDb ---
 async function fetchFromTMDB(endpoint, query = '') {
     const API_KEY = "5eb8461b85d0d88c46d77cfe5436291f";
     const BASE_URL = 'https://api.themoviedb.org/3/';
@@ -456,26 +459,22 @@ function createBannerItem(movie) {
 
     let buttonHtml = '';
     if (hasEmbedCode) {
-        buttonHtml = `<button class="banner-button red"><i class="fas fa-play"></i></button>`; // Eliminado el texto "Ver ahora"
+        const buttonText = isPremium ? '<i class="fas fa-play"></i> Ver ahora (Versión PRO)' : '<i class="fas fa-play"></i> Ver ahora';
+        buttonHtml = `<button class="banner-button red">${buttonText}</button>`;
     }
 
     bannerItem.innerHTML = `
         <div class="banner-buttons-container">
             ${buttonHtml}
+            ${isPremium ? `<span class="pro-badge">PRO</span>` : ''}
         </div>
     `;
-    
+
     const playButton = bannerItem.querySelector('.red');
     if (playButton) {
         playButton.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (currentUser && currentUser.isPro) {
-                // Si es PRO, reproduce directamente.
-                playEmbeddedVideo(localMovie.proEmbedCode, isPremium, currentUser);
-            } else {
-                // Si no es PRO, muestra el modal de publicidad.
-                showFreeAdModal(localMovie.freeEmbedCode);
-            }
+            showDetailsScreen(movie, movie.media_type || 'movie');
         });
     }
 
@@ -500,9 +499,32 @@ function renderGrid(container, movies, type = 'movie') {
     });
 }
 
+async function fetchHistory() {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        historySection.style.display = 'none';
+        return;
+    }
+    try {
+        const q = query(collection(db, "history"), where("userId", "==", auth.currentUser.uid), orderBy("timestamp", "desc"), limit(10));
+        const querySnapshot = await getDocs(q);
+        const history = querySnapshot.docs.map(doc => doc.data());
+        if (history.length > 0) {
+            historySection.style.display = 'block';
+            renderCarousel('history-list', history, 'movie');
+        } else {
+            historySection.style.display = 'none';
+        }
+    } catch (e) {
+        console.error("Error al obtener el historial: ", e);
+        historySection.style.display = 'none';
+    }
+}
+
 async function fetchHomeContent() {
     showLoader();
     try {
+        await fetchHistory();
+
         const popularMovies = await fetchFromTMDB('movie/popular');
         renderCarousel('populares-movies', popularMovies, 'movie');
 
@@ -521,7 +543,7 @@ async function fetchHomeContent() {
         const documentalesMovies = await fetchFromTMDB('discover/movie?with_genres=99');
         renderCarousel('documentales-movies', documentalesMovies, 'movie');
 
-        const scifiMovies = await fetchFromTMDB('discover/movie?with_genres=878');
+        const scifiMovies = await fetchFromTMDB('discover/movie?with-genres=878');
         renderCarousel('scifi-movies', scifiMovies, 'movie');
 
         const popularSeries = await fetchFromTMDB('tv/popular');
@@ -545,7 +567,6 @@ function renderBannerCarousel() {
     startBannerAutoScroll();
 }
 
-// Lógica para pausar y reanudar el scroll automático del carrusel
 function stopBannerAutoScroll() {
     clearInterval(bannerInterval);
 }
@@ -610,8 +631,7 @@ function renderGenresModal(type) {
     }
 }
 
-// --- Search Logic ---
-searchIconTop.addEventListener('click', () => {
+searchInput.addEventListener('click', () => {
     const query = searchInput.value;
     if (query.length > 2) {
         handleSearch(query);
@@ -652,7 +672,6 @@ async function handleSearch(query) {
     }
 }
 
-// --- Navegación (MODIFICADO) ---
 function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
@@ -674,7 +693,6 @@ function switchScreen(screenId) {
         fetchFavorites();
     }
     
-    // Ocultar barras de navegación para pantallas de detalles y autenticación
     if (screenId === 'details-screen' || screenId === 'auth-screen') {
         document.querySelector('.top-nav').style.display = 'none';
         document.querySelector('.bottom-nav').style.display = 'none';
@@ -685,7 +703,6 @@ function switchScreen(screenId) {
         appContainer.style.paddingBottom = '70px';
     }
 }
-// Manejo de historial para el botón de retroceso
 window.addEventListener('popstate', () => {
     switchScreen(window.location.hash.substring(1) || 'home-screen');
 });
@@ -700,7 +717,6 @@ document.querySelectorAll('.nav-item, .profile-button[data-screen]').forEach(ite
         }
     });
 });
-// Funcionalidad del botón de retroceso de la pantalla de autenticación
 authBackButton.addEventListener('click', (e) => {
     e.preventDefault();
     if (previousScreen) {
@@ -770,7 +786,6 @@ async function renderAllSeries() {
     }
 }
 
-// --- Funcionalidad de Favoritos (NUEVO) ---
 async function addToFavorites(movie) {
     if (!auth.currentUser || auth.currentUser.isAnonymous) {
         switchScreen('auth-screen');
@@ -810,18 +825,16 @@ async function fetchFavorites() {
     }
 }
 
-// --- Funcionalidad de Anuncios (Simulada) ---
 async function playAd() {
     return new Promise((resolve) => {
         console.log("Simulating ad playback...");
         alert('Anuncio: El video comenzará en breve.');
         setTimeout(() => {
             resolve();
-        }, 5000); // Ad duration
+        }, 5000);
     });
 }
 
-// --- Funcionalidad de Solicitud de Películas (NUEVO) ---
 submitRequestButton.addEventListener('click', async (e) => {
     e.preventDefault();
     if (!auth.currentUser || auth.currentUser.isAnonymous) {
@@ -851,8 +864,6 @@ submitRequestButton.addEventListener('click', async (e) => {
     }
 });
 
-// --- Lógica de Autenticación y Perfil (MEJORADO) ---
-// Toggle password visibility
 const passwordToggles = document.querySelectorAll('.password-toggle');
 passwordToggles.forEach(toggle => {
     toggle.addEventListener('click', () => {
@@ -935,7 +946,6 @@ profileHelpCenter.addEventListener('click', (e) => {
     switchScreen('help-screen');
 });
 
-// Email/Password and Social Authentication
 showSignupLink.addEventListener('click', (e) => {
     e.preventDefault();
     loginForm.classList.remove('active-form');
@@ -998,7 +1008,6 @@ buyButtons.forEach(button => {
         }
 
         try {
-            // Llama a tu servidor de backend para procesar el pago con PayPal
             const response = await fetch('https://serivisios.onrender.com/create-paypal-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1008,10 +1017,8 @@ buyButtons.forEach(button => {
             const data = await response.json();
             
             if (response.ok && data.approval_url) {
-                // Si el pago se inicia correctamente, redirige al usuario a PayPal
                 window.location.href = data.approval_url;
             } else {
-                // Maneja el error si el backend no devuelve una URL de aprobación
                 alert('Error al iniciar el pago con PayPal. Verifica la configuración en tu servidor.');
             }
         } catch (error) {
@@ -1021,7 +1028,6 @@ buyButtons.forEach(button => {
     });
 });
 
-// Lógica para los nuevos botones de pago
 if (buyWithPaypalButton) {
     buyWithPaypalButton.addEventListener('click', () => {
         alert('Selecciona un plan antes de continuar con el pago.');
@@ -1044,7 +1050,6 @@ signoutButton.addEventListener('click', async () => {
     }
 });
 
-// --- Initialization ---
 let isInitialized = false;
 onAuthStateChanged(auth, async (user) => {
     currentUser = user;
@@ -1085,10 +1090,9 @@ onAuthStateChanged(auth, async (user) => {
         }
     }
 
-    // ✅ CORREGIDO: Lógica de inicialización para cargar el contenido una sola vez.
     if (!isInitialized) {
         isInitialized = true;
-        showLoader(); // Muestra el loader al iniciar
+        showLoader();
         const moviesColRef = collection(db, 'movies');
         onSnapshot(moviesColRef, (snapshot) => {
             moviesData = snapshot.docs.map(doc => ({
@@ -1110,4 +1114,3 @@ onAuthStateChanged(auth, async (user) => {
         await fetchAllGenres('tv');
     }
 });
-
