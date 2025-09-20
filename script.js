@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc, orderBy, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 // --- Configuración de Firebase ---
 const firebaseConfig = {
     apiKey: "AIzaSyCF5lyEIFkKhzgc4kOMebWZ7oZrxWDNw2Y",
@@ -30,6 +30,7 @@ const termsScreen = document.getElementById('terms-screen');
 const helpScreen = document.getElementById('help-screen');
 const settingsScreen = document.getElementById('settings-screen');
 const authScreen = document.getElementById('auth-screen');
+const historyScreen = document.getElementById('history-screen'); // Nuevo
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
 const screenButtons = document.querySelectorAll('[data-screen]');
 const searchInput = document.getElementById('search-input');
@@ -100,8 +101,10 @@ const seeMoreButtons = document.querySelectorAll('.see-more-btn');
 const proRestrictionModal = document.getElementById('pro-restriction-modal');
 const proModalCta = document.getElementById('pro-modal-cta');
 const proModalText = document.getElementById('pro-modal-text');
-const historyList = document.getElementById('history-list');
-const historySection = document.getElementById('history-section');
+const historyList = document.getElementById('history-grid'); // Cambiado para el nuevo id
+const historySection = document.getElementById('history-screen'); // Ahora es una pantalla completa
+const shareButton = document.getElementById('share-button');
+const favoriteButton = document.getElementById('favorite-button');
 
 
 let moviesData = [];
@@ -408,13 +411,53 @@ async function showDetailsScreen(item, type = 'movie') {
         }
 
         const related = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/similar` : `tv/${item.id}/similar`);
-        renderCarousel('related-movies', related, type);
+        renderGrid('related-movies', related, type); // Se usa renderGrid aquí
+
+        
+        // Agregar funcionalidad de compartir y favoritos
+        shareButton.onclick = () => shareItem(item, type);
+        favoriteButton.onclick = () => addToFavorites(item);
 
     } catch (error) {
         console.error("Error showing details:", error);
         alert('Hubo un error al cargar los detalles. Intenta de nuevo.');
     } finally {
         hideLoader();
+    }
+}
+function shareItem(item, type) {
+    const url = `${window.location.origin}/#details-screen_${type}_${item.id}`;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert("Enlace copiado al portapapeles. ¡Compártelo!");
+        }).catch(err => {
+            console.error('Error al copiar el enlace:', err);
+            alert("No se pudo copiar el enlace. Inténtalo manualmente: " + url);
+        });
+    } else {
+        alert("Tu navegador no soporta la copia automática. Copia este enlace: " + url);
+    }
+}
+
+async function handleSharedLink() {
+    const hash = window.location.hash.substring(1);
+    if (hash.startsWith('details-screen_')) {
+        const parts = hash.split('_');
+        const type = parts[1];
+        const tmdbId = parts[2];
+
+        showLoader();
+        try {
+            const endpoint = (type === 'movie') ? `movie/${tmdbId}` : `tv/${tmdbId}`;
+            const item = await fetchFromTMDB(endpoint);
+            showDetailsScreen(item, type);
+        } catch (error) {
+            console.error("Error loading shared link:", error);
+            alert("No se pudo cargar el contenido del enlace. Por favor, revisa la URL.");
+            switchScreen('home-screen');
+        } finally {
+            hideLoader();
+        }
     }
 }
 
@@ -521,7 +564,7 @@ function renderGrid(container, movies, type = 'movie') {
 
 async function fetchHistory() {
     if (!auth.currentUser || auth.currentUser.isAnonymous) {
-        historySection.style.display = 'none';
+        historyScreen.style.display = 'none';
         return;
     }
     try {
@@ -529,22 +572,21 @@ async function fetchHistory() {
         const querySnapshot = await getDocs(q);
         const history = querySnapshot.docs.map(doc => doc.data());
         if (history.length > 0) {
-            historySection.style.display = 'block';
-            renderCarousel('history-list', history, 'movie');
+            historyScreen.style.display = 'block';
+            renderGrid(historyList, history, 'movie'); // Se usa renderGrid aquí
         } else {
-            historySection.style.display = 'none';
+            historyScreen.style.display = 'none';
         }
     } catch (e) {
         console.error("Error al obtener el historial: ", e);
-        historySection.style.display = 'none';
+        historyScreen.style.display = 'none';
     }
 }
 
 async function fetchHomeContent() {
     showLoader();
     try {
-        await fetchHistory();
-
+        // Se elimina la llamada a fetchHistory() de aquí
         const popularMovies = await fetchFromTMDB('movie/popular');
         renderCarousel('populares-movies', popularMovies, 'movie');
 
@@ -563,7 +605,7 @@ async function fetchHomeContent() {
         const documentalesMovies = await fetchFromTMDB('discover/movie?with_genres=99');
         renderCarousel('documentales-movies', documentalesMovies, 'movie');
 
-        const scifiMovies = await fetchFromTMDB('discover/movie?with-genres=878');
+        const scifiMovies = await fetchFromTMDB('discover/movie?with_genres=878');
         renderCarousel('scifi-movies', scifiMovies, 'movie');
 
         const popularSeries = await fetchFromTMDB('tv/popular');
@@ -711,6 +753,8 @@ function switchScreen(screenId) {
         fetchHomeContent();
     } else if (screenId === 'favorites-screen') {
         fetchFavorites();
+    } else if (screenId === 'history-screen') { // Nuevo
+        fetchHistory();
     }
     
     if (screenId === 'details-screen' || screenId === 'auth-screen') {
@@ -722,10 +766,21 @@ function switchScreen(screenId) {
         document.querySelector('.bottom-nav').style.display = 'flex';
         appContainer.style.paddingBottom = '70px';
     }
+    
+    // Si la pantalla es de detalles, actualizamos la URL sin recargar
+    if (screenId === 'details-screen') {
+        const item = currentMovieOrSeries;
+        const type = item?.media_type || 'movie';
+        window.history.pushState(null, '', `#details-screen_${type}_${item.id}`);
+    } else {
+        window.history.pushState(null, '', `#${screenId}`);
+    }
 }
+
 window.addEventListener('popstate', () => {
-    switchScreen(window.location.hash.substring(1) || 'home-screen');
+    handleSharedLink();
 });
+
 document.querySelectorAll('.nav-item, .profile-button[data-screen]').forEach(item => {
     item.addEventListener('click', (e) => {
         e.preventDefault();
@@ -949,6 +1004,19 @@ profileMyList.addEventListener('click', (e) => {
         switchScreen('favorites-screen');
     }
 });
+// Nuevo botón para historial
+const profileHistoryButton = document.getElementById('history-button');
+if (profileHistoryButton) {
+    profileHistoryButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!currentUser || currentUser.isAnonymous) {
+            switchScreen('auth-screen');
+        } else {
+            switchScreen('history-screen');
+        }
+    });
+}
+
 profilePrivacy.addEventListener('click', (e) => {
     e.preventDefault();
     switchScreen('privacy-screen');
@@ -962,7 +1030,7 @@ profileSubscription.addEventListener('click', (e) => {
     showModal(paymentModal);
 });
 profileHelpCenter.addEventListener('click', (e) => {
-    e.preventDefault();
+        e.preventDefault();
     switchScreen('help-screen');
 });
 
@@ -1132,5 +1200,8 @@ onAuthStateChanged(auth, async (user) => {
         
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
+        
+        // Verificar si hay un enlace compartido al iniciar la app
+        handleSharedLink();
     }
 });
