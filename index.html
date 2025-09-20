@@ -24,6 +24,13 @@
             </section>
 
             <div id="carousels-container">
+                <section class="category-section" id="history-section" style="display:none;">
+                    <div class="category-header">
+                        <h2>Historial</h2>
+                        <a href="#" class="see-more-btn" data-endpoint="history" data-type="movie">Ver más</a>
+                    </div>
+                    <div id="history-list" class="movie-list horizontal-scroll"></div>
+                </section>
                 <section class="category-section">
                     <div class="category-header">
                         <h2>Populares</h2>
@@ -355,6 +362,17 @@
                 <button id="ver-pro-button" class="button secondary">Ver PRO (sin anuncios)</button>
             </div>
             <p class="modal-small-text">¡El plan PRO es muy accesible!</p>
+        </div>
+    </div>
+
+    <div id="pro-restriction-modal" class="modal-from-bottom">
+        <div class="modal-content">
+            <span class="close-button free-modal-close-button">&times;</span>
+            <h2 class="modal-title-ad">¡Esta película solo está disponible en la versión PRO!</h2>
+            <p class="modal-small-text" id="pro-modal-text">Los planes están desde $1,99 mensual.</p>
+            <div class="modal-buttons-ad">
+                <button id="pro-modal-cta" class="button red">Ver ahora PRO</button>
+            </div>
         </div>
     </div>
 
