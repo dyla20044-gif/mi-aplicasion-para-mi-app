@@ -170,10 +170,10 @@ body {
     position: relative;
     z-index: 10;
     display: flex;
-    gap: 10px;
+    flex-direction: column;
+    gap: 5px;
     margin-bottom: 10px;
 }
-
 .banner-button {
     background-color: rgba(255, 255, 255, 0.2);
     color: #ffffff;
@@ -184,19 +184,32 @@ body {
     cursor: pointer;
     backdrop-filter: blur(5px);
     transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
-
 .banner-button.red {
     background-color: rgba(229, 9, 20, 0.8);
     color: #ffffff;
     border: none;
 }
-
 .banner-button:hover {
     background-color: rgba(255, 255, 255, 0.4);
 }
 .banner-button.red:hover {
     background-color: rgba(255, 51, 51, 0.9);
+}
+
+.pro-badge {
+    color: #e50914;
+    font-weight: bold;
+    font-size: 0.9em;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid #e50914;
+    text-shadow: none;
 }
 
 .category-section {
