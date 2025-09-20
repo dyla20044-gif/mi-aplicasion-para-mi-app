@@ -113,6 +113,7 @@ let bannerInterval;
 let currentUser = null;
 let currentScreen = 'home-screen';
 let previousScreen = '';
+let currentMovieOrSeries = null;
 
 // --- Funciones para manejar Modales y Carga ---
 function closeModal(modal) {
@@ -158,7 +159,7 @@ function showFreeAdModal(freeEmbedCode) {
 function setupFreeAdModalButtons(freeEmbedCode) {
     verGratisButton.onclick = () => {
         closeModal(freeAdModal);
-        playEmbeddedVideo(freeEmbedCode, false, currentUser);
+        playEmbeddedVideo(freeEmbedCode, false, currentUser, currentMovieOrSeries);
     };
 
     verProButton.onclick = () => {
@@ -223,16 +224,29 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
         playButton.onclick = async () => {
             showLoader();
             try {
-                if (localMovie.isPremium && (!currentUser || !currentUser.isPro)) {
-                    showProRestrictionModal();
+                // Lógica de reproducción basada en si la película es PRO y si el usuario es PRO
+                if (localMovie.isPremium) {
+                    if (currentUser && currentUser.isPro) {
+                         // Usuario PRO ve película PRO
+                        const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=true`);
+                        const data = await response.json();
+                        if (data.embedCode) {
+                            playEmbeddedVideo(data.embedCode, true, currentUser, tmdbMovie);
+                        } else {
+                            alert('No se encontró un reproductor PRO para esta película.');
+                        }
+                    } else {
+                        // Usuario NO PRO intenta ver película PRO
+                        showProRestrictionModal();
+                    }
                 } else {
-                    const isPro = currentUser && currentUser.isPro;
-                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=${isPro}`);
+                     // Película NO PRO, se muestra el modal de publicidad
+                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=false`);
                     const data = await response.json();
                     if (data.embedCode) {
-                        playEmbeddedVideo(data.embedCode, localMovie.isPremium, currentUser, tmdbMovie);
+                        showFreeAdModal(data.embedCode);
                     } else {
-                        alert('No se encontró un reproductor para esta película.');
+                        alert('No se encontró un reproductor gratuito para esta película.');
                     }
                 }
             } catch (error) {
@@ -284,7 +298,11 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                             const data = await response.json();
                             
                             if (data.embedCode) {
-                                playEmbeddedVideo(data.embedCode, localSeries.isPremium, currentUser, episode);
+                                if (localSeries.isPremium) {
+                                    playEmbeddedVideo(data.embedCode, localSeries.isPremium, currentUser, episode);
+                                } else {
+                                    showFreeAdModal(data.embedCode);
+                                }
                             } else {
                                 alert('No se encontró un reproductor para este episodio.');
                             }
@@ -381,6 +399,8 @@ async function showDetailsScreen(item, type = 'movie') {
         
         const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id);
         
+        currentMovieOrSeries = localData;
+
         if (type === 'movie') {
             renderMoviePlayButtons(localData, item);
         } else if (type === 'tv') {
