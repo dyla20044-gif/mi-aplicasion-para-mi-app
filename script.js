@@ -403,7 +403,9 @@ async function showDetailsScreen(item, type = 'movie') {
         const actors = credits.cast.slice(0, 3).map(a => a.name).join(', ');
         actorsList.textContent = actors || 'No disponible';
         
-        const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id);
+        // ✅ CORRECCIÓN CLAVE: Se convierte el item.id a string para la comparación
+        // Esto resuelve el problema de la no visualización de los episodios
+        const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id.toString());
         
         currentMovieOrSeries = localData;
 
