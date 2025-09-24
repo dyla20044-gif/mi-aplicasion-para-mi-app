@@ -456,7 +456,7 @@ async function fetchFromTMDB(endpoint, query = '') {
     }
 }
 
-function createMovieCard(movie) {
+function createMovieCard(movie, type = 'movie') {
     const movieCard = document.createElement('div');
     movieCard.className = 'movie-card';
     const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://placehold.co/500x750?text=No+Poster';
@@ -473,7 +473,7 @@ function createMovieCard(movie) {
     `;
     
     // CORRECCIÓN CLAVE: Pasar el tipo de contenido dinámicamente
-    movieCard.addEventListener('click', () => showDetailsScreen(movie, movie.media_type));
+    movieCard.addEventListener('click', () => showDetailsScreen(movie, type || movie.media_type));
     return movieCard;
 }
 
@@ -512,20 +512,20 @@ function createBannerItem(movie) {
     return bannerItem;
 }
 
-function renderCarousel(containerId, movies) {
+function renderCarousel(containerId, movies, type = 'movie') {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
     movies.forEach(movie => {
-        container.appendChild(createMovieCard(movie));
+        container.appendChild(createMovieCard(movie, type));
     });
 }
 
-function renderGrid(container, movies) {
+function renderGrid(container, movies, type = 'movie') {
     if (!container) return;
     container.innerHTML = '';
     movies.forEach(movie => {
-        container.appendChild(createMovieCard(movie));
+        container.appendChild(createMovieCard(movie, type));
     });
 }
 
@@ -540,7 +540,7 @@ async function fetchHistory() {
         const history = querySnapshot.docs.map(doc => doc.data());
         if (history.length > 0) {
             historySection.style.display = 'block';
-            renderCarousel('history-list', history);
+            renderCarousel('history-list', history, 'movie');
         } else {
             historySection.style.display = 'none';
         }
@@ -556,28 +556,28 @@ async function fetchHomeContent() {
         await fetchHistory();
 
         const popularMovies = await fetchFromTMDB('movie/popular');
-        renderCarousel('populares-movies', popularMovies);
+        renderCarousel('populares-movies', popularMovies, 'movie');
 
         const trendingContent = await fetchFromTMDB('trending/all/day');
-        renderCarousel('tendencias-movies', trendingContent);
+        renderCarousel('tendencias-movies', trendingContent, 'movie');
 
         const actionMovies = await fetchFromTMDB('discover/movie?with_genres=28');
-        renderCarousel('accion-movies', actionMovies);
+        renderCarousel('accion-movies', actionMovies, 'movie');
 
         const terrorMovies = await fetchFromTMDB('discover/movie?with_genres=27,9648');
-        renderCarousel('terror-movies', terrorMovies);
+        renderCarousel('terror-movies', terrorMovies, 'movie');
         
         const animacionMovies = await fetchFromTMDB('discover/movie?with_genres=16');
-        renderCarousel('animacion-movies', animacionMovies);
+        renderCarousel('animacion-movies', animacionMovies, 'movie');
 
         const documentalesMovies = await fetchFromTMDB('discover/movie?with_genres=99');
-        renderCarousel('documentales-movies', documentalesMovies);
+        renderCarousel('documentales-movies', documentalesMovies, 'movie');
 
         const scifiMovies = await fetchFromTMDB('discover/movie?with-genres=878');
-        renderCarousel('scifi-movies', scifiMovies);
+        renderCarousel('scifi-movies', scifiMovies, 'movie');
 
         const popularSeries = await fetchFromTMDB('tv/popular');
-        renderCarousel('populares-series', popularSeries);
+        renderCarousel('populares-series', popularSeries, 'tv');
         
         bannerMovies = trendingContent.filter(m => m.backdrop_path);
         renderBannerCarousel();
@@ -657,7 +657,7 @@ function renderGenresModal(type) {
         genreButton.textContent = currentGenres[id];
         genreButton.onclick = () => {
             fetchFromTMDB(`discover/${type}?with_genres=${id}`).then(items => {
-                renderGrid(type === 'movie' ? allMoviesGrid : allSeriesGrid, items);
+                renderGrid(type === 'movie' ? allMoviesGrid : allSeriesGrid, items, type);
                 document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
                 if (type === 'movie') moviesScreen.classList.add('active');
                 else seriesScreen.classList.add('active');
@@ -699,7 +699,7 @@ async function handleSearch(query) {
             const filteredResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
             
             // CORRECCIÓN CLAVE: Renderizar todos los resultados en una sola cuadrícula
-            renderGrid(allMoviesGrid, filteredResults);
+            renderGrid(allMoviesGrid, filteredResults, 'movie');
 
             // Asegurarse de que la pantalla de películas esté activa
             document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
@@ -782,10 +782,10 @@ seeMoreButtons.forEach(button => {
         try {
             const items = await fetchFromTMDB(endpoint);
             if (type === 'movie') {
-                renderGrid(allMoviesGrid, items);
+                renderGrid(allMoviesGrid, items, 'movie');
                 switchScreen('movies-screen');
             } else {
-                renderGrid(allSeriesGrid, items);
+                renderGrid(allSeriesGrid, items, 'tv');
                 switchScreen('series-screen');
             }
         } catch (error) {
@@ -810,7 +810,7 @@ async function renderAllMovies() {
     showLoader();
     try {
         const movies = await fetchFromTMDB('discover/movie?sort_by=popularity.desc');
-        renderGrid(allMoviesGrid, movies);
+        renderGrid(allMoviesGrid, movies, 'movie');
     } catch (error) {
         console.error("Error rendering all movies:", error);
         alert('No se pudieron cargar las películas. Intenta de nuevo.');
@@ -823,7 +823,7 @@ async function renderAllSeries() {
     showLoader();
     try {
         const series = await fetchFromTMDB('discover/tv?sort_by=popularity.desc');
-        renderGrid(allSeriesGrid, series);
+        renderGrid(allSeriesGrid, series, 'tv');
     } catch (error) {
         console.error("Error rendering all series:", error);
         alert('No se pudieron cargar las series. Intenta de nuevo.');
@@ -862,7 +862,7 @@ async function fetchFavorites() {
         const q = query(collection(db, "favorites"), where("userId", "==", auth.currentUser.uid));
         const querySnapshot = await getDocs(q);
         const favorites = querySnapshot.docs.map(doc => doc.data());
-        renderGrid(favoritesGrid, favorites);
+        renderGrid(favoritesGrid, favorites, 'movie');
     } catch (e) {
         console.error("Error fetching favorites: ", e);
         alert('No se pudieron cargar los favoritos.');
