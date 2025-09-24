@@ -114,8 +114,6 @@ let allTvGenres = {};
 let bannerInterval;
 let resumeAutoScrollTimeout;
 let currentUser = null;
-let currentScreen = 'home-screen';
-let previousScreen = '';
 let currentMovieOrSeries = null;
 let lastSearchResults = [];
 
@@ -479,7 +477,11 @@ function createMovieCard(movie, type = 'movie') {
     `;
     
     // CORRECCIÓN CLAVE: Pasar el tipo de contenido dinámicamente
-    movieCard.addEventListener('click', () => showDetailsScreen(movie, type || movie.media_type));
+    movieCard.addEventListener('click', () => {
+        // Guardar el estado actual antes de navegar a los detalles
+        history.pushState({ screen: 'details-screen', item: movie, type: type || movie.media_type }, '', '');
+        showDetailsScreen(movie, type || movie.media_type)
+    });
     return movieCard;
 }
 
@@ -510,11 +512,15 @@ function createBannerItem(movie) {
     if (playButton) {
         playButton.addEventListener('click', (e) => {
             e.stopPropagation();
+            history.pushState({ screen: 'details-screen', item: movie, type: movie.media_type || 'movie' }, '', '');
             showDetailsScreen(movie, movie.media_type || 'movie');
         });
     }
 
-    bannerItem.addEventListener('click', () => showDetailsScreen(movie, movie.media_type || 'movie'));
+    bannerItem.addEventListener('click', () => {
+        history.pushState({ screen: 'details-screen', item: movie, type: movie.media_type || 'movie' }, '', '');
+        showDetailsScreen(movie, movie.media_type || 'movie')
+    });
     return bannerItem;
 }
 
@@ -761,6 +767,7 @@ function switchScreen(screenId) {
         targetScreen.classList.add('active');
         const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
         if (navItem) navItem.classList.add('active');
+        history.pushState({ screen: screenId }, '', `?screen=${screenId}`);
     }
 
     if (screenId === 'movies-screen') {
@@ -787,27 +794,68 @@ function switchScreen(screenId) {
         appContainer.style.paddingBottom = '70px';
     }
 }
-window.addEventListener('popstate', () => {
-    switchScreen(window.location.hash.substring(1) || 'home-screen');
+window.addEventListener('popstate', async (event) => {
+    const state = event.state;
+    if (state) {
+        if (state.screen === 'details-screen') {
+            const item = state.item;
+            const type = state.type;
+            if (item && type) {
+                showDetailsScreen(item, type);
+            } else {
+                switchScreen('home-screen');
+            }
+        } else {
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            const targetScreen = document.getElementById(state.screen);
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+                const navItem = document.querySelector(`.nav-item[data-screen="${state.screen}"]`);
+                if (navItem) navItem.classList.add('active');
+                if (state.screen === 'movies-screen') {
+                    renderAllMovies();
+                    searchFilters.style.display = 'none';
+                } else if (state.screen === 'series-screen') {
+                    renderAllSeries();
+                    searchFilters.style.display = 'none';
+                } else if (state.screen === 'home-screen') {
+                    fetchHomeContent();
+                    searchFilters.style.display = 'none';
+                } else if (state.screen === 'favorites-screen') {
+                    fetchFavorites();
+                    searchFilters.style.display = 'none';
+                }
+                if (state.screen === 'details-screen' || state.screen === 'auth-screen') {
+                    document.querySelector('.top-nav').style.display = 'none';
+                    document.querySelector('.bottom-nav').style.display = 'none';
+                    appContainer.style.paddingBottom = '0';
+                } else {
+                    document.querySelector('.top-nav').style.display = 'flex';
+                    document.querySelector('.bottom-nav').style.display = 'flex';
+                    appContainer.style.paddingBottom = '70px';
+                }
+            } else {
+                switchScreen('home-screen');
+            }
+        }
+    } else {
+        // Si no hay estado, por defecto ir a la pantalla de inicio
+        switchScreen('home-screen');
+    }
 });
 document.querySelectorAll('.nav-item, .profile-button[data-screen]').forEach(item => {
     item.addEventListener('click', (e) => {
         e.preventDefault();
         const targetScreenId = e.currentTarget.getAttribute('data-screen');
         if (targetScreenId) {
-            previousScreen = currentScreen;
-            currentScreen = targetScreenId;
             switchScreen(targetScreenId);
         }
     });
 });
 authBackButton.addEventListener('click', (e) => {
     e.preventDefault();
-    if (previousScreen) {
-        switchScreen(previousScreen);
-    } else {
-        switchScreen('home-screen');
-    }
+    history.back();
 });
 
 seeMoreButtons.forEach(button => {
@@ -1196,5 +1244,6 @@ onAuthStateChanged(auth, async (user) => {
         
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
+        switchScreen('home-screen');
     }
 });
