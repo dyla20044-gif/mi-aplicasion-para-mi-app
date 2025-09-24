@@ -102,6 +102,8 @@ const proModalCta = document.getElementById('pro-modal-cta');
 const proModalText = document.getElementById('pro-modal-text');
 const historyList = document.getElementById('history-list');
 const historySection = document.getElementById('history-section');
+const searchFilters = document.getElementById('search-filters');
+const filterButtons = document.querySelectorAll('.filter-button');
 
 
 let moviesData = [];
@@ -115,6 +117,7 @@ let currentUser = null;
 let currentScreen = 'home-screen';
 let previousScreen = '';
 let currentMovieOrSeries = null;
+let lastSearchResults = [];
 
 // --- Funciones para manejar Modales y Carga ---
 function closeModal(modal) {
@@ -466,9 +469,12 @@ function createMovieCard(movie, type = 'movie') {
     if (isPopular) {
         badgeHtml = `<div class="badge">TOP</div>`;
     }
+
+    const mediaTypeLabel = movie.media_type ? `<div class="media-type-label">${movie.media_type === 'movie' ? 'Película' : 'Serie'}</div>` : '';
     
     movieCard.innerHTML = `
         ${badgeHtml}
+        ${mediaTypeLabel}
         <img src="${posterUrl}" alt="${movie.title || movie.name}" class="movie-poster">
     `;
     
@@ -691,32 +697,69 @@ searchInput.addEventListener('input', (e) => {
     }
 });
 
+function renderSearchResults(results, filterType = 'all') {
+    allMoviesGrid.innerHTML = '';
+    allSeriesGrid.innerHTML = '';
+
+    const filteredResults = results.filter(item => {
+        if (filterType === 'all') {
+            return true;
+        }
+        return item.media_type === filterType;
+    });
+
+    const moviesGridTitle = document.createElement('h2');
+    moviesGridTitle.textContent = 'Resultados de Búsqueda';
+    
+    // Check if the search is active and not on the home screen
+    if(moviesScreen.classList.contains('active')) {
+        allMoviesGrid.insertAdjacentElement('beforebegin', moviesGridTitle);
+    }
+
+    filteredResults.forEach(item => {
+        if (item.media_type === 'movie' || item.media_type === 'tv') {
+            const card = createMovieCard(item, item.media_type);
+            allMoviesGrid.appendChild(card);
+        }
+    });
+
+    if (filteredResults.length === 0) {
+        allMoviesGrid.innerHTML = '<p>No se encontraron resultados.</p>';
+    }
+}
+
+
 async function handleSearch(query) {
     if (query.length > 2) {
         showLoader();
         try {
             const searchResults = await fetchFromTMDB('search/multi', query);
-            const filteredResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
+            lastSearchResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
             
-            // CORRECCIÓN CLAVE: Renderizar todos los resultados en una sola cuadrícula
-            renderGrid(allMoviesGrid, filteredResults);
+            renderSearchResults(lastSearchResults);
 
-            // Asegurarse de que la pantalla de películas esté activa
-            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
-            moviesScreen.classList.add('active');
-
-            // Limpiar la cuadrícula de series si existiera
-            allSeriesGrid.innerHTML = '';
-
+            switchScreen('movies-screen');
+            searchFilters.style.display = 'flex';
         } catch (error) {
             console.error("Error performing search:", error);
             alert('Hubo un error en la búsqueda. Por favor, intenta de nuevo.');
         } finally {
             hideLoader();
         }
+    } else if (query.length === 0) {
+        searchFilters.style.display = 'none';
+        switchScreen('home-screen');
     }
 }
 
+filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        const filterType = button.getAttribute('data-filter');
+        renderSearchResults(lastSearchResults, filterType);
+    });
+});
 
 function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
@@ -731,12 +774,16 @@ function switchScreen(screenId) {
 
     if (screenId === 'movies-screen') {
         renderAllMovies();
+        searchFilters.style.display = 'none';
     } else if (screenId === 'series-screen') {
         renderAllSeries();
+        searchFilters.style.display = 'none';
     } else if (screenId === 'home-screen') {
         fetchHomeContent();
+        searchFilters.style.display = 'none';
     } else if (screenId === 'favorites-screen') {
         fetchFavorites();
+        searchFilters.style.display = 'none';
     }
     
     if (screenId === 'details-screen' || screenId === 'auth-screen') {
