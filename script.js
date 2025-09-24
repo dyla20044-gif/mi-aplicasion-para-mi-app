@@ -667,75 +667,47 @@ function renderGenresModal(type) {
         genresList.appendChild(genreButton);
     }
 }
-// --- CORRECCIÓN CLAVE: Lógica de búsqueda adaptativa según la pantalla ---
+
 searchInput.addEventListener('click', () => {
     const query = searchInput.value;
     if (query.length > 2) {
-        let searchType = 'multi';
-        if (currentScreen === 'movies-screen') {
-            searchType = 'movie';
-        } else if (currentScreen === 'series-screen') {
-            searchType = 'tv';
-        }
-        handleSearch(query, searchType);
+        handleSearch(query);
     }
 });
 
 searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
-        const query = searchInput.value;
-        let searchType = 'multi';
-        if (currentScreen === 'movies-screen') {
-            searchType = 'movie';
-        } else if (currentScreen === 'series-screen') {
-            searchType = 'tv';
-        }
-        handleSearch(query, searchType);
+        handleSearch(searchInput.value);
     }
 });
 
 searchInput.addEventListener('input', (e) => {
     const query = e.target.value;
     if (query.length > 2) {
-        let searchType = 'multi';
-        if (currentScreen === 'movies-screen') {
-            searchType = 'movie';
-        } else if (currentScreen === 'series-screen') {
-            searchType = 'tv';
-        }
-        handleSearch(query, searchType);
+        handleSearch(query);
     } else if (query.length === 0) {
-        // Vuelve a la pantalla principal si el buscador se vacía
         document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
         homeScreen.classList.add('active');
     }
 });
 
-async function handleSearch(query, searchType = 'multi') {
+async function handleSearch(query) {
     if (query.length > 2) {
         showLoader();
         try {
-            let searchResults;
-            if (searchType === 'movie') {
-                searchResults = await fetchFromTMDB('search/movie', query);
-                // Asegura que solo se muestren películas en la cuadrícula de películas
-                renderGrid(allMoviesGrid, searchResults, 'movie');
-                allSeriesGrid.innerHTML = '';
-                switchScreen('movies-screen');
-            } else if (searchType === 'tv') {
-                searchResults = await fetchFromTMDB('search/tv', query);
-                // Asegura que solo se muestren series en la cuadrícula de series
-                renderGrid(allSeriesGrid, searchResults, 'tv');
-                allMoviesGrid.innerHTML = '';
-                switchScreen('series-screen');
-            } else { // 'multi'
-                const allResults = await fetchFromTMDB('search/multi', query);
-                const filteredResults = allResults.filter(item => item.media_type !== 'person');
-                // En la búsqueda universal, todos los resultados van a la cuadrícula de películas
-                renderGrid(allMoviesGrid, filteredResults, 'movie');
-                allSeriesGrid.innerHTML = '';
-                switchScreen('movies-screen');
-            }
+            const searchResults = await fetchFromTMDB('search/multi', query);
+            const filteredResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
+            
+            // CORRECCIÓN CLAVE: Renderizar todos los resultados en una sola cuadrícula
+            renderGrid(allMoviesGrid, filteredResults);
+
+            // Asegurarse de que la pantalla de películas esté activa
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+            moviesScreen.classList.add('active');
+
+            // Limpiar la cuadrícula de series si existiera
+            allSeriesGrid.innerHTML = '';
+
         } catch (error) {
             console.error("Error performing search:", error);
             alert('Hubo un error en la búsqueda. Por favor, intenta de nuevo.');
@@ -744,7 +716,6 @@ async function handleSearch(query, searchType = 'multi') {
         }
     }
 }
-// --- Fin de la Corrección Clave ---
 
 
 function switchScreen(screenId) {
@@ -757,9 +728,6 @@ function switchScreen(screenId) {
         const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
         if (navItem) navItem.classList.add('active');
     }
-
-    // Actualiza la variable global para el buscador
-    currentScreen = screenId;
 
     if (screenId === 'movies-screen') {
         renderAllMovies();
