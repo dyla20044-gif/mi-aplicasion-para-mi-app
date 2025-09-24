@@ -351,6 +351,14 @@ body {
     display: block;
 }
 
+.details-header-section {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 50;
+}
+
 #details-poster-top {
     width: 100%;
     height: 300px;
@@ -407,6 +415,12 @@ body {
 
 .play-button:hover {
     background-color: rgba(255, 255, 255, 0.4);
+}
+
+.details-content-scrollable {
+    overflow-y: auto;
+    flex-grow: 1;
+    padding-top: 300px;
 }
 
 .details-info-section {
