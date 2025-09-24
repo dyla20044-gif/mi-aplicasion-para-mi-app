@@ -697,9 +697,23 @@ async function handleSearch(query) {
         try {
             const searchResults = await fetchFromTMDB('search/multi', query);
             const filteredResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
-            renderGrid(allMoviesGrid, filteredResults, 'movie');
-            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
-            moviesScreen.classList.add('active');
+            
+            // CORRECCIÓN CLAVE: Pasar el tipo de contenido dinámicamente a renderGrid
+            const movies = filteredResults.filter(item => item.media_type === 'movie');
+            const series = filteredResults.filter(item => item.media_type === 'tv');
+
+            if(movies.length > 0) {
+                renderGrid(allMoviesGrid, movies, 'movie');
+            }
+            if(series.length > 0) {
+                renderGrid(allSeriesGrid, series, 'tv');
+            }
+
+            // Aquí puedes decidir qué pantalla mostrar, por ejemplo, la de películas si hay resultados
+            if(filteredResults.length > 0) {
+                document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+                moviesScreen.classList.add('active');
+            }
         } catch (error) {
             console.error("Error performing search:", error);
             alert('Hubo un error en la búsqueda. Por favor, intenta de nuevo.');
@@ -708,6 +722,7 @@ async function handleSearch(query) {
         }
     }
 }
+
 
 function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
