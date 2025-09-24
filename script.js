@@ -110,6 +110,7 @@ let bannerMovies = [];
 let allMovieGenres = {};
 let allTvGenres = {};
 let bannerInterval;
+let resumeAutoScrollTimeout;
 let currentUser = null;
 let currentScreen = 'home-screen';
 let previousScreen = '';
@@ -471,7 +472,8 @@ function createMovieCard(movie, type = 'movie') {
         <img src="${posterUrl}" alt="${movie.title || movie.name}" class="movie-poster">
     `;
     
-    movieCard.addEventListener('click', () => showDetailsScreen(movie, type));
+    // CORRECCIÓN CLAVE: Pasar el tipo de contenido dinámicamente
+    movieCard.addEventListener('click', () => showDetailsScreen(movie, type || movie.media_type));
     return movieCard;
 }
 
@@ -597,6 +599,9 @@ function renderBannerCarousel() {
 
 function stopBannerAutoScroll() {
     clearInterval(bannerInterval);
+    if (resumeAutoScrollTimeout) {
+        clearTimeout(resumeAutoScrollTimeout);
+    }
 }
 
 function startBannerAutoScroll() {
@@ -616,11 +621,15 @@ function startBannerAutoScroll() {
     }, 3000);
 }
 
+// CORRECCIÓN CLAVE: Manejar la pausa y reanudación del carrusel.
 bannerList.addEventListener('mousedown', stopBannerAutoScroll);
-bannerList.addEventListener('mouseup', startBannerAutoScroll);
+bannerList.addEventListener('mouseup', () => {
+    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); // 10 segundos
+});
 bannerList.addEventListener('touchstart', stopBannerAutoScroll);
-bannerList.addEventListener('touchend', startBannerAutoScroll);
-
+bannerList.addEventListener('touchend', () => {
+    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); // 10 segundos
+});
 
 async function fetchAllGenres(type = 'movie') {
     try {
