@@ -270,68 +270,83 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
         renderRequestButton(tmdbMovie);
     }
 }
+
 async function renderSeriesButtons(localSeries, tmdbSeries) {
-    playButtonContainer.innerHTML = '';
-    seasonsContainer.style.display = 'block';
-    seasonsContainer.innerHTML = '<h3>Temporadas</h3>';
-    
-    const seriesDetails = await fetchFromTMDB(`tv/${tmdbSeries.id}`);
-    
-    seriesDetails.seasons.forEach(season => {
-        const seasonButton = document.createElement('button');
-        seasonButton.className = 'season-button';
-        seasonButton.textContent = `Temporada ${season.season_number}`;
-        seasonButton.onclick = async () => {
-            episodesContainer.innerHTML = '<h3>Episodios</h3><div class="episodes-grid"></div>';
-            const episodesGrid = episodesContainer.querySelector('.episodes-grid');
-            const seasonDetails = await fetchFromTMDB(`tv/${tmdbSeries.id}/season/${season.season_number}`);
-            
-            seasonDetails.episodes.forEach(episode => {
-                const episodeButton = document.createElement('button');
-                episodeButton.className = 'episode-button';
-                episodeButton.textContent = `E${episode.episode_number}`;
+    try {
+        playButtonContainer.innerHTML = '';
+        seasonsContainer.style.display = 'block';
+        seasonsContainer.innerHTML = '<h3>Temporadas</h3>';
+        
+        const seriesDetails = await fetchFromTMDB(`tv/${tmdbSeries.id}`);
+        
+        if (!seriesDetails || !seriesDetails.seasons) {
+             throw new Error("No seasons data available for this series.");
+        }
+        
+        seriesDetails.seasons.forEach(season => {
+            const seasonButton = document.createElement('button');
+            seasonButton.className = 'season-button';
+            seasonButton.textContent = `Temporada ${season.season_number}`;
+            seasonButton.onclick = async () => {
+                episodesContainer.innerHTML = '<h3>Episodios</h3><div class="episodes-grid"></div>';
+                const episodesGrid = episodesContainer.querySelector('.episodes-grid');
+                const seasonDetails = await fetchFromTMDB(`tv/${tmdbSeries.id}/season/${season.season_number}`);
                 
-                const localEpisode = localSeries?.seasons?.[season.season_number]?.episodes?.[episode.episode_number];
-                
-                if (localEpisode && (localEpisode.freeEmbedCode || localEpisode.proEmbedCode)) {
-                     episodeButton.onclick = async () => {
-                        showLoader();
-                        try {
-                            const isProUser = currentUser && currentUser.isPro;
-                            const hasProPlayer = !!localEpisode.proEmbedCode;
-                            const hasFreePlayer = !!localEpisode.freeEmbedCode;
-                            
-                            if (isProUser && hasProPlayer) {
-                                const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localSeries.tmdbId}&season=${season.season_number}&episode=${episode.episode_number}&isPro=true`);
-                                const data = await response.json();
-                                if (data.embedCode) {
-                                    playEmbeddedVideo(data.embedCode, true, currentUser, episode);
-                                } else {
-                                    alert('No se encontró un reproductor PRO para este episodio.');
-                                }
-                            } else if (hasFreePlayer) {
-                                showFreeAdModal(localEpisode.freeEmbedCode);
-                            } else {
-                                showProRestrictionModal();
-                            }
-                        } catch(error) {
-                            console.error('Error al obtener el código del reproductor:', error);
-                            alert('Hubo un error al cargar el reproductor. Intenta de nuevo.');
-                        } finally {
-                            hideLoader();
-                        }
-                     };
-                } else {
-                    episodeButton.disabled = true;
-                    episodeButton.textContent = `E${episode.episode_number} (Próximamente)`;
-                    episodeButton.style.backgroundColor = '#333';
-                    episodeButton.style.cursor = 'not-allowed';
+                if (!seasonDetails || !seasonDetails.episodes) {
+                    throw new Error("No episodes data available for this season.");
                 }
-                episodesGrid.appendChild(episodeButton);
-            });
-        };
-        seasonsContainer.appendChild(seasonButton);
-    });
+
+                seasonDetails.episodes.forEach(episode => {
+                    const episodeButton = document.createElement('button');
+                    episodeButton.className = 'episode-button';
+                    episodeButton.textContent = `E${episode.episode_number}`;
+                    
+                    const localEpisode = localSeries?.seasons?.[season.season_number]?.episodes?.[episode.episode_number];
+                    
+                    if (localEpisode && (localEpisode.freeEmbedCode || localEpisode.proEmbedCode)) {
+                         episodeButton.onclick = async () => {
+                            showLoader();
+                            try {
+                                const isProUser = currentUser && currentUser.isPro;
+                                const hasProPlayer = !!localEpisode.proEmbedCode;
+                                const hasFreePlayer = !!localEpisode.freeEmbedCode;
+                                
+                                if (isProUser && hasProPlayer) {
+                                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localSeries.tmdbId}&season=${season.season_number}&episode=${episode.episode_number}&isPro=true`);
+                                    const data = await response.json();
+                                    if (data.embedCode) {
+                                        playEmbeddedVideo(data.embedCode, true, currentUser, episode);
+                                    } else {
+                                        alert('No se encontró un reproductor PRO para este episodio.');
+                                    }
+                                } else if (hasFreePlayer) {
+                                    showFreeAdModal(localEpisode.freeEmbedCode);
+                                } else {
+                                    showProRestrictionModal();
+                                }
+                            } catch(error) {
+                                console.error('Error al obtener el código del reproductor:', error);
+                                alert('Hubo un error al cargar el reproductor. Intenta de nuevo.');
+                            } finally {
+                                hideLoader();
+                            }
+                         };
+                    } else {
+                        episodeButton.disabled = true;
+                        episodeButton.textContent = `E${episode.episode_number} (Próximamente)`;
+                        episodeButton.style.backgroundColor = '#333';
+                        episodeButton.style.cursor = 'not-allowed';
+                    }
+                    episodesGrid.appendChild(episodeButton);
+                });
+            };
+            seasonsContainer.appendChild(seasonButton);
+        });
+    } catch (error) {
+        console.error('Error al renderizar los botones de temporadas:', error);
+        seasonsContainer.innerHTML = '<p>No se encontraron temporadas para esta serie.</p>';
+        playButtonContainer.innerHTML = '<p>No se encontraron reproductores.</p>';
+    }
 }
 
 
@@ -411,20 +426,11 @@ async function showDetailsScreen(item, type) {
         
         currentMovieOrSeries = localData;
 
-        // ✅ INICIO DE CORRECCIÓN: Manejar errores al renderizar los botones y temporadas
-        try {
-            if (type === 'movie') {
-                renderMoviePlayButtons(localData, item);
-            } else if (type === 'tv') {
-                await renderSeriesButtons(localData, item);
-            }
-        } catch (renderError) {
-            console.error('Error al renderizar botones o temporadas:', renderError);
-            // No se muestra un alert, simplemente no se renderizan los botones
-            playButtonContainer.innerHTML = '';
-            seasonsContainer.innerHTML = '';
+        if (type === 'movie') {
+            renderMoviePlayButtons(localData, item);
+        } else if (type === 'tv') {
+            await renderSeriesButtons(localData, item);
         }
-        // ✅ FIN DE CORRECCIÓN
         
         const related = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/similar` : `tv/${item.id}/similar`);
         renderCarousel('related-movies', related, type);
