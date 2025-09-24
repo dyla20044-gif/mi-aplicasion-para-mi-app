@@ -370,7 +370,7 @@ function renderRequestButton(tmdbItem) {
     playButtonContainer.appendChild(requestButton);
 }
 
-async function showDetailsScreen(item, type = 'movie') {
+async function showDetailsScreen(item, type) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     detailsScreen.classList.add('active');
     appContainer.scrollTo({ top: 0, behavior: 'smooth' });
@@ -699,22 +699,13 @@ searchInput.addEventListener('input', (e) => {
 
 function renderSearchResults(results, filterType = 'all') {
     allMoviesGrid.innerHTML = '';
-    allSeriesGrid.innerHTML = '';
-
+    
     const filteredResults = results.filter(item => {
         if (filterType === 'all') {
             return true;
         }
         return item.media_type === filterType;
     });
-
-    const moviesGridTitle = document.createElement('h2');
-    moviesGridTitle.textContent = 'Resultados de Búsqueda';
-    
-    // Check if the search is active and not on the home screen
-    if(moviesScreen.classList.contains('active')) {
-        allMoviesGrid.insertAdjacentElement('beforebegin', moviesGridTitle);
-    }
 
     filteredResults.forEach(item => {
         if (item.media_type === 'movie' || item.media_type === 'tv') {
