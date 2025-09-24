@@ -219,41 +219,45 @@
 
 
         <div id="details-screen" class="screen">
-            <div id="details-poster-top">
-                <div id="embedded-player-container" style="display: none;"></div>
-                <div class="poster-overlay">
-                    <div id="details-play-button-container">
-                        <button id="details-play-button" class="play-button"><i class="fas fa-play"></i></button>
-                        <button id="request-movie-button" class="play-button" style="display: none;"><i class="fas fa-paper-plane"></i> Pedir ahora</button>
+            <div class="details-header-section">
+                <div id="details-poster-top">
+                    <div id="embedded-player-container" style="display: none;"></div>
+                    <div class="poster-overlay">
+                        <div id="details-play-button-container">
+                            <button id="details-play-button" class="play-button"><i class="fas fa-play"></i></button>
+                            <button id="request-movie-button" class="play-button" style="display: none;"><i class="fas fa-paper-plane"></i> Pedir ahora</button>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="details-info-section">
-                <div class="movie-header">
-                    <h2 id="details-title"></h2>
-                    <div class="movie-actions">
-                        <i id="share-button" class="fas fa-share-alt"></i>
-                        <i id="favorite-button" class="fas fa-heart"></i>
+            <div class="details-content-scrollable">
+                <div class="details-info-section">
+                    <div class="movie-header">
+                        <h2 id="details-title"></h2>
+                        <div class="movie-actions">
+                            <i id="share-button" class="fas fa-share-alt"></i>
+                            <i id="favorite-button" class="fas fa-heart"></i>
+                        </div>
                     </div>
-                </div>
-                <div class="movie-metadata">
-                    <span id="details-year"></span>
-                    <span id="details-genres"></span>
-                </div>
-                <p id="details-sinopsis"></p>
-                <button id="read-more-button" class="text-button">Ver más</button>
-                <div id="movie-cast-info" class="movie-cast">
-                    <p>Director: <span id="director-name"></span></p>
-                    <p>Actores: <span id="actors-list"></span></p>
-                </div>
-                
-                <div id="seasons-container" class="episode-select-container" style="display:none;"></div>
-                <div id="episodes-container"></div>
+                    <div class="movie-metadata">
+                        <span id="details-year"></span>
+                        <span id="details-genres"></span>
+                    </div>
+                    <p id="details-sinopsis"></p>
+                    <button id="read-more-button" class="text-button">Ver más</button>
+                    <div id="movie-cast-info" class="movie-cast">
+                        <p>Director: <span id="director-name"></span></p>
+                        <p>Actores: <span id="actors-list"></span></p>
+                    </div>
+                    
+                    <div id="seasons-container" class="episode-select-container" style="display:none;"></div>
+                    <div id="episodes-container"></div>
 
-                <section class="related-section">
-                    <h3>También podría gustarte</h3>
-                    <div id="related-movies" class="movie-list horizontal-scroll"></div>
-                </section>
+                    <section class="related-section">
+                        <h3>También podría gustarte</h3>
+                        <div id="related-movies" class="movie-list horizontal-scroll"></div>
+                    </section>
+                </div>
             </div>
         </div>
         
