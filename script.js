@@ -699,7 +699,7 @@ async function handleSearch(query) {
             const filteredResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
             
             // CORRECCIÓN CLAVE: Renderizar todos los resultados en una sola cuadrícula
-            renderGrid(allMoviesGrid, filteredResults, 'movie');
+            renderGrid(allMoviesGrid, filteredResults);
 
             // Asegurarse de que la pantalla de películas esté activa
             document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
