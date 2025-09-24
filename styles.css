@@ -1258,3 +1258,42 @@ body {
     text-decoration: none;
     margin-top: 10px;
 }
+
+.media-type-label {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    background-color: #e50914;
+    color: #fff;
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 10;
+}
+
+.filter-bar {
+    display: flex;
+    gap: 10px;
+    padding: 0 20px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    -ms-overflow-style: none; /* for Internet Explorer, Edge */
+    scrollbar-width: none; /* for Firefox */
+}
+.filter-bar::-webkit-scrollbar {
+    display: none; /* for Chrome, Safari, and Opera */
+}
+.filter-button {
+    background-color: #333;
+    color: #fff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.filter-button.active {
+    background-color: #e50914;
+    color: #fff;
+}
