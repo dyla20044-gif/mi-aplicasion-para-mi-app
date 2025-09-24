@@ -420,7 +420,7 @@ body {
 .details-content-scrollable {
     overflow-y: auto;
     flex-grow: 1;
-    padding-top: 220px;
+    padding-top: 150px;
 }
 
 .details-info-section {
