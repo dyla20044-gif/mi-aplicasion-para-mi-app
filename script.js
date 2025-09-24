@@ -456,7 +456,7 @@ async function fetchFromTMDB(endpoint, query = '') {
     }
 }
 
-function createMovieCard(movie, type = 'movie') {
+function createMovieCard(movie) {
     const movieCard = document.createElement('div');
     movieCard.className = 'movie-card';
     const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://placehold.co/500x750?text=No+Poster';
@@ -473,7 +473,7 @@ function createMovieCard(movie, type = 'movie') {
     `;
     
     // CORRECCIÓN CLAVE: Pasar el tipo de contenido dinámicamente
-    movieCard.addEventListener('click', () => showDetailsScreen(movie, type || movie.media_type));
+    movieCard.addEventListener('click', () => showDetailsScreen(movie, movie.media_type));
     return movieCard;
 }
 
@@ -521,11 +521,11 @@ function renderCarousel(containerId, movies, type = 'movie') {
     });
 }
 
-function renderGrid(container, movies, type = 'movie') {
+function renderGrid(container, movies) {
     if (!container) return;
     container.innerHTML = '';
     movies.forEach(movie => {
-        container.appendChild(createMovieCard(movie, type));
+        container.appendChild(createMovieCard(movie));
     });
 }
 
@@ -657,7 +657,7 @@ function renderGenresModal(type) {
         genreButton.textContent = currentGenres[id];
         genreButton.onclick = () => {
             fetchFromTMDB(`discover/${type}?with_genres=${id}`).then(items => {
-                renderGrid(type === 'movie' ? allMoviesGrid : allSeriesGrid, items, type);
+                renderGrid(type === 'movie' ? allMoviesGrid : allSeriesGrid, items);
                 document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
                 if (type === 'movie') moviesScreen.classList.add('active');
                 else seriesScreen.classList.add('active');
@@ -782,10 +782,10 @@ seeMoreButtons.forEach(button => {
         try {
             const items = await fetchFromTMDB(endpoint);
             if (type === 'movie') {
-                renderGrid(allMoviesGrid, items, 'movie');
+                renderGrid(allMoviesGrid, items);
                 switchScreen('movies-screen');
             } else {
-                renderGrid(allSeriesGrid, items, 'tv');
+                renderGrid(allSeriesGrid, items);
                 switchScreen('series-screen');
             }
         } catch (error) {
@@ -810,7 +810,7 @@ async function renderAllMovies() {
     showLoader();
     try {
         const movies = await fetchFromTMDB('discover/movie?sort_by=popularity.desc');
-        renderGrid(allMoviesGrid, movies, 'movie');
+        renderGrid(allMoviesGrid, movies);
     } catch (error) {
         console.error("Error rendering all movies:", error);
         alert('No se pudieron cargar las películas. Intenta de nuevo.');
@@ -823,7 +823,7 @@ async function renderAllSeries() {
     showLoader();
     try {
         const series = await fetchFromTMDB('discover/tv?sort_by=popularity.desc');
-        renderGrid(allSeriesGrid, series, 'tv');
+        renderGrid(allSeriesGrid, series);
     } catch (error) {
         console.error("Error rendering all series:", error);
         alert('No se pudieron cargar las series. Intenta de nuevo.');
@@ -862,7 +862,7 @@ async function fetchFavorites() {
         const q = query(collection(db, "favorites"), where("userId", "==", auth.currentUser.uid));
         const querySnapshot = await getDocs(q);
         const favorites = querySnapshot.docs.map(doc => doc.data());
-        renderGrid(favoritesGrid, favorites, 'movie');
+        renderGrid(favoritesGrid, favorites);
     } catch (e) {
         console.error("Error fetching favorites: ", e);
         alert('No se pudieron cargar los favoritos.');
