@@ -571,7 +571,8 @@ async function fetchHomeContent() {
         renderCarousel('populares-movies', popularMovies, 'movie');
 
         const trendingContent = await fetchFromTMDB('trending/all/day');
-        renderCarousel('tendencias-movies', trendingContent, 'movie');
+        // ✅ LINEA CORREGIDA
+        renderCarousel('tendencias-movies', trendingContent);
 
         const actionMovies = await fetchFromTMDB('discover/movie?with_genres=28');
         renderCarousel('accion-movies', actionMovies, 'movie');
