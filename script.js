@@ -411,12 +411,21 @@ async function showDetailsScreen(item, type) {
         
         currentMovieOrSeries = localData;
 
-        if (type === 'movie') {
-            renderMoviePlayButtons(localData, item);
-        } else if (type === 'tv') {
-            await renderSeriesButtons(localData, item);
+        // ✅ INICIO DE CORRECCIÓN: Manejar errores al renderizar los botones y temporadas
+        try {
+            if (type === 'movie') {
+                renderMoviePlayButtons(localData, item);
+            } else if (type === 'tv') {
+                await renderSeriesButtons(localData, item);
+            }
+        } catch (renderError) {
+            console.error('Error al renderizar botones o temporadas:', renderError);
+            // No se muestra un alert, simplemente no se renderizan los botones
+            playButtonContainer.innerHTML = '';
+            seasonsContainer.innerHTML = '';
         }
-
+        // ✅ FIN DE CORRECCIÓN
+        
         const related = await fetchFromTMDB(type === 'movie' ? `movie/${item.id}/similar` : `tv/${item.id}/similar`);
         renderCarousel('related-movies', related, type);
 
