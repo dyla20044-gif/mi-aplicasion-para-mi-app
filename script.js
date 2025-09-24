@@ -544,7 +544,7 @@ function renderCarousel(containerId, movies, type = 'movie') {
     if (!container) return;
     container.innerHTML = '';
     movies.forEach(movie => {
-        container.appendChild(createMovieCard(movie, movie.media_type));
+        container.appendChild(createMovieCard(movie, type));
     });
 }
 
