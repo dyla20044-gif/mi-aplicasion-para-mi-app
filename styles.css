@@ -420,7 +420,7 @@ body {
 .details-content-scrollable {
     overflow-y: auto;
     flex-grow: 1;
-    padding-top: 200px; /* <--- Este es el número que debes cambiar. */
+    padding-top: 225px; /* <--- Este es el número que debes cambiar. */
 }
 
 .details-info-section {
@@ -1311,4 +1311,5 @@ body {
     background-color: #e50914;
     color: #fff;
 }
+
 
