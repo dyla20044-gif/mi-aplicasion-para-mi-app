@@ -512,12 +512,12 @@ function createBannerItem(movie) {
     return bannerItem;
 }
 
-function renderCarousel(containerId, movies, type = 'movie') {
+function renderCarousel(containerId, movies) {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
     movies.forEach(movie => {
-        container.appendChild(createMovieCard(movie, type));
+        container.appendChild(createMovieCard(movie));
     });
 }
 
@@ -540,7 +540,7 @@ async function fetchHistory() {
         const history = querySnapshot.docs.map(doc => doc.data());
         if (history.length > 0) {
             historySection.style.display = 'block';
-            renderCarousel('history-list', history, 'movie');
+            renderCarousel('history-list', history);
         } else {
             historySection.style.display = 'none';
         }
@@ -556,28 +556,28 @@ async function fetchHomeContent() {
         await fetchHistory();
 
         const popularMovies = await fetchFromTMDB('movie/popular');
-        renderCarousel('populares-movies', popularMovies, 'movie');
+        renderCarousel('populares-movies', popularMovies);
 
         const trendingContent = await fetchFromTMDB('trending/all/day');
-        renderCarousel('tendencias-movies', trendingContent, 'movie');
+        renderCarousel('tendencias-movies', trendingContent);
 
         const actionMovies = await fetchFromTMDB('discover/movie?with_genres=28');
-        renderCarousel('accion-movies', actionMovies, 'movie');
+        renderCarousel('accion-movies', actionMovies);
 
         const terrorMovies = await fetchFromTMDB('discover/movie?with_genres=27,9648');
-        renderCarousel('terror-movies', terrorMovies, 'movie');
+        renderCarousel('terror-movies', terrorMovies);
         
         const animacionMovies = await fetchFromTMDB('discover/movie?with_genres=16');
-        renderCarousel('animacion-movies', animacionMovies, 'movie');
+        renderCarousel('animacion-movies', animacionMovies);
 
         const documentalesMovies = await fetchFromTMDB('discover/movie?with_genres=99');
-        renderCarousel('documentales-movies', documentalesMovies, 'movie');
+        renderCarousel('documentales-movies', documentalesMovies);
 
         const scifiMovies = await fetchFromTMDB('discover/movie?with-genres=878');
-        renderCarousel('scifi-movies', scifiMovies, 'movie');
+        renderCarousel('scifi-movies', scifiMovies);
 
         const popularSeries = await fetchFromTMDB('tv/popular');
-        renderCarousel('populares-series', popularSeries, 'tv');
+        renderCarousel('populares-series', popularSeries);
         
         bannerMovies = trendingContent.filter(m => m.backdrop_path);
         renderBannerCarousel();
