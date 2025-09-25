@@ -197,9 +197,9 @@ async function getTrialStatus(userDocSnap) {
     if (!userDocSnap || !userDocSnap.exists()) return false;
     
     const data = userDocSnap.data();
-    if (data.isTrial && data.trialExpirationDate) {
+    if (data.isTrial && data.trialEndDate) {
         // Convierte el timestamp de Firebase a milisegundos
-        const expirationTime = data.trialExpirationDate.toMillis(); 
+        const expirationTime = data.trialEndDate.toMillis(); 
         return expirationTime > Date.now();
     }
     return false;
@@ -210,18 +210,17 @@ resendVerificationButton.addEventListener('click', async () => {
     if (auth.currentUser) {
         showLoader();
         try {
-            // Asume un endpoint en tu servidor (server.js) que se encarga de enviar el correo de Brevo
-            const response = await fetch('https://serivisios.onrender.com/resend-verification-email', {
+            // Llama al servidor para reenviar el correo
+            const response = await fetch('https://serivisios.onrender.com/api/signup-and-verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: auth.currentUser.email })
+                body: JSON.stringify({ email: auth.currentUser.email, password: "NO_UPDATE_PASS_ON_RESEND" })
             });
+
             if (response.ok) {
                 alert('Correo de verificación reenviado.');
             } else {
-                // Si el endpoint no funciona, usa el de Firebase como fallback.
-                await sendEmailVerification(auth.currentUser);
-                alert('Correo de verificación reenviado (Firebase).');
+                alert('Error al reenviar el correo. Intenta de nuevo más tarde.');
             }
         } catch (error) {
             console.error('Error al reenviar el correo:', error);
@@ -248,33 +247,30 @@ saveUsernameButton.addEventListener('click', async () => {
     
     showLoader();
     try {
-        const isUnique = await checkUsernameUniqueness(username);
+        // ✅ Llama al servidor para actualizar el username (unicidad y Auth/Firestore)
+        const response = await fetch('https://serivisios.onrender.com/update-username', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: auth.currentUser.uid, username: username })
+        });
         
-        if (isUnique) {
-            // 1. Guardar el nombre de usuario en Firebase Auth
-            await updateProfile(auth.currentUser, { displayName: username });
-            
-            // 2. Guardar el nombre de usuario en Firestore
-            const userDocRef = doc(db, 'users', auth.currentUser.uid);
-            await updateDoc(userDocRef, { 
-                username: username,
-                hasUsername: true
-            }, { merge: true });
-            
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
             usernameFeedback.textContent = '¡Nombre de usuario guardado!';
             usernameFeedback.style.color = '#00ff00';
             
-            // 3. Redirigir al modal de pago
+            // ✅ Paso 5: Redirigir al modal de pago
             switchScreen('profile-screen');
             showModal(paymentModal);
 
         } else {
-            usernameFeedback.textContent = 'Ese nombre de usuario ya está en uso.';
+            usernameFeedback.textContent = data.error || 'Error al guardar. Intenta de nuevo.';
             usernameFeedback.style.color = '#e50914';
         }
     } catch (error) {
         console.error('Error al guardar el nombre de usuario:', error);
-        usernameFeedback.textContent = 'Error al guardar. Intenta de nuevo.';
+        usernameFeedback.textContent = 'Error de conexión. Intenta de nuevo.';
         usernameFeedback.style.color = '#e50914';
     } finally {
         hideLoader();
@@ -513,11 +509,12 @@ function renderRequestButton(tmdbItem) {
             return;
         }
         
-        // Determinar el estado para la prioridad
+        // Determinar el estado para la prioridad (Priorización)
         const userStatus = currentUser.isPro ? (currentUser.isTrial ? 'PRUEBA GRATUITA' : 'PREMIUM') : 'GRATIS';
         const username = currentUser.username || auth.currentUser.email.split('@')[0];
         
         try {
+            // ✅ Enviar username y userStatus al servidor
             const response = await fetch('https://serivisios.onrender.com/request-movie', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -581,7 +578,6 @@ async function showDetailsScreen(item, type) {
         actorsList.textContent = actors || 'No disponible';
         
         // ✅ CORRECCIÓN CLAVE: Se convierte el item.id a string para la comparación
-        // Esto resuelve el problema de la no visualización de los episodios
         const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id.toString());
         
         currentMovieOrSeries = localData;
@@ -1157,11 +1153,12 @@ submitRequestButton.addEventListener('click', async (e) => {
         return;
     }
 
-    // Determinar el estado para la prioridad
+    // Determinar el estado para la prioridad (Priorización)
     const userStatus = currentUser.isPro ? (currentUser.isTrial ? 'PRUEBA GRATUITA' : 'PREMIUM') : 'GRATIS';
     const username = currentUser.username || auth.currentUser.email.split('@')[0];
     
     try {
+        // Enviar al Firestore para registro
         await addDoc(collection(db, "requests"), {
             userId: auth.currentUser.uid,
             userName: username, 
@@ -1169,6 +1166,10 @@ submitRequestButton.addEventListener('click', async (e) => {
             requestedAt: new Date(),
             userStatus: userStatus 
         });
+        
+        // Opcional: Notificar al servidor vía la ruta /request-movie (para Telegram)
+        // Nota: Esta ruta solo maneja el registro en Firestore en el frontend. Si quieres Telegram, debes usar el endpoint /request-movie con los datos mínimos.
+
         alert('¡Solicitud enviada! Gracias por tu sugerencia.');
         movieRequestInput.value = '';
     } catch (e) {
@@ -1283,9 +1284,7 @@ signupButton.addEventListener('click', async () => {
     
     showLoader();
     try {
-        // Llama a tu servidor (server.js) para que se encargue de:
-        // 1. Crear la cuenta en Firebase Auth.
-        // 2. Enviar el correo de verificación con Brevo (o usar sendEmailVerification).
+        // ✅ Paso 1: Llamar al servidor para crear la cuenta y enviar el email de Brevo
         const response = await fetch('https://serivisios.onrender.com/api/signup-and-verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1296,18 +1295,15 @@ signupButton.addEventListener('click', async () => {
         
         if (response.ok && data.success) {
             // Se asume que la cuenta se creó y el correo se envió.
-            // Para asegurar que onAuthStateChanged se active, intenta el login
+            // Intenta el login para forzar onAuthStateChanged y obtener el token
             await signInWithEmailAndPassword(auth, email, password);
 
             switchScreen('auth-screen'); 
-            showVerificationScreen(); // Redirige a la pantalla de Verificación Pendiente
+            showVerificationScreen(); // ✅ Paso 2: Redirige a Verificación Pendiente
             
         } else {
-             // Fallback: Si el servidor falla, intenta el registro directo de Firebase.
-             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-             await sendEmailVerification(userCredential.user);
-             switchScreen('auth-screen');
-             showVerificationScreen();
+             // Fallback: Si el servidor falla, se recomienda notificar.
+             alert(`Error en el servidor de registro: ${data.error || 'Intenta de nuevo más tarde.'}`);
         }
         
     } catch (error) {
@@ -1326,10 +1322,11 @@ loginButton.addEventListener('click', async () => {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
+        // Bloqueo estricto si el correo no está verificado
         if (!user.emailVerified) {
             hideLoader();
-            showVerificationScreen(); // Bloquea el login si el correo no está verificado
-            alert('Tu correo aún no ha sido verificado. Por favor, revisa tu bandeja de entrada.');
+            showVerificationScreen(); 
+            alert('Tu correo aún no ha sido verificado. Por favor, revisa tu bandeja de entrada o haz clic en "Reenviar Correo".');
             await signOut(auth); // Cerrar sesión para forzar la verificación.
             return;
         }
@@ -1366,7 +1363,7 @@ buyButtons.forEach(button => {
             const response = await fetch('https://serivisios.onrender.com/create-paypal-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan: plan, amount: amount })
+                body: JSON.stringify({ plan: plan, amount: amount, userId: currentUser.uid }) // Envía userId
             });
 
             const data = await response.json();
@@ -1391,26 +1388,30 @@ freeTrialButton.addEventListener('click', async () => {
     
     showLoader();
     try {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        const trialDuration = 2 * 24 * 60 * 60 * 1000; // 2 días en milisegundos
-        const expirationDate = new Date(Date.now() + trialDuration);
-
-        await updateDoc(userDocRef, {
-            isPro: false,
-            isTrial: true,
-            trialExpirationDate: expirationDate,
-            trialStartDate: new Date()
+        // ✅ Llamar al servidor para activar la prueba gratuita (centralizar la lógica)
+        const response = await fetch('https://serivisios.onrender.com/activate-trial', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.uid })
         });
-        
-        alert('¡Prueba gratuita de 2 días activada! Disfruta del contenido PRO.');
-        closeModal(paymentModal);
-        // Actualiza el estado del usuario inmediatamente para el frontend
-        currentUser.isPro = true;
-        if (proStatusButton) {
-            proStatusButton.textContent = 'Cuenta Premium (Prueba Activa)';
-            proStatusButton.disabled = true;
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            alert(data.message);
+            closeModal(paymentModal);
+            
+            // Forzar actualización del estado local
+            currentUser.isPro = true;
+            currentUser.isTrial = true;
+            if (proStatusButton) {
+                proStatusButton.textContent = 'Cuenta Premium (Prueba Activa)';
+                proStatusButton.disabled = true;
+            }
+            switchScreen('home-screen');
+        } else {
+            alert(data.error || 'Error al activar la prueba. Intenta de nuevo.');
         }
-        switchScreen('home-screen');
 
     } catch (error) {
         console.error("Error al activar la prueba gratuita:", error);
@@ -1448,25 +1449,10 @@ onAuthStateChanged(auth, async (user) => {
     
     if (user && !user.isAnonymous) {
         
-        // 1. Verificar correo si no está verificado (Paso 2)
-        if (user.email && !user.emailVerified) {
-            if (!isInitialized) {
-                showVerificationScreen();
-            }
-            return;
-        }
-
-        if (profileLoggedIn) {
-            profileLoggedIn.style.display = 'block';
-        }
-        if (profileLoggedOut) {
-            profileLoggedOut.style.display = 'none';
-        }
-        
         const userDocRef = doc(db, 'users', user.uid);
         let userDocSnap = await getDoc(userDocRef);
         
-        // 2. Crear documento si no existe (después de la verificación inicial)
+        // 1. Crear documento si no existe
         if (!userDocSnap.exists()) {
              await setDoc(userDocRef, {
                 uid: user.uid,
@@ -1476,18 +1462,35 @@ onAuthStateChanged(auth, async (user) => {
                 hasUsername: false,
                 createdAt: new Date()
             }, { merge: true });
-            userDocSnap = await getDoc(userDocRef); // Recargar el snap
+            userDocSnap = await getDoc(userDocRef);
+        }
+
+        // 2. Bloqueo 1: Verificar correo (Paso 2)
+        if (user.email && !user.emailVerified) {
+            if (!isInitialized) {
+                showVerificationScreen();
+            }
+            return;
         }
         
-        // 3. Forzar la selección del nombre de usuario (Paso 4)
-        if (userDocSnap.exists() && !userDocSnap.data().hasUsername) {
+        const userData = userDocSnap.data();
+
+        // 3. Bloqueo 2: Forzar la selección del nombre de usuario (Paso 4)
+        if (userData && !userData.hasUsername) {
             if (!isInitialized) {
                 showUsernameScreen();
             }
             return;
         }
         
-        const userData = userDocSnap.data();
+        // Si pasó todos los chequeos, configurar el perfil.
+        if (profileLoggedIn) {
+            profileLoggedIn.style.display = 'block';
+        }
+        if (profileLoggedOut) {
+            profileLoggedOut.style.display = 'none';
+        }
+
         const isTrialActive = await getTrialStatus(userDocSnap);
 
         // 4. Definir estado PRO o Trial
@@ -1551,7 +1554,7 @@ onAuthStateChanged(auth, async (user) => {
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
         
-        // Solo cambiar de pantalla si no estamos ya en una pantalla especial
+        // Solo cambiar de pantalla si no estamos ya en una pantalla especial de bloqueo
         const currentScreen = document.querySelector('.screen.active');
         if (!currentScreen || (currentScreen.id !== 'verification-screen' && currentScreen.id !== 'username-screen')) {
             switchScreen('home-screen');
