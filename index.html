@@ -297,6 +297,33 @@
                 </div>
             </div>
         </div>
+
+        <div id="verification-screen" class="screen full-screen-auth">
+            <header class="auth-header">
+                <a href="#" class="back-button" id="verification-back-button"><i class="fas fa-arrow-left"></i></a>
+                <div class="auth-header-title">Verificación de Cuenta</div>
+            </header>
+            <div class="auth-content-container" style="text-align: center;">
+                <h2 class="auth-title">¡Revisa tu Correo!</h2>
+                <i class="fas fa-envelope-open-text" style="font-size: 4em; color: #e50914; margin-bottom: 20px;"></i>
+                <p style="color: #ccc; max-width: 300px; line-height: 1.5;">Hemos enviado un enlace de activación a tu correo electrónico. Por favor, haz clic en el enlace para verificar tu cuenta y poder iniciar sesión.</p>
+                <button class="button auth-button primary" id="resend-verification-button" style="margin-top: 20px;">Reenviar Correo</button>
+            </div>
+        </div>
+
+        <div id="username-screen" class="screen full-screen-auth">
+            <header class="auth-header">
+                <div class="auth-header-title">Elige tu Nombre de Usuario</div>
+            </header>
+            <div class="auth-content-container">
+                <div class="auth-form active-form">
+                    <h2 class="auth-title">Último Paso: Nombre de Usuario</h2>
+                    <input type="text" id="username-input" placeholder="Nombre de usuario único">
+                    <p id="username-feedback" style="text-align: left; margin-bottom: 15px; color: #ccc; font-size: 0.9em;"></p>
+                    <button class="button auth-button primary" id="save-username-button">Guardar y Continuar</button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <nav class="bottom-nav">
@@ -357,6 +384,7 @@
                     <button class="button buy-button" data-plan="annual">Comprar</button>
                 </div>
             </div>
+            <button class="button secondary auth-button" id="free-trial-button" style="margin-top: 20px; background-color: #333; border: 1px solid #777;">Activar prueba gratis de 2 días</button>
             <p class="legal-text">© Cine. Todos los derechos reservados. Su suscripción se renueva automáticamente. Puede cancelar en cualquier momento.</p>
         </div>
     </div>
