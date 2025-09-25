@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc, orderBy, limit, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 // --- Configuración de Firebase ---
 const firebaseConfig = {
     apiKey: "AIzaSyCF5lyEIFkKhzgc4kOMebWZ7oZrxWDNw2Y",
@@ -30,6 +30,15 @@ const termsScreen = document.getElementById('terms-screen');
 const helpScreen = document.getElementById('help-screen');
 const settingsScreen = document.getElementById('settings-screen');
 const authScreen = document.getElementById('auth-screen');
+// --- NUEVOS ELEMENTOS DE PANTALLA ---
+const verificationScreen = document.getElementById('verification-screen');
+const usernameScreen = document.getElementById('username-screen');
+const usernameInput = document.getElementById('username-input');
+const usernameFeedback = document.getElementById('username-feedback');
+const saveUsernameButton = document.getElementById('save-username-button');
+const resendVerificationButton = document.getElementById('resend-verification-button');
+const verificationBackButton = document.getElementById('verification-back-button');
+
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
 const screenButtons = document.querySelectorAll('[data-screen]');
 const searchInput = document.getElementById('search-input');
@@ -61,6 +70,8 @@ const paymentModal = document.getElementById('payment-modal');
 const proStatusButton = document.getElementById('pro-status-button');
 const signoutButton = document.getElementById('signout-button');
 const buyButtons = document.querySelectorAll('.buy-button');
+// --- NUEVO ELEMENTO DE PAGO ---
+const freeTrialButton = document.getElementById('free-trial-button');
 const movieRequestInput = document.getElementById('movie-request-input');
 const submitRequestButton = document.getElementById('submit-request-button');
 const favoritesGrid = document.getElementById('favorites-grid');
@@ -149,6 +160,147 @@ window.addEventListener('click', (event) => {
     if (event.target.classList.contains('modal') || event.target.classList.contains('modal-from-bottom')) {
         closeModal(event.target);
     }
+});
+
+// --- Nuevas Funciones para Flujo de Autenticación ---
+
+function showVerificationScreen() {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    verificationScreen.classList.add('active');
+    document.querySelector('.top-nav').style.display = 'none';
+    document.querySelector('.bottom-nav').style.display = 'none';
+    appContainer.style.paddingBottom = '0';
+    history.pushState({ screen: 'verification-screen' }, '', '');
+}
+
+function showUsernameScreen() {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    usernameScreen.classList.add('active');
+    document.querySelector('.top-nav').style.display = 'none';
+    document.querySelector('.bottom-nav').style.display = 'none';
+    appContainer.style.paddingBottom = '0';
+    history.pushState({ screen: 'username-screen' }, '', '');
+}
+
+async function checkUsernameUniqueness(username) {
+    if (!username) return false;
+    // Evita la comprobación si el usuario es el actual y ya tiene ese nombre.
+    if (auth.currentUser && auth.currentUser.displayName === username) return true;
+    
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('username', '==', username), limit(1));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.empty;
+}
+
+async function getTrialStatus(userDocSnap) {
+    if (!userDocSnap || !userDocSnap.exists()) return false;
+    
+    const data = userDocSnap.data();
+    if (data.isTrial && data.trialExpirationDate) {
+        // Convierte el timestamp de Firebase a milisegundos
+        const expirationTime = data.trialExpirationDate.toMillis(); 
+        return expirationTime > Date.now();
+    }
+    return false;
+}
+
+// Escuchadores para la nueva pantalla de verificación
+resendVerificationButton.addEventListener('click', async () => {
+    if (auth.currentUser) {
+        showLoader();
+        try {
+            // Asume un endpoint en tu servidor (server.js) que se encarga de enviar el correo de Brevo
+            const response = await fetch('https://serivisios.onrender.com/resend-verification-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: auth.currentUser.email })
+            });
+            if (response.ok) {
+                alert('Correo de verificación reenviado.');
+            } else {
+                // Si el endpoint no funciona, usa el de Firebase como fallback.
+                await sendEmailVerification(auth.currentUser);
+                alert('Correo de verificación reenviado (Firebase).');
+            }
+        } catch (error) {
+            console.error('Error al reenviar el correo:', error);
+            alert('Error al reenviar el correo. Intenta de nuevo más tarde.');
+        } finally {
+            hideLoader();
+        }
+    }
+});
+
+verificationBackButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    history.back(); // Vuelve a la pantalla de login/signup
+});
+
+// Lógica de la pantalla de nombre de usuario
+saveUsernameButton.addEventListener('click', async () => {
+    const username = usernameInput.value.trim();
+    if (username.length < 3) {
+        usernameFeedback.textContent = 'El nombre de usuario debe tener al menos 3 caracteres.';
+        usernameFeedback.style.color = '#e50914';
+        return;
+    }
+    
+    showLoader();
+    try {
+        const isUnique = await checkUsernameUniqueness(username);
+        
+        if (isUnique) {
+            // 1. Guardar el nombre de usuario en Firebase Auth
+            await updateProfile(auth.currentUser, { displayName: username });
+            
+            // 2. Guardar el nombre de usuario en Firestore
+            const userDocRef = doc(db, 'users', auth.currentUser.uid);
+            await updateDoc(userDocRef, { 
+                username: username,
+                hasUsername: true
+            }, { merge: true });
+            
+            usernameFeedback.textContent = '¡Nombre de usuario guardado!';
+            usernameFeedback.style.color = '#00ff00';
+            
+            // 3. Redirigir al modal de pago
+            switchScreen('profile-screen');
+            showModal(paymentModal);
+
+        } else {
+            usernameFeedback.textContent = 'Ese nombre de usuario ya está en uso.';
+            usernameFeedback.style.color = '#e50914';
+        }
+    } catch (error) {
+        console.error('Error al guardar el nombre de usuario:', error);
+        usernameFeedback.textContent = 'Error al guardar. Intenta de nuevo.';
+        usernameFeedback.style.color = '#e50914';
+    } finally {
+        hideLoader();
+    }
+});
+
+usernameInput.addEventListener('input', () => {
+    usernameFeedback.textContent = 'Comprobando disponibilidad...';
+    usernameFeedback.style.color = '#ccc';
+    // Una pequeña demora para evitar spam de peticiones
+    clearTimeout(usernameInput.timer);
+    usernameInput.timer = setTimeout(async () => {
+        const username = usernameInput.value.trim();
+        if (username.length >= 3) {
+            const isUnique = await checkUsernameUniqueness(username);
+            if (isUnique) {
+                usernameFeedback.textContent = 'Disponible';
+                usernameFeedback.style.color = '#00ff00';
+            } else {
+                usernameFeedback.textContent = 'No disponible';
+                usernameFeedback.style.color = '#e50914';
+            }
+        } else {
+            usernameFeedback.textContent = '';
+        }
+    }, 500);
 });
 
 // --- Funciones principales y de renderizado ---
@@ -360,6 +512,11 @@ function renderRequestButton(tmdbItem) {
             switchScreen('auth-screen');
             return;
         }
+        
+        // Determinar el estado para la prioridad
+        const userStatus = currentUser.isPro ? (currentUser.isTrial ? 'PRUEBA GRATUITA' : 'PREMIUM') : 'GRATIS';
+        const username = currentUser.username || auth.currentUser.email.split('@')[0];
+        
         try {
             const response = await fetch('https://serivisios.onrender.com/request-movie', {
                 method: 'POST',
@@ -367,7 +524,10 @@ function renderRequestButton(tmdbItem) {
                 body: JSON.stringify({
                     title: tmdbItem.title || tmdbItem.name,
                     poster_path: tmdbItem.poster_path,
-                    tmdbId: tmdbItem.id
+                    tmdbId: tmdbItem.id,
+                    userId: auth.currentUser.uid,
+                    username: username, 
+                    userStatus: userStatus 
                 })
             });
             if (response.ok) {
@@ -800,7 +960,7 @@ function switchScreen(screenId) {
         searchFilters.style.display = 'none';
     }
     
-    if (screenId === 'details-screen' || screenId === 'auth-screen') {
+    if (screenId === 'details-screen' || screenId === 'auth-screen' || screenId === 'verification-screen' || screenId === 'username-screen') {
         document.querySelector('.top-nav').style.display = 'none';
         document.querySelector('.bottom-nav').style.display = 'none';
         appContainer.style.paddingBottom = '0';
@@ -842,7 +1002,7 @@ window.addEventListener('popstate', async (event) => {
                     fetchFavorites();
                     searchFilters.style.display = 'none';
                 }
-                if (state.screen === 'details-screen' || state.screen === 'auth-screen') {
+                if (state.screen === 'details-screen' || state.screen === 'auth-screen' || state.screen === 'verification-screen' || state.screen === 'username-screen') {
                     document.querySelector('.top-nav').style.display = 'none';
                     document.querySelector('.bottom-nav').style.display = 'none';
                     appContainer.style.paddingBottom = '0';
@@ -997,12 +1157,17 @@ submitRequestButton.addEventListener('click', async (e) => {
         return;
     }
 
+    // Determinar el estado para la prioridad
+    const userStatus = currentUser.isPro ? (currentUser.isTrial ? 'PRUEBA GRATUITA' : 'PREMIUM') : 'GRATIS';
+    const username = currentUser.username || auth.currentUser.email.split('@')[0];
+    
     try {
         await addDoc(collection(db, "requests"), {
             userId: auth.currentUser.uid,
-            userName: auth.currentUser.displayName || 'Anónimo',
+            userName: username, 
             movieTitle: movieTitle,
-            requestedAt: new Date()
+            requestedAt: new Date(),
+            userStatus: userStatus 
         });
         alert('¡Solicitud enviada! Gracias por tu sugerencia.');
         movieRequestInput.value = '';
@@ -1116,26 +1281,68 @@ signupButton.addEventListener('click', async () => {
         return;
     }
     
+    showLoader();
     try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        switchScreen('profile-screen');
-        showModal(paymentModal);
+        // Llama a tu servidor (server.js) para que se encargue de:
+        // 1. Crear la cuenta en Firebase Auth.
+        // 2. Enviar el correo de verificación con Brevo (o usar sendEmailVerification).
+        const response = await fetch('https://serivisios.onrender.com/api/signup-and-verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            // Se asume que la cuenta se creó y el correo se envió.
+            // Para asegurar que onAuthStateChanged se active, intenta el login
+            await signInWithEmailAndPassword(auth, email, password);
+
+            switchScreen('auth-screen'); 
+            showVerificationScreen(); // Redirige a la pantalla de Verificación Pendiente
+            
+        } else {
+             // Fallback: Si el servidor falla, intenta el registro directo de Firebase.
+             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+             await sendEmailVerification(userCredential.user);
+             switchScreen('auth-screen');
+             showVerificationScreen();
+        }
+        
     } catch (error) {
         console.error("Signup error:", error);
         alert(`Error al registrarse: ${error.message}`);
+    } finally {
+        hideLoader();
     }
 });
 
 loginButton.addEventListener('click', async () => {
     const email = loginEmailInput.value;
     const password = loginPasswordInput.value;
+    showLoader();
     try {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        if (!user.emailVerified) {
+            hideLoader();
+            showVerificationScreen(); // Bloquea el login si el correo no está verificado
+            alert('Tu correo aún no ha sido verificado. Por favor, revisa tu bandeja de entrada.');
+            await signOut(auth); // Cerrar sesión para forzar la verificación.
+            return;
+        }
+
+        // El flujo de onAuthStateChanged se encargará de verificar el nombre de usuario.
         alert('¡Inicio de sesión exitoso!');
         switchScreen('profile-screen');
+
     } catch (error) {
         console.error("Login error:", error);
         alert(`Error al iniciar sesión: ${error.message}`);
+    } finally {
+        hideLoader();
     }
 });
 
@@ -1176,6 +1383,43 @@ buyButtons.forEach(button => {
     });
 });
 
+freeTrialButton.addEventListener('click', async () => {
+    if (!currentUser || currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+        return;
+    }
+    
+    showLoader();
+    try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const trialDuration = 2 * 24 * 60 * 60 * 1000; // 2 días en milisegundos
+        const expirationDate = new Date(Date.now() + trialDuration);
+
+        await updateDoc(userDocRef, {
+            isPro: false,
+            isTrial: true,
+            trialExpirationDate: expirationDate,
+            trialStartDate: new Date()
+        });
+        
+        alert('¡Prueba gratuita de 2 días activada! Disfruta del contenido PRO.');
+        closeModal(paymentModal);
+        // Actualiza el estado del usuario inmediatamente para el frontend
+        currentUser.isPro = true;
+        if (proStatusButton) {
+            proStatusButton.textContent = 'Cuenta Premium (Prueba Activa)';
+            proStatusButton.disabled = true;
+        }
+        switchScreen('home-screen');
+
+    } catch (error) {
+        console.error("Error al activar la prueba gratuita:", error);
+        alert('Hubo un error al activar la prueba. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+});
+
 if (buyWithPaypalButton) {
     buyWithPaypalButton.addEventListener('click', () => {
         alert('Selecciona un plan antes de continuar con el pago.');
@@ -1203,6 +1447,15 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     
     if (user && !user.isAnonymous) {
+        
+        // 1. Verificar correo si no está verificado (Paso 2)
+        if (user.email && !user.emailVerified) {
+            if (!isInitialized) {
+                showVerificationScreen();
+            }
+            return;
+        }
+
         if (profileLoggedIn) {
             profileLoggedIn.style.display = 'block';
         }
@@ -1211,21 +1464,58 @@ onAuthStateChanged(auth, async (user) => {
         }
         
         const userDocRef = doc(db, 'users', user.uid);
-        const userDocSnap = await getDoc(userDocRef);
+        let userDocSnap = await getDoc(userDocRef);
         
-        if (userDocSnap.exists() && userDocSnap.data().isPro) {
+        // 2. Crear documento si no existe (después de la verificación inicial)
+        if (!userDocSnap.exists()) {
+             await setDoc(userDocRef, {
+                uid: user.uid,
+                email: user.email,
+                isPro: false,
+                isTrial: false,
+                hasUsername: false,
+                createdAt: new Date()
+            }, { merge: true });
+            userDocSnap = await getDoc(userDocRef); // Recargar el snap
+        }
+        
+        // 3. Forzar la selección del nombre de usuario (Paso 4)
+        if (userDocSnap.exists() && !userDocSnap.data().hasUsername) {
+            if (!isInitialized) {
+                showUsernameScreen();
+            }
+            return;
+        }
+        
+        const userData = userDocSnap.data();
+        const isTrialActive = await getTrialStatus(userDocSnap);
+
+        // 4. Definir estado PRO o Trial
+        if (userData.isPro) {
             currentUser.isPro = true;
             if (proStatusButton) {
                 proStatusButton.textContent = 'Cuenta Premium Activada';
                 proStatusButton.disabled = true;
             }
-        } else {
+        } else if (isTrialActive) {
+            currentUser.isPro = true; // Se considera PRO para acceso al contenido
+            currentUser.isTrial = true;
+            if (proStatusButton) {
+                proStatusButton.textContent = 'Cuenta Premium (Prueba Activa)';
+                proStatusButton.disabled = true;
+            }
+        } 
+        else {
             currentUser.isPro = false;
+            currentUser.isTrial = false;
             if (proStatusButton) {
                 proStatusButton.textContent = 'Activar Cuenta Premium';
                 proStatusButton.disabled = false;
             }
         }
+        
+        currentUser.username = userData.username || user.displayName;
+
     } else {
         if (profileLoggedIn) {
             profileLoggedIn.style.display = 'none';
@@ -1260,6 +1550,11 @@ onAuthStateChanged(auth, async (user) => {
         
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
-        switchScreen('home-screen');
+        
+        // Solo cambiar de pantalla si no estamos ya en una pantalla especial
+        const currentScreen = document.querySelector('.screen.active');
+        if (!currentScreen || (currentScreen.id !== 'verification-screen' && currentScreen.id !== 'username-screen')) {
+            switchScreen('home-screen');
+        }
     }
 });
