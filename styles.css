@@ -1311,6 +1311,15 @@ body {
     background-color: #e50914;
     color: #fff;
 }
+/* styles.css (Al final del archivo) */
+
+/* Estilos para las nuevas pantallas de autenticación */
+#username-setup-screen {
+    background-color: #000;
+}
+.full-screen-auth {
+    height: 100vh;
+}
 
 
 
