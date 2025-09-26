@@ -33,6 +33,13 @@ const authScreen = document.getElementById('auth-screen');
 // --- NUEVOS ELEMENTOS DE PANTALLA ---
 const verificationScreen = document.getElementById('verification-screen');
 const usernameScreen = document.getElementById('username-screen');
+
+// Referencias de la nueva pantalla OTP
+const verificationCodeInput = document.getElementById('verification-code-input');
+const verifyCodeButton = document.getElementById('verify-code-button');
+const codeFeedback = document.getElementById('code-feedback');
+const verificationMessage = document.getElementById('verification-message');
+
 const usernameInput = document.getElementById('username-input');
 const usernameFeedback = document.getElementById('username-feedback');
 const saveUsernameButton = document.getElementById('save-username-button');
@@ -164,9 +171,12 @@ window.addEventListener('click', (event) => {
 
 // --- Nuevas Funciones para Flujo de Autenticación ---
 
-function showVerificationScreen() {
+function showVerificationScreen(message) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     verificationScreen.classList.add('active');
+    verificationMessage.textContent = message;
+    codeFeedback.textContent = '';
+    verificationCodeInput.value = '';
     document.querySelector('.top-nav').style.display = 'none';
     document.querySelector('.bottom-nav').style.display = 'none';
     appContainer.style.paddingBottom = '0';
@@ -205,29 +215,77 @@ async function getTrialStatus(userDocSnap) {
     return false;
 }
 
-// Escuchadores para la nueva pantalla de verificación
-resendVerificationButton.addEventListener('click', async () => {
-    if (auth.currentUser) {
-        showLoader();
-        try {
-            // Llama al servidor para reenviar el correo
-            const response = await fetch('https://serivisios.onrender.com/api/signup-and-verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: auth.currentUser.email, password: "NO_UPDATE_PASS_ON_RESEND" })
-            });
+// --- Lógica de la Pantalla de Código OTP ---
 
-            if (response.ok) {
-                alert('Correo de verificación reenviado.');
-            } else {
-                alert('Error al reenviar el correo. Intenta de nuevo más tarde.');
-            }
-        } catch (error) {
-            console.error('Error al reenviar el correo:', error);
-            alert('Error al reenviar el correo. Intenta de nuevo más tarde.');
-        } finally {
-            hideLoader();
+async function sendOtpEmail(email, message) {
+    showLoader();
+    try {
+        const response = await fetch('https://serivisios.onrender.com/api/send-otp-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+        });
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showVerificationScreen(message || 'Hemos enviado un nuevo código a tu correo.');
+        } else {
+            alert(data.error || 'Error al enviar el código. Intenta de nuevo más tarde.');
         }
+    } catch (error) {
+        alert('Error de conexión al servidor.');
+    } finally {
+        hideLoader();
+    }
+}
+
+// Escuchadores de la pantalla OTP
+resendVerificationButton.addEventListener('click', () => {
+    if (auth.currentUser && auth.currentUser.email) {
+        sendOtpEmail(auth.currentUser.email, 'Hemos reenviado el código. Revisa tu bandeja.');
+    } else {
+        alert('Debes estar logueado para reenviar el código.');
+    }
+});
+
+verifyCodeButton.addEventListener('click', async () => {
+    const code = verificationCodeInput.value.trim();
+    if (code.length !== 6) {
+        codeFeedback.textContent = 'El código debe tener 6 dígitos.';
+        return;
+    }
+    
+    showLoader();
+    try {
+        const response = await fetch('https://serivisios.onrender.com/api/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: auth.currentUser.uid, code: code })
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            codeFeedback.textContent = '¡Verificación exitosa! Regresando al perfil...';
+            codeFeedback.style.color = '#00ff00';
+            
+            // Forzar actualización de bandera local (para el Trial)
+            currentUser.isVerifiedByCode = true; 
+            
+            // Asegurar que el trial se active si el usuario estaba en el flujo
+            setTimeout(() => {
+                switchScreen('profile-screen');
+                showModal(paymentModal); 
+            }, 1000);
+            
+        } else {
+            codeFeedback.textContent = data.error;
+            codeFeedback.style.color = '#e50914';
+        }
+    } catch (error) {
+        codeFeedback.textContent = 'Error de conexión durante la verificación.';
+        codeFeedback.style.color = '#e50914';
+    } finally {
+        hideLoader();
     }
 });
 
@@ -1284,7 +1342,7 @@ signupButton.addEventListener('click', async () => {
     
     showLoader();
     try {
-        // ✅ Paso 1: Llamar al servidor para crear la cuenta y enviar el email de Brevo
+        // ✅ Registro simple sin verificación forzada
         const response = await fetch('https://serivisios.onrender.com/api/signup-and-verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1294,16 +1352,15 @@ signupButton.addEventListener('click', async () => {
         const data = await response.json();
         
         if (response.ok && data.success) {
-            // Se asume que la cuenta se creó y el correo se envió.
-            // Intenta el login para forzar onAuthStateChanged y obtener el token
+            // Inicia sesión inmediatamente (Acceso Instantáneo)
             await signInWithEmailAndPassword(auth, email, password);
 
-            switchScreen('auth-screen'); 
-            showVerificationScreen(); // ✅ Paso 2: Redirige a Verificación Pendiente
+            // Redirige al nombre de usuario (si es nuevo)
+            alert('¡Registro exitoso! Por favor, elige tu nombre de usuario.');
+            switchScreen('profile-screen'); 
             
         } else {
-             // Fallback: Si el servidor falla, se recomienda notificar.
-             alert(`Error en el servidor de registro: ${data.error || 'Intenta de nuevo más tarde.'}`);
+             alert(data.error || 'Error al crear la cuenta. Intenta de nuevo.');
         }
         
     } catch (error) {
@@ -1319,19 +1376,9 @@ loginButton.addEventListener('click', async () => {
     const password = loginPasswordInput.value;
     showLoader();
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+        // ✅ Login simple, ya no bloquea por emailVerified
+        await signInWithEmailAndPassword(auth, email, password);
         
-        // Bloqueo estricto si el correo no está verificado
-        if (!user.emailVerified) {
-            hideLoader();
-            showVerificationScreen(); 
-            alert('Tu correo aún no ha sido verificado. Por favor, revisa tu bandeja de entrada o haz clic en "Reenviar Correo".');
-            await signOut(auth); // Cerrar sesión para forzar la verificación.
-            return;
-        }
-
-        // El flujo de onAuthStateChanged se encargará de verificar el nombre de usuario.
         alert('¡Inicio de sesión exitoso!');
         switchScreen('profile-screen');
 
@@ -1385,10 +1432,31 @@ freeTrialButton.addEventListener('click', async () => {
         switchScreen('auth-screen');
         return;
     }
-    
+
     showLoader();
     try {
-        // ✅ Llamar al servidor para activar la prueba gratuita (centralizar la lógica)
+        // 1. Obtener el estado de verificación del usuario (depende de la nueva bandera de Firestore)
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        const userData = userDocSnap.data();
+        
+        const isVerified = userData?.isVerifiedByCode; // Nueva bandera de verificación por código
+
+        if (!isVerified) {
+            // Si NO está verificado, enviar el código OTP y bloquear el acceso al trial
+            closeModal(paymentModal);
+            await sendOtpEmail(auth.currentUser.email, 'Verifica tu correo para activar la Prueba Gratuita.');
+            return; // Detener aquí, el usuario debe ir a la pantalla de código.
+        }
+
+        // 2. Si el email está verificado, proceder con la activación del trial
+        if (userData.isTrial) {
+            alert('Ya has utilizado tu prueba gratuita de 2 días.');
+            hideLoader();
+            return;
+        }
+
+        // Llamada al servidor para activar el Trial
         const response = await fetch('https://serivisios.onrender.com/activate-trial', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1401,7 +1469,7 @@ freeTrialButton.addEventListener('click', async () => {
             alert(data.message);
             closeModal(paymentModal);
             
-            // Forzar actualización del estado local
+            // Forzar actualización de estado local
             currentUser.isPro = true;
             currentUser.isTrial = true;
             if (proStatusButton) {
@@ -1460,22 +1528,15 @@ onAuthStateChanged(auth, async (user) => {
                 isPro: false,
                 isTrial: false,
                 hasUsername: false,
+                isVerifiedByCode: false, // Nueva bandera
                 createdAt: new Date()
             }, { merge: true });
             userDocSnap = await getDoc(userDocRef);
         }
-
-        // 2. Bloqueo 1: Verificar correo (Paso 2)
-        if (user.email && !user.emailVerified) {
-            if (!isInitialized) {
-                showVerificationScreen();
-            }
-            return;
-        }
         
         const userData = userDocSnap.data();
 
-        // 3. Bloqueo 2: Forzar la selección del nombre de usuario (Paso 4)
+        // 2. Bloqueo 2: Forzar la selección del nombre de usuario (Paso 4)
         if (userData && !userData.hasUsername) {
             if (!isInitialized) {
                 showUsernameScreen();
@@ -1493,7 +1554,7 @@ onAuthStateChanged(auth, async (user) => {
 
         const isTrialActive = await getTrialStatus(userDocSnap);
 
-        // 4. Definir estado PRO o Trial
+        // 3. Definir estado PRO o Trial
         if (userData.isPro) {
             currentUser.isPro = true;
             if (proStatusButton) {
