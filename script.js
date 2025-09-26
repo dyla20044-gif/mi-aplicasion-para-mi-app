@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc, orderBy, limit, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 // --- Configuración de Firebase ---
 const firebaseConfig = {
     apiKey: "AIzaSyCF5lyEIFkKhzgc4kOMebWZ7oZrxWDNw2Y",
@@ -30,22 +30,6 @@ const termsScreen = document.getElementById('terms-screen');
 const helpScreen = document.getElementById('help-screen');
 const settingsScreen = document.getElementById('settings-screen');
 const authScreen = document.getElementById('auth-screen');
-// --- NUEVOS ELEMENTOS DE PANTALLA ---
-const verificationScreen = document.getElementById('verification-screen');
-const usernameScreen = document.getElementById('username-screen');
-
-// Referencias de la nueva pantalla OTP
-const verificationCodeInput = document.getElementById('verification-code-input');
-const verifyCodeButton = document.getElementById('verify-code-button');
-const codeFeedback = document.getElementById('code-feedback');
-const verificationMessage = document.getElementById('verification-message');
-
-const usernameInput = document.getElementById('username-input');
-const usernameFeedback = document.getElementById('username-feedback');
-const saveUsernameButton = document.getElementById('save-username-button');
-const resendVerificationButton = document.getElementById('resend-verification-button');
-const verificationBackButton = document.getElementById('verification-back-button');
-
 const navItems = document.querySelectorAll('.bottom-nav .nav-item');
 const screenButtons = document.querySelectorAll('[data-screen]');
 const searchInput = document.getElementById('search-input');
@@ -77,8 +61,6 @@ const paymentModal = document.getElementById('payment-modal');
 const proStatusButton = document.getElementById('pro-status-button');
 const signoutButton = document.getElementById('signout-button');
 const buyButtons = document.querySelectorAll('.buy-button');
-// --- NUEVO ELEMENTO DE PAGO ---
-const freeTrialButton = document.getElementById('free-trial-button');
 const movieRequestInput = document.getElementById('movie-request-input');
 const submitRequestButton = document.getElementById('submit-request-button');
 const favoritesGrid = document.getElementById('favorites-grid');
@@ -167,194 +149,6 @@ window.addEventListener('click', (event) => {
     if (event.target.classList.contains('modal') || event.target.classList.contains('modal-from-bottom')) {
         closeModal(event.target);
     }
-});
-
-// --- Nuevas Funciones para Flujo de Autenticación ---
-
-function showVerificationScreen(message) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    verificationScreen.classList.add('active');
-    verificationMessage.textContent = message;
-    codeFeedback.textContent = '';
-    verificationCodeInput.value = '';
-    document.querySelector('.top-nav').style.display = 'none';
-    document.querySelector('.bottom-nav').style.display = 'none';
-    appContainer.style.paddingBottom = '0';
-    history.pushState({ screen: 'verification-screen' }, '', '');
-}
-
-function showUsernameScreen() {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    usernameScreen.classList.add('active');
-    document.querySelector('.top-nav').style.display = 'none';
-    document.querySelector('.bottom-nav').style.display = 'none';
-    appContainer.style.paddingBottom = '0';
-    history.pushState({ screen: 'username-screen' }, '', '');
-}
-
-async function checkUsernameUniqueness(username) {
-    if (!username) return false;
-    // Evita la comprobación si el usuario es el actual y ya tiene ese nombre.
-    if (auth.currentUser && auth.currentUser.displayName === username) return true;
-    
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('username', '==', username), limit(1));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.empty;
-}
-
-async function getTrialStatus(userDocSnap) {
-    if (!userDocSnap || !userDocSnap.exists()) return false;
-    
-    const data = userDocSnap.data();
-    if (data.isTrial && data.trialEndDate) {
-        // Convierte el timestamp de Firebase a milisegundos
-        const expirationTime = data.trialEndDate.toMillis(); 
-        return expirationTime > Date.now();
-    }
-    return false;
-}
-
-// --- Lógica de la Pantalla de Código OTP ---
-
-async function sendOtpEmail(email, message) {
-    showLoader();
-    try {
-        const response = await fetch('https://serivisios.onrender.com/api/send-otp-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email })
-        });
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-            showVerificationScreen(message || 'Hemos enviado un nuevo código a tu correo.');
-        } else {
-            alert(data.error || 'Error al enviar el código. Intenta de nuevo más tarde.');
-        }
-    } catch (error) {
-        alert('Error de conexión al servidor.');
-    } finally {
-        hideLoader();
-    }
-}
-
-// Escuchadores de la pantalla OTP
-resendVerificationButton.addEventListener('click', () => {
-    if (auth.currentUser && auth.currentUser.email) {
-        sendOtpEmail(auth.currentUser.email, 'Hemos reenviado el código. Revisa tu bandeja.');
-    } else {
-        alert('Debes estar logueado para reenviar el código.');
-    }
-});
-
-verifyCodeButton.addEventListener('click', async () => {
-    const code = verificationCodeInput.value.trim();
-    if (code.length !== 6) {
-        codeFeedback.textContent = 'El código debe tener 6 dígitos.';
-        return;
-    }
-    
-    showLoader();
-    try {
-        const response = await fetch('https://serivisios.onrender.com/api/verify-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: auth.currentUser.uid, code: code })
-        });
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            codeFeedback.textContent = '¡Verificación exitosa! Regresando al perfil...';
-            codeFeedback.style.color = '#00ff00';
-            
-            // Forzar actualización de bandera local (para el Trial)
-            currentUser.isVerifiedByCode = true; 
-            
-            // Asegurar que el trial se active si el usuario estaba en el flujo
-            setTimeout(() => {
-                switchScreen('profile-screen');
-                showModal(paymentModal); 
-            }, 1000);
-            
-        } else {
-            codeFeedback.textContent = data.error;
-            codeFeedback.style.color = '#e50914';
-        }
-    } catch (error) {
-        codeFeedback.textContent = 'Error de conexión durante la verificación.';
-        codeFeedback.style.color = '#e50914';
-    } finally {
-        hideLoader();
-    }
-});
-
-verificationBackButton.addEventListener('click', (e) => {
-    e.preventDefault();
-    history.back(); // Vuelve a la pantalla de login/signup
-});
-
-// Lógica de la pantalla de nombre de usuario
-saveUsernameButton.addEventListener('click', async () => {
-    const username = usernameInput.value.trim();
-    if (username.length < 3) {
-        usernameFeedback.textContent = 'El nombre de usuario debe tener al menos 3 caracteres.';
-        usernameFeedback.style.color = '#e50914';
-        return;
-    }
-    
-    showLoader();
-    try {
-        // ✅ Llama al servidor para actualizar el username (unicidad y Auth/Firestore)
-        const response = await fetch('https://serivisios.onrender.com/update-username', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: auth.currentUser.uid, username: username })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-            usernameFeedback.textContent = '¡Nombre de usuario guardado!';
-            usernameFeedback.style.color = '#00ff00';
-            
-            // ✅ Paso 5: Redirigir al modal de pago
-            switchScreen('profile-screen');
-            showModal(paymentModal);
-
-        } else {
-            usernameFeedback.textContent = data.error || 'Error al guardar. Intenta de nuevo.';
-            usernameFeedback.style.color = '#e50914';
-        }
-    } catch (error) {
-        console.error('Error al guardar el nombre de usuario:', error);
-        usernameFeedback.textContent = 'Error de conexión. Intenta de nuevo.';
-        usernameFeedback.style.color = '#e50914';
-    } finally {
-        hideLoader();
-    }
-});
-
-usernameInput.addEventListener('input', () => {
-    usernameFeedback.textContent = 'Comprobando disponibilidad...';
-    usernameFeedback.style.color = '#ccc';
-    // Una pequeña demora para evitar spam de peticiones
-    clearTimeout(usernameInput.timer);
-    usernameInput.timer = setTimeout(async () => {
-        const username = usernameInput.value.trim();
-        if (username.length >= 3) {
-            const isUnique = await checkUsernameUniqueness(username);
-            if (isUnique) {
-                usernameFeedback.textContent = 'Disponible';
-                usernameFeedback.style.color = '#00ff00';
-            } else {
-                usernameFeedback.textContent = 'No disponible';
-                usernameFeedback.style.color = '#e50914';
-            }
-        } else {
-            usernameFeedback.textContent = '';
-        }
-    }, 500);
 });
 
 // --- Funciones principales y de renderizado ---
@@ -566,23 +360,14 @@ function renderRequestButton(tmdbItem) {
             switchScreen('auth-screen');
             return;
         }
-        
-        // Determinar el estado para la prioridad (Priorización)
-        const userStatus = currentUser.isPro ? (currentUser.isTrial ? 'PRUEBA GRATUITA' : 'PREMIUM') : 'GRATIS';
-        const username = currentUser.username || auth.currentUser.email.split('@')[0];
-        
         try {
-            // ✅ Enviar username y userStatus al servidor
             const response = await fetch('https://serivisios.onrender.com/request-movie', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: tmdbItem.title || tmdbItem.name,
                     poster_path: tmdbItem.poster_path,
-                    tmdbId: tmdbItem.id,
-                    userId: auth.currentUser.uid,
-                    username: username, 
-                    userStatus: userStatus 
+                    tmdbId: tmdbItem.id
                 })
             });
             if (response.ok) {
@@ -636,6 +421,7 @@ async function showDetailsScreen(item, type) {
         actorsList.textContent = actors || 'No disponible';
         
         // ✅ CORRECCIÓN CLAVE: Se convierte el item.id a string para la comparación
+        // Esto resuelve el problema de la no visualización de los episodios
         const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id.toString());
         
         currentMovieOrSeries = localData;
@@ -1014,7 +800,7 @@ function switchScreen(screenId) {
         searchFilters.style.display = 'none';
     }
     
-    if (screenId === 'details-screen' || screenId === 'auth-screen' || screenId === 'verification-screen' || screenId === 'username-screen') {
+    if (screenId === 'details-screen' || screenId === 'auth-screen') {
         document.querySelector('.top-nav').style.display = 'none';
         document.querySelector('.bottom-nav').style.display = 'none';
         appContainer.style.paddingBottom = '0';
@@ -1056,7 +842,7 @@ window.addEventListener('popstate', async (event) => {
                     fetchFavorites();
                     searchFilters.style.display = 'none';
                 }
-                if (state.screen === 'details-screen' || state.screen === 'auth-screen' || state.screen === 'verification-screen' || state.screen === 'username-screen') {
+                if (state.screen === 'details-screen' || state.screen === 'auth-screen') {
                     document.querySelector('.top-nav').style.display = 'none';
                     document.querySelector('.bottom-nav').style.display = 'none';
                     appContainer.style.paddingBottom = '0';
@@ -1211,23 +997,13 @@ submitRequestButton.addEventListener('click', async (e) => {
         return;
     }
 
-    // Determinar el estado para la prioridad (Priorización)
-    const userStatus = currentUser.isPro ? (currentUser.isTrial ? 'PRUEBA GRATUITA' : 'PREMIUM') : 'GRATIS';
-    const username = currentUser.username || auth.currentUser.email.split('@')[0];
-    
     try {
-        // Enviar al Firestore para registro
         await addDoc(collection(db, "requests"), {
             userId: auth.currentUser.uid,
-            userName: username, 
+            userName: auth.currentUser.displayName || 'Anónimo',
             movieTitle: movieTitle,
-            requestedAt: new Date(),
-            userStatus: userStatus 
+            requestedAt: new Date()
         });
-        
-        // Opcional: Notificar al servidor vía la ruta /request-movie (para Telegram)
-        // Nota: Esta ruta solo maneja el registro en Firestore en el frontend. Si quieres Telegram, debes usar el endpoint /request-movie con los datos mínimos.
-
         alert('¡Solicitud enviada! Gracias por tu sugerencia.');
         movieRequestInput.value = '';
     } catch (e) {
@@ -1340,53 +1116,26 @@ signupButton.addEventListener('click', async () => {
         return;
     }
     
-    showLoader();
     try {
-        // ✅ Registro simple sin verificación forzada
-        const response = await fetch('https://serivisios.onrender.com/api/signup-and-verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-            // Inicia sesión inmediatamente (Acceso Instantáneo)
-            await signInWithEmailAndPassword(auth, email, password);
-
-            // Redirige al nombre de usuario (si es nuevo)
-            alert('¡Registro exitoso! Por favor, elige tu nombre de usuario.');
-            switchScreen('profile-screen'); 
-            
-        } else {
-             alert(data.error || 'Error al crear la cuenta. Intenta de nuevo.');
-        }
-        
+        await createUserWithEmailAndPassword(auth, email, password);
+        switchScreen('profile-screen');
+        showModal(paymentModal);
     } catch (error) {
         console.error("Signup error:", error);
         alert(`Error al registrarse: ${error.message}`);
-    } finally {
-        hideLoader();
     }
 });
 
 loginButton.addEventListener('click', async () => {
     const email = loginEmailInput.value;
     const password = loginPasswordInput.value;
-    showLoader();
     try {
-        // ✅ Login simple, ya no bloquea por emailVerified
         await signInWithEmailAndPassword(auth, email, password);
-        
         alert('¡Inicio de sesión exitoso!');
         switchScreen('profile-screen');
-
     } catch (error) {
         console.error("Login error:", error);
         alert(`Error al iniciar sesión: ${error.message}`);
-    } finally {
-        hideLoader();
     }
 });
 
@@ -1410,7 +1159,7 @@ buyButtons.forEach(button => {
             const response = await fetch('https://serivisios.onrender.com/create-paypal-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan: plan, amount: amount, userId: currentUser.uid }) // Envía userId
+                body: JSON.stringify({ plan: plan, amount: amount })
             });
 
             const data = await response.json();
@@ -1425,68 +1174,6 @@ buyButtons.forEach(button => {
             alert('Hubo un error al procesar tu pago. Intenta de nuevo.');
         }
     });
-});
-
-freeTrialButton.addEventListener('click', async () => {
-    if (!currentUser || currentUser.isAnonymous) {
-        switchScreen('auth-screen');
-        return;
-    }
-
-    showLoader();
-    try {
-        // 1. Obtener el estado de verificación del usuario (depende de la nueva bandera de Firestore)
-        const userDocRef = doc(db, 'users', auth.currentUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        const userData = userDocSnap.data();
-        
-        const isVerified = userData?.isVerifiedByCode; // Nueva bandera de verificación por código
-
-        if (!isVerified) {
-            // Si NO está verificado, enviar el código OTP y bloquear el acceso al trial
-            closeModal(paymentModal);
-            await sendOtpEmail(auth.currentUser.email, 'Verifica tu correo para activar la Prueba Gratuita.');
-            return; // Detener aquí, el usuario debe ir a la pantalla de código.
-        }
-
-        // 2. Si el email está verificado, proceder con la activación del trial
-        if (userData.isTrial) {
-            alert('Ya has utilizado tu prueba gratuita de 2 días.');
-            hideLoader();
-            return;
-        }
-
-        // Llamada al servidor para activar el Trial
-        const response = await fetch('https://serivisios.onrender.com/activate-trial', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.uid })
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            alert(data.message);
-            closeModal(paymentModal);
-            
-            // Forzar actualización de estado local
-            currentUser.isPro = true;
-            currentUser.isTrial = true;
-            if (proStatusButton) {
-                proStatusButton.textContent = 'Cuenta Premium (Prueba Activa)';
-                proStatusButton.disabled = true;
-            }
-            switchScreen('home-screen');
-        } else {
-            alert(data.error || 'Error al activar la prueba. Intenta de nuevo.');
-        }
-
-    } catch (error) {
-        console.error("Error al activar la prueba gratuita:", error);
-        alert('Hubo un error al activar la prueba. Intenta de nuevo.');
-    } finally {
-        hideLoader();
-    }
 });
 
 if (buyWithPaypalButton) {
@@ -1516,70 +1203,29 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     
     if (user && !user.isAnonymous) {
-        
-        const userDocRef = doc(db, 'users', user.uid);
-        let userDocSnap = await getDoc(userDocRef);
-        
-        // 1. Crear documento si no existe
-        if (!userDocSnap.exists()) {
-             await setDoc(userDocRef, {
-                uid: user.uid,
-                email: user.email,
-                isPro: false,
-                isTrial: false,
-                hasUsername: false,
-                isVerifiedByCode: false, // Nueva bandera
-                createdAt: new Date()
-            }, { merge: true });
-            userDocSnap = await getDoc(userDocRef);
-        }
-        
-        const userData = userDocSnap.data();
-
-        // 2. Bloqueo 2: Forzar la selección del nombre de usuario (Paso 4)
-        if (userData && !userData.hasUsername) {
-            if (!isInitialized) {
-                showUsernameScreen();
-            }
-            return;
-        }
-        
-        // Si pasó todos los chequeos, configurar el perfil.
         if (profileLoggedIn) {
             profileLoggedIn.style.display = 'block';
         }
         if (profileLoggedOut) {
             profileLoggedOut.style.display = 'none';
         }
-
-        const isTrialActive = await getTrialStatus(userDocSnap);
-
-        // 3. Definir estado PRO o Trial
-        if (userData.isPro) {
+        
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (userDocSnap.exists() && userDocSnap.data().isPro) {
             currentUser.isPro = true;
             if (proStatusButton) {
                 proStatusButton.textContent = 'Cuenta Premium Activada';
                 proStatusButton.disabled = true;
             }
-        } else if (isTrialActive) {
-            currentUser.isPro = true; // Se considera PRO para acceso al contenido
-            currentUser.isTrial = true;
-            if (proStatusButton) {
-                proStatusButton.textContent = 'Cuenta Premium (Prueba Activa)';
-                proStatusButton.disabled = true;
-            }
-        } 
-        else {
+        } else {
             currentUser.isPro = false;
-            currentUser.isTrial = false;
             if (proStatusButton) {
                 proStatusButton.textContent = 'Activar Cuenta Premium';
                 proStatusButton.disabled = false;
             }
         }
-        
-        currentUser.username = userData.username || user.displayName;
-
     } else {
         if (profileLoggedIn) {
             profileLoggedIn.style.display = 'none';
@@ -1614,11 +1260,6 @@ onAuthStateChanged(auth, async (user) => {
         
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
-        
-        // Solo cambiar de pantalla si no estamos ya en una pantalla especial de bloqueo
-        const currentScreen = document.querySelector('.screen.active');
-        if (!currentScreen || (currentScreen.id !== 'verification-screen' && currentScreen.id !== 'username-screen')) {
-            switchScreen('home-screen');
-        }
+        switchScreen('home-screen');
     }
 });
