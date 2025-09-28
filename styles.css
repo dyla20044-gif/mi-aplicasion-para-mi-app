@@ -1,3 +1,44 @@
+/* REQUERIMIENTO 2: Sistema de Tema Dual */
+:root { /* Default/Light Mode */
+    --main-bg: #ffffff;
+    --secondary-bg: #f0f0f0;
+    --text-color: #1a1a1a;
+    --nav-bg: #ffffff;
+    --icon-color: #666666; /* MODIFICADO: Unificado con el color inactivo de la barra inferior para ser más opaco */
+    --red-highlight: #e50914;
+    --input-bg: #e0e0e0;
+    --input-placeholder: #666;
+    /* Variables de Notificación */
+    --card-background-color: #ffffff;
+    --card-background-color-light: #f5f5f5;
+    --secondary-text-color: #777;
+    --border-color: #ccc;
+    --input-background-color: #e0e0e0;
+}
+
+body.dark-mode {
+    --main-bg: #000000;
+    --secondary-bg: #1a1a1a;
+    --text-color: #ffffff;
+    --nav-bg: #000000;
+    --icon-color: #aaaaaa; /* MODIFICADO: Color más opaco en modo oscuro para consistencia */
+    --red-highlight: #e50914;
+    --input-bg: #262626;
+    --input-placeholder: #999;
+    /* Variables de Notificación */
+    --card-background-color: #1a1a1a;
+    --card-background-color-light: #2a2a2a;
+    --secondary-text-color: #aaa;
+    --border-color: #333;
+    --input-background-color: #262626;
+}
+
+/* Animación de color para el logo */
+@keyframes logo-color-animate {
+    0%, 100% { color: var(--text-color); }
+    50% { color: var(--red-highlight); } 
+}
+
 html, body {
     height: 100%;
     margin: 0;
@@ -6,10 +47,12 @@ html, body {
 }
 
 body {
-    background-color: #000000;
-    color: #ffffff;
+    /* Aplicar variables de tema */
+    background-color: var(--main-bg);
+    color: var(--text-color);
+    /* LIGERAMENTE MÁS PEQUEÑA PARA COMPACTACIÓN */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 14px;
+    font-size: 13.5px; 
     display: flex;
     flex-direction: column;
 }
@@ -56,48 +99,134 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* Barra de navegación superior */
+/* REQUERIMIENTO 1: Barra de navegación superior (Rediseño) */
 .top-nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 20px;
-    background-color: #000000;
+    padding: 10px 15px; /* LIGERAMENTE MÁS COMPACTO */
+    height: 50px;
+    background-color: var(--nav-bg);
     position: sticky;
     top: 0;
     z-index: 100;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
 }
 
-.top-nav .logo {
-    font-size: 1.5em;
-    font-weight: bold;
-    color: #ffffff;
-    letter-spacing: 1px;
-}
-
-.search-container {
+.top-nav .nav-left, .top-nav .nav-center-icons, .top-nav .nav-right {
     display: flex;
     align-items: center;
-    background-color: #1a1a1a;
-    border-radius: 20px;
-    padding: 5px 15px;
-    flex-grow: 1;
-    margin-left: 20px;
+    gap: 15px;
 }
 
-#search-input {
-    background: transparent;
+.top-nav .logo-text {
+    font-size: 1.6em;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: var(--text-color);
+    /* Aplicar la animación al logo (Problema 4) */
+    animation: logo-color-animate 4s infinite alternate;
+}
+
+.icon-button {
+    background: none;
     border: none;
-    color: #ffffff;
-    outline: none;
-    width: 100%;
+    color: var(--icon-color);
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 0;
 }
 
-.search-icon-top {
-    color: #999;
-    font-size: 1em;
+/* Icono de perfil en recuadro rojo - ELIMINADO/MOVIDO */
+.nav-item-profile {
+    /* Mantenemos el estilo si el usuario lo vuelve a usar, pero ya no está en HTML */
+    background-color: var(--red-highlight);
+    color: #ffffff;
+    width: 40px;
+    height: 40px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2em;
+    transition: opacity 0.2s;
+    text-decoration: none;
+}
+.nav-item-profile:hover {
+    opacity: 0.9;
+}
+
+/* REQUERIMIENTO 2: Indicador de Notificación (AJUSTADO A PUNTO ROJO) */
+#btn-open-avisos {
+    position: relative;
+    background: none;
+    border: none;
+    color: var(--icon-color);
+    font-size: 1.2em; 
     cursor: pointer;
-    margin-left: 10px;
+}
+#notification-indicator {
+    position: absolute;
+    top: 0px; /* Ajustado para estar en la esquina superior derecha de la campana */
+    right: -4px; /* Ajustado para superponerse ligeramente */
+    background-color: var(--red-highlight);
+    color: transparent; /* Hacemos el texto transparente */
+    border-radius: 50%;
+    width: 8px; /* Reducimos a un punto */
+    height: 8px; /* Reducimos a un punto */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0; /* Aseguramos que no haya texto */
+    padding: 0;
+    border: 2px solid var(--nav-bg); /* Borde para que se vea sobre la campana */
+}
+.indicator.hidden {
+    display: none !important;
+}
+
+/* Overlay de Búsqueda */
+.search-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    /* REQ 1: Barra más delgada (de 70px a 50px) */
+    height: 50px; 
+    padding: 5px 15px; 
+    background-color: var(--nav-bg);
+    display: none;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    z-index: 101;
+}
+.search-overlay.active {
+    display: flex;
+}
+.search-overlay #search-input {
+    flex-grow: 1;
+    /* REQ 1: Fija el tamaño de fuente para prevenir "zoom" en móvil */
+    font-size: 1em; 
+    padding: 10px 15px;
+    border: none;
+    border-radius: 20px;
+    margin: 0;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+.search-overlay #search-input::placeholder {
+    color: var(--input-placeholder);
+}
+
+#close-search-button {
+    background: none;
+    border: none;
+    color: var(--icon-color);
+    /* REQ 1: Botón "X" más grande y fácil de presionar */
+    font-size: 1.5em; 
+    padding: 10px 15px; 
+    margin-left: 5px;
+    cursor: pointer;
 }
 
 .screen-header {
@@ -116,7 +245,7 @@ body {
 .icon-button {
     background: none;
     border: none;
-    color: #ffffff;
+    color: var(--icon-color);
     font-size: 1.5em;
     cursor: pointer;
     padding: 5px;
@@ -176,8 +305,8 @@ body {
 }
 .banner-button {
     background-color: rgba(255, 255, 255, 0.2);
-    color: #ffffff;
-    border: 1px solid #ffffff;
+    color: var(--text-color);
+    border: 1px solid var(--text-color);
     padding: 8px 15px;
     border-radius: 20px;
     font-size: 0.9em;
@@ -190,7 +319,7 @@ body {
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 .banner-button.red {
-    background-color: rgba(229, 9, 20, 0.8);
+    background-color: var(--red-highlight);
     color: #ffffff;
     border: none;
 }
@@ -202,13 +331,13 @@ body {
 }
 
 .pro-badge {
-    color: #e50914;
+    color: var(--red-highlight);
     font-weight: bold;
     font-size: 0.9em;
     background-color: rgba(0, 0, 0, 0.7);
     padding: 2px 8px;
     border-radius: 10px;
-    border: 1px solid #e50914;
+    border: 1px solid var(--red-highlight);
     text-shadow: none;
 }
 
@@ -229,7 +358,7 @@ body {
 }
 
 .see-more-btn {
-    color: #e50914;
+    color: var(--red-highlight);
     text-decoration: none;
     font-size: 0.9em;
     transition: color 0.2s;
@@ -272,7 +401,7 @@ body {
     position: absolute;
     top: 5px;
     right: 5px;
-    background-color: rgba(229, 9, 20, 0.8);
+    background-color: var(--red-highlight);
     color: #fff;
     font-size: 0.7em;
     font-weight: bold;
@@ -288,7 +417,7 @@ body {
 }
 
 .bottom-nav {
-    background-color: #000000;
+    background-color: var(--nav-bg);
     padding: 10px 0;
     display: flex;
     justify-content: space-around;
@@ -303,19 +432,19 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    color: #666666;
+    color: var(--icon-color); /* MODIFICADO: Usa la variable de color opaco */
     text-decoration: none;
     font-size: 0.8em;
     transition: color 0.2s;
 }
 
-.nav-item.active {
-    color: #e50914;
-}
-
 .nav-item i {
     font-size: 1.4em;
     margin-bottom: 5px;
+}
+
+.nav-item.active {
+    color: var(--red-highlight);
 }
 
 /* Modal y pantalla de detalles de película */
@@ -337,7 +466,7 @@ body {
 }
 
 .movie-details-screen {
-    background-color: #0d0d0d;
+    background-color: var(--main-bg);
     position: fixed;
     top: 0;
     left: 0;
@@ -357,7 +486,16 @@ body {
     left: 0;
     width: 100%;
     z-index: 50;
+    transition: height 0.3s ease, opacity 0.3s ease; /* Para una animación fluida */
 }
+
+/* FIX 2: Clase para ocultar el banner al escribir comentarios */
+#details-screen.writing-comment .details-header-section {
+    height: 0;
+    opacity: 0;
+    pointer-events: none; /* Deshabilita clics en el área oculta */
+}
+
 
 #details-poster-top {
     width: 100%;
@@ -368,7 +506,14 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    transition: height 0.3s ease; /* Transición para que no desaparezca de golpe */
 }
+/* Al escribir comentarios, el poster fijo desaparece (altura 0) */
+#details-screen.writing-comment #details-poster-top {
+    height: 0;
+}
+
+
 /* Nuevo estilo para el contenedor del reproductor incrustado */
 #embedded-player-container {
     width: 100%;
@@ -420,11 +565,20 @@ body {
 .details-content-scrollable {
     overflow-y: auto;
     flex-grow: 1;
-    padding-top: 226px; /* <--- Este es el número que debes cambiar. */
+    padding-top: 240px;
+    transition: padding-top 0.3s ease;
 }
+
+/* Ajusta el contenido deslizable para llenar el espacio cuando el banner desaparece */
+#details-screen.writing-comment .details-content-scrollable {
+    padding-top: 0;
+}
+
 
 .details-info-section {
     padding: 20px;
+    /* REDUCCIÓN DE PADDING EN MÓVIL PARA COMPACTACIÓN */
+    padding: 15px;
 }
 
 .movie-header {
@@ -436,33 +590,102 @@ body {
 .movie-header h2 {
     font-size: 1.8em;
     margin: 0;
+    /* Reducción de fuente para compactación */
+    font-size: 1.6em;
 }
 
 .movie-actions i {
     font-size: 1.5em;
     margin-left: 15px;
     cursor: pointer;
+    color: var(--icon-color);
+    transition: color 0.2s;
+}
+
+/* ESTILO PARA EL CORAZÓN DE LIKE */
+.movie-actions #favorite-button.liked {
+    color: var(--red-highlight);
+    /* LIGERAMENTE MÁS GRANDE CUANDO ESTÁ LIKED */
+    transform: scale(1.1); 
 }
 
 .movie-metadata {
     color: #999;
     font-size: 0.9em;
     margin-top: 5px;
+    display: flex;
+    flex-direction: column; /* Fuerzas que las dos líneas caigan en cascada */
 }
 
-.movie-metadata span:not(:last-child)::after {
+/* LÍNEA 1: Vistas y Likes */
+.movie-metrics {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 5px; 
+    margin-bottom: 5px; /* Reducción de margen para compactación */
+}
+
+.movie-metrics span {
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.1em; 
+}
+
+.movie-metrics i {
+    margin-right: 5px;
+    font-size: 1em;
+}
+
+/* Estilos de íconos para la sección de Métricas */
+#view-count-display {
+    color: orange; 
+}
+#view-count-display i {
+    color: orange;
+}
+#like-count-display-text {
+    color: var(--red-highlight);
+}
+#like-count-display-text i {
+    color: var(--red-highlight);
+}
+
+/* LÍNEA 2: Año y Géneros */
+.movie-attributes {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.95em;
+    color: var(--secondary-text-color);
+    margin-bottom: 10px;
+}
+
+.movie-attributes span:not(:last-child)::after {
+    content: '';
+}
+
+.movie-metadata #details-year {
+    font-weight: normal;
+}
+.movie-metadata #details-genres {
+    font-weight: normal;
+}
+.movie-metadata #details-genres::before {
     content: ' · ';
 }
 
+
 #details-sinopsis {
-    margin-top: 15px;
+    margin-top: 10px; /* Reducción de margen para compactación */
     line-height: 1.5;
 }
 
 .text-button {
     background: none;
     border: none;
-    color: #e50914;
+    color: var(--red-highlight);
     font-size: 0.9em;
     cursor: pointer;
     padding: 0;
@@ -471,7 +694,8 @@ body {
 }
 
 .movie-cast {
-    margin-top: 20px;
+    margin-top: 15px; /* Reducción de margen para compactación */
+    margin-bottom: 15px; 
 }
 
 .ad-banner {
@@ -488,7 +712,8 @@ body {
 
 .related-section {
     width: 100%;
-    margin-top: 30px;
+    /* Eliminamos el margin-top para que se anide bien en la pestaña */
+    margin-top: 0;
 }
 
 .related-section h3 {
@@ -496,7 +721,7 @@ body {
 }
 
 .button {
-    background-color: #e50914;
+    background-color: var(--red-highlight);
     color: #ffffff;
     padding: 12px 25px;
     text-decoration: none;
@@ -506,12 +731,13 @@ body {
     display: inline-block;
     transition: background-color 0.2s;
     cursor: pointer;
+    border: none;
 }
 
 .button.secondary {
-    background-color: rgba(100, 100, 100, 0.5);
-    color: #ffffff;
-    border: 1px solid #ffffff;
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+    border: 1px solid var(--input-placeholder);
 }
 
 .button:hover {
@@ -534,7 +760,7 @@ body {
 }
 
 .close-button {
-    color: #ffffff;
+    color: var(--text-color);
     position: absolute;
     top: 10px;
     right: 20px;
@@ -552,7 +778,7 @@ body {
 
 /* Payment Modal */
 .modal-content.payment-content {
-    background-color: #1a1a1a;
+    background-color: var(--secondary-bg);
     padding: 30px;
     border-radius: 10px;
     text-align: center;
@@ -569,7 +795,7 @@ body {
 }
 
 .payment-content p {
-    color: #ccc;
+    color: var(--text-color);
     line-height: 1.4;
 }
 
@@ -581,10 +807,10 @@ body {
 }
 
 .plan-card {
-    background-color: #0d0d0d;
+    background-color: var(--main-bg);
     padding: 20px;
     border-radius: 10px;
-    border: 1px solid #333;
+    border: 1px solid var(--input-placeholder);
     flex: 1;
 }
 
@@ -596,7 +822,7 @@ body {
 .plan-card p {
     font-size: 1.5em;
     font-weight: bold;
-    color: #e50914;
+    color: var(--red-highlight);
     margin: 10px 0;
 }
 
@@ -650,7 +876,7 @@ body {
 }
 
 .modal-from-bottom .modal-content {
-    background-color: #1a1a1a;
+    background-color: var(--secondary-bg);
     padding: 30px 20px;
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
@@ -683,7 +909,7 @@ body {
 }
 
 .premium-benefits i {
-    color: #e50914;
+    color: var(--red-highlight);
     margin-right: 10px;
 }
 
@@ -695,12 +921,12 @@ body {
 
 .premium-info-login {
     margin-top: 20px;
-    color: #ccc;
+    color: var(--text-color);
     font-size: 0.9em;
 }
 
 .premium-info-login a {
-    color: #e50914;
+    color: var(--red-highlight);
     text-decoration: none;
     font-weight: bold;
 }
@@ -721,7 +947,7 @@ body {
     padding: 20px;
 }
 .profile-link {
-    color: #ccc;
+    color: var(--text-color);
     text-decoration: none;
     font-size: 1.1em;
     transition: color 0.2s;
@@ -740,13 +966,13 @@ body {
 }
 .terms-label {
     font-size: 0.8em;
-    color: #ccc;
+    color: var(--text-color);
     text-align: left;
 }
 
 /* Nuevo Estilo para el flujo de registro */
 .profile-header {
-    background-color: #000;
+    background-color: var(--nav-bg);
     padding: 20px;
 }
 
@@ -806,7 +1032,7 @@ body {
 }
 
 .profile-premium-cta {
-    background-color: #1a1a1a;
+    background-color: var(--secondary-bg);
     border-radius: 8px;
     padding: 20px;
     text-align: center;
@@ -816,7 +1042,7 @@ body {
 .profile-premium-cta p {
     font-size: 1.2em;
     margin-bottom: 10px;
-    color: #fff;
+    color: var(--text-color);
 }
 
 .profile-options-list {
@@ -826,7 +1052,7 @@ body {
 }
 
 .profile-option {
-    color: #ccc;
+    color: var(--text-color);
     text-decoration: none;
     font-size: 1.1em;
     transition: color 0.2s;
@@ -880,14 +1106,14 @@ body {
 }
 
 .avatar-option.selected {
-    border-color: #fff;
+    border-color: var(--red-highlight);
 }
 
 .input-label {
     display: block;
     text-align: left;
     margin-bottom: 5px;
-    color: #ccc;
+    color: var(--text-color);
 }
 
 .welcome-container {
@@ -903,13 +1129,13 @@ body {
 .welcome-title {
     font-size: 2.5em;
     font-weight: bold;
-    color: #e50914;
+    color: var(--red-highlight);
     margin-bottom: 10px;
 }
 
 .welcome-subtitle {
     font-size: 1.2em;
-    color: #ccc;
+    color: var(--text-color);
     margin-bottom: 30px;
 }
 
@@ -922,7 +1148,7 @@ body {
 }
 
 .primary-button {
-    background-color: #e50914;
+    background-color: var(--red-highlight);
     color: #fff;
     font-size: 1.2em;
     padding: 15px;
@@ -966,8 +1192,8 @@ body {
 }
 
 .plan-card {
-    background-color: #1a1a1a;
-    border: 2px solid #1a1a1a;
+    background-color: var(--secondary-bg);
+    border: 2px solid var(--secondary-bg);
     border-radius: 10px;
     padding: 20px;
     width: 100%;
@@ -976,7 +1202,7 @@ body {
 }
 
 .plan-card.active-plan {
-    border-color: #e50914;
+    border-color: var(--red-highlight);
 }
 
 .plan-card-title {
@@ -986,7 +1212,7 @@ body {
 
 .plan-card-price {
     font-size: 1.2em;
-    color: #e50914;
+    color: var(--red-highlight);
     font-weight: bold;
     margin-bottom: 15px;
 }
@@ -1002,7 +1228,7 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #ccc;
+    color: var(--text-color);
     margin-bottom: 5px;
 }
 
@@ -1015,7 +1241,7 @@ body {
     position: absolute;
     top: 10px;
     right: 10px;
-    background-color: #e50914;
+    background-color: var(--red-highlight);
     color: #fff;
     padding: 5px 10px;
     border-radius: 5px;
@@ -1031,8 +1257,8 @@ body {
 }
 
 .season-button {
-    background-color: #1a1a1a;
-    color: #fff;
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
     padding: 10px 15px;
     border-radius: 8px;
     text-align: center;
@@ -1052,8 +1278,8 @@ body {
 }
 
 .episode-button {
-    background-color: #1a1a1a;
-    color: #fff;
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
     padding: 10px;
     border-radius: 8px;
     text-align: center;
@@ -1073,8 +1299,8 @@ body {
 
 .server-option-button {
     background: none;
-    border: 1px solid #ccc;
-    color: #fff;
+    border: 1px solid var(--text-color);
+    color: var(--text-color);
     padding: 10px 15px;
     border-radius: 8px;
     font-size: 0.9em;
@@ -1084,7 +1310,7 @@ body {
 }
 .server-option-button:hover {
     background-color: #333;
-    border-color: #e50914;
+    border-color: var(--red-highlight);
 }
 
 .badge-1080p {
@@ -1107,7 +1333,7 @@ body {
 }
 
 .request-movie-button {
-    background-color: rgba(229, 9, 20, 0.8);
+    background-color: var(--red-highlight);
     color: #ffffff;
     border: none;
     padding: 12px 25px;
@@ -1134,7 +1360,7 @@ body {
     margin-bottom: 10px;
 }
 .modal-text-ad {
-    color: #ccc;
+    color: var(--text-color);
     line-height: 1.5;
     margin-bottom: 20px;
 }
@@ -1193,10 +1419,10 @@ body {
     box-sizing: border-box;
     padding: 15px 20px;
     margin-bottom: 15px;
-    background-color: #262626;
+    background-color: var(--input-bg);
     border: none;
     border-radius: 8px;
-    color: #fff;
+    color: var(--text-color);
     font-size: 1em;
 }
 .password-container {
@@ -1211,7 +1437,7 @@ body {
     right: 20px;
     top: 50%;
     transform: translateY(-50%);
-    color: #999;
+    color: var(--input-placeholder);
     cursor: pointer;
 }
 .auth-button {
@@ -1223,16 +1449,16 @@ body {
     font-weight: 600;
 }
 .auth-button.primary {
-    background-color: #e50914; /* Color principal de la aplicación */
+    background-color: var(--red-highlight); 
 }
 .auth-button.primary:hover {
-    background-color: #ff3333; /* Color de hover del botón principal */
+    background-color: #ff3333; 
 }
 .auth-button.secondary {
-    background-color: #333; /* Color secundario para botones */
+    background-color: #333; 
 }
 .auth-button.secondary:hover {
-    background-color: #444; /* Color de hover del botón secundario */
+    background-color: #444; 
 }
 .auth-separator {
     text-align: center;
@@ -1256,18 +1482,18 @@ body {
 }
 .switch-form-text {
     text-align: center;
-    color: #ccc;
+    color: var(--text-color);
     font-size: 0.9em;
 }
 .switch-form-text a {
-    color: #e50914; /* Color principal de la aplicación para enlaces */
+    color: var(--red-highlight); 
     text-decoration: none;
     font-weight: bold;
 }
 .forgot-password-link {
     display: block;
     text-align: center;
-    color: #e50914; /* Color principal de la aplicación para enlaces */
+    color: var(--red-highlight); 
     font-size: 0.9em;
     text-decoration: none;
     margin-top: 10px;
@@ -1277,7 +1503,7 @@ body {
     position: absolute;
     bottom: 5px;
     left: 5px;
-    background-color: #e50914;
+    background-color: var(--red-highlight);
     color: #fff;
     font-size: 0.7em;
     padding: 2px 6px;
@@ -1308,9 +1534,282 @@ body {
     white-space: nowrap;
 }
 .filter-button.active {
-    background-color: #e50914;
+    background-color: var(--red-highlight);
     color: #fff;
 }
 
+/* REQ 2: Ajuste de Layout - Clase aplicada cuando se muestran los resultados de búsqueda */
+#movies-screen.search-active {
+    /* Mueve el contenido 60px hacia abajo para dejar espacio al search-overlay de 50px */
+    padding-top: 60px; 
+}
+/* Asegura que el header (donde están los botones de filtro) no se cruce */
+#movies-screen.search-active .screen-header {
+    padding-top: 0;
+}
 
+
+/* REQUERIMIENTO 3: Estilos del Modal de Descarga */
+.modal-from-bottom .download-content {
+    max-width: 400px;
+}
+.app-image-placeholder {
+    width: 100%;
+    height: 150px;
+    background-color: #333;
+    /* Usar un color y borde para representar la imagen que enviarás */
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid var(--red-highlight);
+}
+
+/* --- ESTILOS DE PESTAÑAS (TABS) --- */
+.tabs-container {
+    margin-top: 15px; /* Reducción de margen para compactación */ /* <<< AJUSTE DE ESPACIO #6: Margen superior de la sección de Pestañas. */
+}
+.tabs-header {
+    display: flex;
+    justify-content: space-around;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 15px; /* Reducción de margen para compactación */
+}
+.tab-button {
+    background: none;
+    border: none;
+    padding: 8px 15px; /* Reducción de padding para compactación */
+    font-size: 1.05em;
+    font-weight: bold;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: color 0.2s, border-bottom-color 0.2s;
+    flex-grow: 1;
+    text-align: center;
+}
+.tab-button.active {
+    color: var(--text-color);
+    border-bottom-color: var(--red-highlight);
+}
+.tab-pane {
+    display: none;
+}
+.tab-pane.active {
+    display: block;
+}
+/* --- FIN ESTILOS DE PESTAÑAS --- */
+
+
+/* REQUERIMIENTO 4: Estilos de Funciones Sociales */
+/* ELIMINADO: .social-actions (ya no se necesita el botón grande de like) */
+
+.comments-container h3 {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+.comment-input-area {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+#comment-input {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 20px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+#btn-post-comment {
+    width: auto;
+    padding: 10px 15px;
+    border-radius: 20px;
+    font-size: 1em;
+    margin: 0;
+}
+.comments-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.comment-item {
+    background: var(--secondary-bg);
+    padding: 10px 15px;
+    border-radius: 10px;
+    border-left: 3px solid var(--red-highlight); /* Detalle llamativo para los comentarios */
+}
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8em;
+    margin-bottom: 5px;
+}
+.comment-user {
+    font-weight: bold;
+    color: var(--text-color);
+}
+.comment-date {
+    color: #999;
+}
+.comment-text {
+    font-size: 0.9em;
+    line-height: 1.4;
+    color: var(--text-color);
+}
+/* REQUERIMIENTO 2: Indicador de Notificación (AJUSTADO A PUNTO ROJO) */
+#btn-open-avisos {
+    position: relative;
+    background: none;
+    border: none;
+    color: var(--icon-color);
+    font-size: 1.2em; 
+    cursor: pointer;
+}
+#notification-indicator {
+    position: absolute;
+    top: 0px; 
+    right: -4px; 
+    background-color: var(--red-highlight);
+    color: transparent; 
+    border-radius: 50%;
+    width: 8px; 
+    height: 8px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0; 
+    padding: 0;
+    border: 2px solid var(--nav-bg); 
+}
+.indicator.hidden {
+    display: none !important;
+}
+
+/* REQUERIMIENTO 2: Modal de Notificaciones Limpio y Profesional */
+.notifications-content {
+    max-height: 80vh; /* Limita la altura del modal */
+    overflow-y: auto;
+    padding: 15px;
+}
+.notifications-content .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 0 5px;
+}
+.notifications-list {
+    padding: 10px 0;
+}
+.notification-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background-color: var(--card-background-color);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.notification-item:active {
+    background-color: var(--card-background-color-light); /* Feedback al presionar */
+}
+.notification-item.unread {
+    border-left: 3px solid var(--red-highlight);
+    /* Color ligeramente distinto para indicar no leído */
+    background-color: rgba(229, 9, 20, 0.1); 
+}
+.notification-item img {
+    width: 50px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-right: 15px;
+    /* Estilo para que se vea bien si la URL no carga */
+    background-color: var(--input-background-color); 
+}
+.notification-item-text {
+    flex-grow: 1;
+}
+.notification-item-text strong {
+    display: block;
+    font-size: 1em;
+    color: var(--text-color);
+    margin-bottom: 2px;
+}
+.notification-item-text small {
+    display: block;
+    font-size: 0.8em;
+    color: var(--secondary-text-color);
+}
+.empty-message {
+    text-align: center;
+    color: var(--secondary-text-color);
+    padding: 20px;
+}
+.full-width {
+    width: 100%;
+}
+.mt-10 {
+    margin-top: 10px;
+}
+
+/* REQUERIMIENTO 1: Formulario de Eventos */
+#event-description {
+    width: 100%;
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    border: none;
+    border-radius: 8px;
+    box-sizing: border-box;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-size: 1em;
+    resize: vertical;
+}
+/* Ajuste para el input de URL en el formulario de eventos */
+#add-event-form input[type="url"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    background-color: var(--input-bg);
+    border: none;
+    border-radius: 8px;
+    color: var(--text-color);
+    font-size: 1em;
+}
+
+/* REQUERIMIENTO 3: Estilos para Errores/Éxitos Amigables */
+.auth-message-box, .request-message-box {
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    font-size: 0.9em;
+    text-align: center;
+    display: none; /* Oculto por defecto */
+}
+.auth-message-box.error, .request-message-box.error {
+    background-color: rgba(229, 9, 20, 0.2); /* Fondo semi-transparente rojo */
+    color: var(--red-highlight);
+    border: 1px solid var(--red-highlight);
+}
+.auth-message-box.success, .request-message-box.success {
+    background-color: rgba(0, 150, 0, 0.2);
+    color: #00e600; /* Verde brillante */
+    border: 1px solid #00e600;
+}
+/* Estilo para el input en el modal de publicación de contenido (Admin) */
+.admin-avisos-content input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    background-color: var(--input-bg);
+    border: none;
+    border-radius: 8px;
+    color: var(--text-color);
+    font-size: 1em;
+}
 
