@@ -3,21 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cine</title>
+    <title>Cine HD</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
 
     <header class="top-nav">
-        <div class="logo">Cine</div>
-        <div class="search-container">
-            <input type="text" id="search-input" placeholder="Buscar películas...">
-            <i id="search-icon" class="fas fa-search search-icon-top"></i>
+        <div class="nav-left">
+            <span class="logo-text">SALA CINE</span>
+        </div>
+        <div class="nav-center-icons">
+            <button id="btn-download-app" class="icon-button" aria-label="Descargar aplicación"><i class="fab fa-android"></i></button>
+        </div>
+        <div class="nav-right">
+            <button id="btn-open-search" class="icon-button search-icon-button" aria-label="Abrir búsqueda"><i class="fas fa-search"></i></button>
+            <button id="btn-toggle-theme" class="icon-button" aria-label="Tema Dual"><i class="fas fa-moon"></i></button>
+            <button id="btn-open-avisos" class="icon-button" aria-label="Notificaciones">
+                <i class="fas fa-bell"></i>
+                <span id="notification-indicator" class="indicator hidden"></span>
+            </button>
         </div>
     </header>
 
-    <main id="app-container">
+    <div class="search-overlay" id="search-overlay">
+        <input type="text" id="search-input" placeholder="Buscar películas...">
+        <button id="close-search-button"><i class="fas fa-times"></i></button>
+    </div>
+
+    <main id="app-container" style="display:none;">
         <div id="home-screen" class="screen active">
             <section class="hero-banner-carousel">
                 <div id="banner-list" class="movie-list horizontal-scroll"></div>
@@ -125,7 +139,7 @@
                     <button id="signout-button" class="icon-button"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
                 <div class="profile-options">
-                    <button id="pro-status-button" class="button profile-button"><i class="fas fa-crown"></i> <span>Activar Cuenta Pro</span></button>
+                    <button id="pro-status-button" class="button profile-button"><i class="fas fa-crown"></i> <span>Activar Cuenta Premium</span></button>
                     <button id="favorites-button" class="button secondary profile-button" data-screen="favorites-screen"><i class="fas fa-heart"></i> <span>Mis Favoritos</span></button>
                     <button id="request-button" class="button secondary profile-button" data-screen="request-screen"><i class="fas fa-plus-circle"></i> <span>Solicitar Película</span></button>
                     <button id="settings-button" class="button secondary profile-button" data-screen="settings-screen"><i class="fas fa-cog"></i> <span>Configuración</span></button>
@@ -167,6 +181,7 @@
             <div class="screen-header">
                 <h2>Solicitar Película</h2>
             </div>
+            <div id="request-message" class="request-message-box"></div>
             <div class="request-form">
                 <input type="text" id="movie-request-input" placeholder="Nombre de la película o serie...">
                 <button id="submit-request-button" class="button">Enviar Solicitud</button>
@@ -232,16 +247,23 @@
             </div>
             <div class="details-content-scrollable">
                 <div class="details-info-section">
+                    <div id="details-request-message" class="request-message-box"></div>
                     <div class="movie-header">
                         <h2 id="details-title"></h2>
                         <div class="movie-actions">
                             <i id="share-button" class="fas fa-share-alt"></i>
-                            <i id="favorite-button" class="fas fa-heart"></i>
+                            <i id="favorite-button" class="far fa-heart"></i>
                         </div>
                     </div>
                     <div class="movie-metadata">
-                        <span id="details-year"></span>
-                        <span id="details-genres"></span>
+                        <div class="movie-metrics">
+                            <span id="view-count-display"><i class="fas fa-eye"></i> 0 Vistas</span>
+                            <span id="like-count-display-text"><i class="fas fa-heart"></i> 0 Me Gusta</span>
+                        </div>
+                        <div class="movie-attributes">
+                            <span id="details-year"></span>
+                            <span id="details-genres"></span>
+                        </div>
                     </div>
                     <p id="details-sinopsis"></p>
                     <button id="read-more-button" class="text-button">Ver más</button>
@@ -249,14 +271,36 @@
                         <p>Director: <span id="director-name"></span></p>
                         <p>Actores: <span id="actors-list"></span></p>
                     </div>
-                    
+
                     <div id="seasons-container" class="episode-select-container" style="display:none;"></div>
                     <div id="episodes-container"></div>
-
-                    <section class="related-section">
-                        <h3>También podría gustarte</h3>
-                        <div id="related-movies" class="movie-list horizontal-scroll"></div>
-                    </section>
+                    <div class="tabs-container">
+                        <div class="tabs-header" id="details-tabs-header">
+                            <button class="tab-button active" data-tab="related-content-pane">Similares</button>
+                            <button class="tab-button" data-tab="comments-content-pane">Comentarios</button>
+                        </div>
+                        
+                        <div class="tabs-content" id="details-tabs-content">
+                            <div class="tab-pane active" id="related-content-pane">
+                                <section class="related-section">
+                                    <div id="related-movies" class="movie-list horizontal-scroll"></div>
+                                </section>
+                            </div>
+                            
+                            <div class="tab-pane" id="comments-content-pane">
+                                <div class="comments-container">
+                                    <h3>Comentarios</h3>
+                                    <div class="comment-input-area">
+                                        <input type="text" id="comment-input" placeholder="Escribe un comentario...">
+                                        <button id="btn-post-comment" class="button primary"><i class="fas fa-paper-plane"></i></button>
+                                    </div>
+                                    <div id="comments-feed" class="comments-feed">
+                                        <p id="no-comments-message" style="color:#888; display:none;">Sé el primero en comentar.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -270,6 +314,7 @@
             <div class="auth-content-container">
                 <div id="login-form" class="auth-form active-form">
                     <h2 class="auth-title">Inicia sesión</h2>
+                    <div id="login-message" class="auth-message-box"></div>
                     <input type="email" id="login-email" placeholder="Correo electrónico">
                     <div class="password-container">
                         <input type="password" id="login-password" placeholder="Contraseña">
@@ -282,6 +327,7 @@
                 </div>
                 <div id="signup-form" class="auth-form">
                     <h2 class="auth-title">Crea tu cuenta</h2>
+                    <div id="signup-message" class="auth-message-box"></div>
                     <input type="email" id="signup-email" placeholder="ejemplo@email.com">
                     <div class="password-container">
                         <input type="password" id="signup-password" placeholder="Contraseña">
@@ -317,6 +363,19 @@
             <span>Perfil</span>
         </a>
     </nav>
+
+    <div id="download-app-modal" class="modal-from-bottom">
+        <div class="modal-content download-content">
+            <span class="close-button">&times;</span>
+            <h2 class="modal-title-ad">Cine HD</h2>
+            <p class="modal-text-ad">La mejor aplicación de películas para Android.</p>
+            <div class="app-image-placeholder"></div>
+            <div class="modal-buttons-ad">
+                <a href="https://www.appcreator24.com/app3750618-ocwhl4" target="_blank" class="button">Descargar en Google Play</a>
+                <a href="https://www.appcreator24.com/app3750618-ocwhl4" target="_blank" class="button secondary">Descargar APK</a>
+            </div>
+        </div>
+    </div>
 
     <div id="video-modal" class="modal">
         <div class="modal-content video-content">
@@ -385,8 +444,51 @@
         </div>
     </div>
 
+    <div id="user-notifications-modal" class="modal-from-bottom">
+        <div class="modal-content notifications-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Notificaciones</h2>
+                <span class="close-button" id="notifications-close">&times;</span>
+            </div>
+            
+            <div id="notifications-list" class="notifications-list">
+                <p id="empty-notifications-message" class="empty-message hidden">Aún no tienes notificaciones.</p>
+            </div>
+
+            <button id="btn-clear-all-notifications" class="button secondary full-width mt-10 hidden">Borrar todas</button>
+        </div>
+    </div>
+
+    <div id="add-event-modal" class="modal-from-bottom">
+        <div class="modal-content auth-content">
+            <span class="close-button" id="add-event-close">&times;</span>
+            <h2 class="auth-title">Agregar Evento</h2>
+            <div id="event-message" class="auth-message-box"></div> 
+            <form id="add-event-form">
+                <input type="url" id="event-image-link" placeholder="Enlace de la fotografía (URL)" required>
+                <textarea id="event-description" placeholder="Descripción del evento" required rows="4"></textarea>
+                <button type="submit" id="btn-submit-event" class="button primary">Guardar Evento</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="admin-avisos-modal" class="modal-from-bottom">
+        <div class="modal-content admin-avisos-content">
+            <span class="close-button" id="avisos-close">&times;</span>
+            <h2 class="modal-title-ad">Publicar Contenido (Admin)</h2>
+            <p class="modal-text-ad">Ingrese el link del reproductor y elija la acción:</p>
+            <input type="text" id="admin-embed-input" placeholder="Enlace del Reproductor (ej: link-pelicula-1)">
+            <div class="modal-buttons-ad">
+                <button id="btn-save-app" class="button secondary">Guardar solo en la app</button>
+                <button id="btn-save-publish-channel" class="button">Guardar y publicar en el canal</button>
+                <button id="btn-save-notify-app-new" class="button red">Guardar en la app y notificar</button>
+            </div>
+            <p class="modal-small-text">Esta acción es solo visible para usuarios con rol de administrador.</p>
+        </div>
+    </div>
+
     <div class="footer-text">©Cine. Todos los derechos reservados.</div>
-    <div id="loader" style="display: none;"><div class="loader-spinner"></div><p>Cargando...</p></div>
+    <div id="loader"><div class="loader-spinner"></div><p>Cargando...</p></div>
 
     <script type="module" src="script.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
