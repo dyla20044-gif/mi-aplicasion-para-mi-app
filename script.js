@@ -1817,6 +1817,7 @@ socialLoginButtons.forEach(button => {
     });
 });
 
+// === CRÍTICO MODIFICADO: Ahora envía el userId de Firebase al backend ===
 buyButtons.forEach(button => {
     button.addEventListener('click', async (e) => {
         const plan = e.target.getAttribute('data-plan');
@@ -1831,7 +1832,11 @@ buyButtons.forEach(button => {
             const response = await fetch('https://serivisios.onrender.com/create-paypal-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan: plan, amount: amount })
+                body: JSON.stringify({ 
+                    plan: plan, 
+                    amount: amount,
+                    userId: currentUser.uid // Envía el ID del usuario al servidor
+                })
             });
 
             const data = await response.json();
