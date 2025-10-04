@@ -1817,6 +1817,33 @@ body {
     overflow: hidden; /* APLICADO */ 
 }
 
+#tv-player-container {
+    width: 100%;
+    /* Mantiene el aspecto 16:9, ideal para video en móvil */
+    aspect-ratio: 16 / 9; 
+    background-color: black;
+    position: relative;
+    /* MEJORA: Asegurar que no se encoja */
+    flex-shrink: 0;
+}
+
+
+/* Botonera de Países y Categorías */
+#country-nav {
+    display: flex;
+    overflow-x: scroll; /* Permite deslizar horizontalmente */
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 10px;
+    gap: 10px;
+    border-bottom: 1px solid #333;
+    background-color: #1E1E1E;
+    
+    /* FIX APLICADO: Agregamos un margen superior para separarlo del reproductor */
+    margin-top: 5px; 
+    /* MEJORA: Asegurar que no se encoja */
+    flex-shrink: 0;
+}
+
 /* MEJORA 1: Hacer el contenedor de contenido (que tiene la cuadrícula y el muro) deslizable */
 #tv-content-container {
     flex-grow: 1; /* APLICADO: Ocupa todo el espacio restante */
