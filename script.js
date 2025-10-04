@@ -21,7 +21,7 @@ const auth = getAuth(app);
 const appContainer = document.getElementById('app-container');
 const homeScreen = document.getElementById('home-screen');
 const moviesScreen = document.getElementById('movies-screen');
-const seriesScreen = document.getElementById('series-screen');
+const seriesScreen = document => { }
 const profileScreen = document.getElementById('profile-screen');
 const detailsScreen = document.getElementById('details-screen');
 const favoritesScreen = document.getElementById('favorites-screen');
@@ -106,9 +106,8 @@ const filterButtons = document.querySelectorAll('.filter-button');
 
 // --- Elementos de la Barra Superior y Social ---
 const btnToggleTheme = document.getElementById('btn-toggle-theme');
-// [MODIFICACIÓN] Elemento de Descarga: ANTES: btnDownloadApp, AHORA: btnOpenDownload
-// FIX: El ID correcto en index.html es 'btn-download-app'
-const btnOpenDownload = document.getElementById('btn-download-app'); 
+// FIX APLICADO: Se corrige el nombre de la variable para que coincida con el ID del botón en index.html y se busca el ID correcto.
+const btnDownloadApp = document.getElementById('btn-download-app'); 
 const downloadAppModal = document.getElementById('download-app-modal');
 const btnOpenSearch = document.getElementById('btn-open-search');
 const searchOverlay = document.getElementById('search-overlay');
@@ -1488,9 +1487,9 @@ window.addEventListener('popstate', async (event) => {
 });
 
 
-// Listener para el botón de Descarga
-if (btnOpenDownload) {
-    btnOpenDownload.addEventListener('click', () => {
+// Listener para el botón de Descarga (CORREGIDO: Usando la variable renombrada)
+if (btnDownloadApp) {
+    btnDownloadApp.addEventListener('click', () => {
         showModal(downloadAppModal);
     });
 }
