@@ -1082,7 +1082,7 @@ function createMovieCard(movie, type = 'movie') {
             // Guardamos el estado de dónde venimos para restaurarlo
             previousState: currentState 
         }, '', '');
-        showDetailsScreen(movie, type || movie.media_type)
+        switchScreen('details-screen');
     });
     return movieCard;
 }
@@ -1115,13 +1115,13 @@ function createBannerItem(movie) {
         playButton.addEventListener('click', (e) => {
             e.stopPropagation();
             history.pushState({ screen: 'details-screen', item: movie, type: movie.media_type || 'movie' }, '', '');
-            showDetailsScreen(movie, movie.media_type || 'movie');
+            switchScreen('details-screen');
         });
     }
 
     bannerItem.addEventListener('click', () => {
         history.pushState({ screen: 'details-screen', item: movie, type: movie.media_type || 'movie' }, '', '');
-        showDetailsScreen(movie, movie.media_type || 'movie')
+        switchScreen('details-screen');
     });
     return bannerItem;
 }
@@ -1481,9 +1481,6 @@ window.addEventListener('popstate', async (event) => {
     }
 });
 
-
-// Listener para el link de Perfil en la barra superior (ELIMINADO)
-// Se eliminó la variable topProfileLink y su listener
 
 // Listener para el botón de Descarga
 if (btnDownloadApp) {
@@ -2094,6 +2091,9 @@ function tv_loadChannel(item, index, countryCode) {
     const url = channel.url;
     const name = channel.name;
     
+    // Verificamos si el reproductor de video existe antes de manipularlo
+    if (!tv_video) return;
+
     tv_current_name.textContent = `Reproduciendo: ${name} (${countryCode})`;
     
     if (tv_currentItem) {
@@ -2142,6 +2142,8 @@ function tv_loadChannel(item, index, countryCode) {
  * @brief Renderiza los canales en la cuadrícula.
  */
 function tv_renderChannelGrid(channels, countryCode) {
+    if (!tv_channel_grid || !premium_wall) return;
+    
     tv_channel_grid.style.display = 'grid';
     premium_wall.style.display = 'none';
 
@@ -2230,19 +2232,21 @@ async function tv_filterChannels(countryCode) {
     
     // 2. Lógica de Muro Premium (Integración Real)
     if (source.premium && (!currentUser || !currentUser.isPro)) {
-        tv_channel_grid.style.display = 'none';
-        premium_wall.style.display = 'block';
-        tv_current_name.textContent = "¡Sección Premium! Activa tu plan.";
+        if (tv_channel_grid) tv_channel_grid.style.display = 'none';
+        if (premium_wall) premium_wall.style.display = 'block';
+        if (tv_current_name) tv_current_name.textContent = "¡Sección Premium! Activa tu plan.";
         if (hls_instance) hls_instance.destroy();
-        tv_video.src = '';
+        if (tv_video) tv_video.src = '';
         return;
     }
 
     // Ocultar muro de pago y mostrar la cuadrícula
-    premium_wall.style.display = 'none';
-    tv_channel_grid.style.display = 'grid';
-    tv_channel_grid.innerHTML = '<p style="color:#E50914; text-align:center; padding-top:20px;">Cargando canales, espera un momento...</p>';
-    tv_current_name.textContent = `Cargando: ${source.name}...`;
+    if (premium_wall) premium_wall.style.display = 'none';
+    if (tv_channel_grid) {
+        tv_channel_grid.style.display = 'grid';
+        tv_channel_grid.innerHTML = '<p style="color:#E50914; text-align:center; padding-top:20px;">Cargando canales, espera un momento...</p>';
+    }
+    if (tv_current_name) tv_current_name.textContent = `Cargando: ${source.name}...`;
 
     let channelsToRender = [];
 
@@ -2260,10 +2264,10 @@ async function tv_filterChannels(countryCode) {
 
         } catch (error) {
             console.error("Fallo al obtener o parsear el M3U:", error);
-            tv_channel_grid.innerHTML = `<p style="color:#f00; text-align:center; padding-top:20px;">❌ Error al cargar canales de ${source.name}.</p>`;
-            tv_current_name.textContent = `ERROR: No se pudo cargar ${source.name}.`;
+            if (tv_channel_grid) tv_channel_grid.innerHTML = `<p style="color:#f00; text-align:center; padding-top:20px;">❌ Error al cargar canales de ${source.name}.</p>`;
+            if (tv_current_name) tv_current_name.textContent = `ERROR: No se pudo cargar ${source.name}.`;
             if (hls_instance) hls_instance.destroy();
-            tv_video.src = '';
+            if (tv_video) tv_video.src = '';
             return;
         }
     }
@@ -2275,10 +2279,10 @@ async function tv_filterChannels(countryCode) {
     if (firstChannel) {
         tv_loadChannel(firstChannel, 0, countryCode); 
     } else {
-        tv_current_name.textContent = `No se encontraron canales disponibles para ${source.name}.`;
-        tv_channel_grid.innerHTML = `<p style="color:#aaa; text-align:center; padding-top:20px;">No hay canales en esta sección. Intenta con otra o recarga la página.</p>`;
+        if (tv_current_name) tv_current_name.textContent = `No se encontraron canales disponibles para ${source.name}.`;
+        if (tv_channel_grid) tv_channel_grid.innerHTML = `<p style="color:#aaa; text-align:center; padding-top:20px;">No hay canales en esta sección. Intenta con otra o recarga la página.</p>`;
         if (hls_instance) hls_instance.destroy();
-        tv_video.src = '';
+        if (tv_video) tv_video.src = '';
     }
 }
 
@@ -2305,3 +2309,4 @@ function renderCountryButtons() {
 window.tv_loadChannel = tv_loadChannel;
 window.tv_filterChannels = tv_filterChannels;
 window.renderCountryButtons = renderCountryButtons;
+window.switchScreen = switchScreen;
