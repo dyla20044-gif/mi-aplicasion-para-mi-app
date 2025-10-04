@@ -1422,7 +1422,7 @@ body {
 .password-toggle {
     position: absolute;
     right: 20px;
-    top: 50%;
+    top: 50%
     transform: translateY(-50%);
     color: var(--input-placeholder);
     cursor: pointer;
@@ -1801,3 +1801,26 @@ body {
 #btn-open-download {
     font-size: 1.5em; 
 }
+
+/* --- ESTILOS DE TV EN VIVO (MEJORADO) --- */
+/* Contenedor de la nueva pantalla de TV */
+#tv-live-screen {
+    padding: 0;
+    /* Mantenemos el padding-bottom para el espacio de la barra inferior */
+    padding-bottom: 70px; 
+    background-color: #121212; 
+    /* MEJORA 1: Hacer el contenedor FLEX y no permitir el scroll del contenedor principal */
+    display: flex; /* APLICADO */
+    flex-direction: column; /* APLICADO */
+    height: 100%; /* Asegurar que ocupe toda la altura de #app-container */
+    /* El scroll del contenido se moverá al contenedor interno */
+    overflow: hidden; /* APLICADO */ 
+}
+
+/* MEJORA 1: Hacer el contenedor de contenido (que tiene la cuadrícula y el muro) deslizable */
+#tv-content-container {
+    flex-grow: 1; /* APLICADO: Ocupa todo el espacio restante */
+    overflow-y: auto; /* APLICADO: Habilitar el scroll solo aquí */
+    -webkit-overflow-scrolling: touch; /* APLICADO: Mejora el rendimiento del scroll en iOS */
+}
+/* --- FIN ESTILOS DE TV EN VIVO (MEJORADO) --- */
