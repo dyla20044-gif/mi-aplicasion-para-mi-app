@@ -1268,7 +1268,7 @@ function renderGenresModal(type) {
         const genreButton = document.createElement('button');
         genreButton.className = 'button secondary';
         genreButton.textContent = currentGenres[id];
-        genreButton.onclick = () => {
+        button.onclick = () => {
             fetchFromTMDB(`discover/${type}?with_genres=${id}`).then(items => {
                 renderGrid(type === 'movie' ? allMoviesGrid : allSeriesGrid, items, type);
                 document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
@@ -1396,11 +1396,11 @@ function switchScreen(screenId) {
     // [Lógica TV]
     else if (screenId === 'tv-live-screen') {
         // Lógica de inicialización de TV
-        if (country_nav.children.length === 0) {
+        if (country_nav && country_nav.children.length === 0) {
             renderCountryButtons();
         }
         // Llamamos al filtro por defecto (MX) si no hay uno activo
-        if (document.querySelector('#country-nav .country-button.active') === null || tv_channel_grid.children.length === 0) {
+        if (document.querySelector('#country-nav .country-button.active') === null || (tv_channel_grid && tv_channel_grid.children.length === 0)) {
             tv_filterChannels('MX');
         }
         searchFilters.style.display = 'none';
