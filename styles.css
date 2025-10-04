@@ -1802,19 +1802,23 @@ body {
     font-size: 1.5em; 
 }
 
-/* --- ESTILOS DE TV EN VIVO (MEJORADO) --- */
+/* --- ESTILOS DE TV EN VIVO (CORREGIDO) --- */
 /* Contenedor de la nueva pantalla de TV */
 #tv-live-screen {
     padding: 0;
     /* Mantenemos el padding-bottom para el espacio de la barra inferior */
     padding-bottom: 70px; 
     background-color: #121212; 
-    /* MEJORA 1: Hacer el contenedor FLEX y no permitir el scroll del contenedor principal */
-    display: flex; /* APLICADO */
-    flex-direction: column; /* APLICADO */
-    height: 100%; /* Asegurar que ocupe toda la altura de #app-container */
-    /* El scroll del contenido se moverá al contenedor interno */
-    overflow: hidden; /* APLICADO */ 
+    /* IMPORTANTE: Las propiedades de 'display', 'flex-direction', 'height' y 'overflow' 
+       se han movido al selector '#tv-live-screen.active' para permitir que '.screen { display: none; }' la oculte. */
+}
+
+/* Regla CRÍTICA: Aplica el layout SÓLO cuando la pantalla está activa. */
+#tv-live-screen.active {
+    display: flex; 
+    flex-direction: column; 
+    height: 100%; 
+    overflow: hidden; 
 }
 
 #tv-player-container {
@@ -1850,4 +1854,4 @@ body {
     overflow-y: auto; /* APLICADO: Habilitar el scroll solo aquí */
     -webkit-overflow-scrolling: touch; /* APLICADO: Mejora el rendimiento del scroll en iOS */
 }
-/* --- FIN ESTILOS DE TV EN VIVO (MEJORADO) --- */
+/* --- FIN ESTILOS DE TV EN VIVO (CORREGIDO) --- */
