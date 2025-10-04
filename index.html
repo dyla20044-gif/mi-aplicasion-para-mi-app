@@ -15,7 +15,7 @@
             padding: 0;
             padding-bottom: 70px; 
             background-color: #121212; 
-            display: none; /* Oculto por defecto, mostrado por script.js */
+            display: none;
             min-height: 100vh;
         }
 
@@ -162,6 +162,22 @@
                 grid-template-columns: repeat(3, 1fr);
             }
         }
+        /* Estilos específicos para el modal de descarga */
+        .download-content {
+            text-align: center;
+        }
+        .app-image-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 15px;
+            margin: 15px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .modal-buttons-ad .button, .modal-buttons-ad .secondary {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+        }
     </style>
 
 </head>
@@ -172,7 +188,7 @@
             <span class="logo-text">SALA CINE</span>
         </div>
         <div class="nav-center-icons">
-            <button id="btn-download-app" class="icon-button" aria-label="Descargar aplicación"><i class="fab fa-android"></i></button>
+            <button id="btn-open-download" class="icon-button" aria-label="Descargar aplicación"><i class="fab fa-android"></i></button>
         </div>
         <div class="nav-right">
             <button id="btn-open-search" class="icon-button search-icon-button" aria-label="Abrir búsqueda"><i class="fas fa-search"></i></button>
@@ -556,7 +572,7 @@
 
     <div id="download-app-modal" class="modal-from-bottom">
         <div class="modal-content download-content">
-            <span class="close-button">&times;</span>
+            <span class="close-button" id="download-close-button">&times;</span>
             <h2 class="modal-title-ad">Sala Cine</h2>
             <p class="modal-text-ad">La mejor aplicación de películas para Android.</p>
             
@@ -567,7 +583,6 @@
             </div>
         </div>
     </div>
-
     <div id="video-modal" class="modal">
         <div class="modal-content video-content">
             <span class="close-button">&times;</span>
@@ -682,10 +697,11 @@
     <div id="loader"><div class="loader-spinner"></div><p>Cargando...</p></div>
     
     <script>
-        // Placeholders globales para que el HTML pueda llamar a estas funciones
-        function tv_filterChannels(countryCode) { console.log('Placeholder: tv_filterChannels called.'); }
-        function tv_loadChannel(item, index, countryCode) { console.log('Placeholder: tv_loadChannel called.'); }
-        function switchScreen(screenId) { console.log('Placeholder: switchScreen called.'); }
+        // Funciones auxiliares para la navegación global que se ejecutan inmediatamente.
+        // Se definen aquí para evitar el ReferenceError en el HTML.
+        function tv_filterChannels(countryCode) { /* Placeholder en index.html */ }
+        function tv_loadChannel(item, index, countryCode) { /* Placeholder en index.html */ }
+        function switchScreen(screenId) { /* Placeholder en index.html */ }
         
         document.addEventListener('DOMContentLoaded', () => {
             const premiumCtaBtn = document.querySelector('.premium-cta-btn');
@@ -695,6 +711,21 @@
                         switchScreen('profile-screen');
                     }
                 };
+            }
+            // NUEVO HANDLER: Botón de descarga abre el modal
+            const btnOpenDownload = document.getElementById('btn-open-download');
+            const downloadModal = document.getElementById('download-app-modal');
+            const downloadCloseButton = document.getElementById('download-close-button');
+
+            if (btnOpenDownload && downloadModal) {
+                btnOpenDownload.addEventListener('click', () => {
+                    downloadModal.classList.add('active');
+                });
+            }
+            if (downloadCloseButton && downloadModal) {
+                downloadCloseButton.addEventListener('click', () => {
+                    downloadModal.classList.remove('active');
+                });
             }
         });
     </script>
