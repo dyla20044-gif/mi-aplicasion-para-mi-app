@@ -1813,3 +1813,21 @@ body {
     font-size: 1em;
 }
 
+/* AÑADIDO: Estilos específicos para el modal de descarga (Importados de Mi Aplicación para Mi Aplicación) */
+.download-content {
+    text-align: center;
+}
+.app-image-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 15px;
+    margin: 15px auto 20px auto; /* Centrar la imagen */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    background-color: #333; /* Mantener color de fondo por si la imagen no carga */
+    border: 1px solid var(--red-highlight);
+}
+.modal-buttons-ad .button, .modal-buttons-ad .secondary {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+}
