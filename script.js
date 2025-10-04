@@ -106,7 +106,8 @@ const filterButtons = document.querySelectorAll('.filter-button');
 
 // --- Elementos de la Barra Superior y Social ---
 const btnToggleTheme = document.getElementById('btn-toggle-theme');
-const btnDownloadApp = document.getElementById('btn-download-app');
+// [MODIFICACIÓN] Elemento de Descarga: ANTES: btnDownloadApp, AHORA: btnOpenDownload
+const btnOpenDownload = document.getElementById('btn-open-download'); 
 const downloadAppModal = document.getElementById('download-app-modal');
 const btnOpenSearch = document.getElementById('btn-open-search');
 const searchOverlay = document.getElementById('search-overlay');
@@ -125,7 +126,7 @@ const relatedMoviesContainer = document.getElementById('related-movies');
 const detailsTabsHeader = document.getElementById('details-tabs-header');
 const detailsTabsContent = document.getElementById('details-tabs-content');
 
-// ELEMENTOS DE LA SECCIÓN TV (Referenciados desde index.html)
+// ELEMENTOS DE LA SECCIÓN TV 
 const tv_video = document.getElementById('tv-video-player');
 const tv_channel_grid = document.getElementById('tv-channel-grid');
 const tv_current_name = document.getElementById('tv-current-channel-name');
@@ -154,7 +155,6 @@ let allMovieGenres = {};
 let allTvGenres = {};
 let bannerInterval;
 let resumeAutoScrollTimeout;
-// Hacemos 'currentUser' global para que la lógica de TV en index.html pueda acceder al estado .isPro
 let currentUser = null; 
 let currentMovieOrSeries = null;
 let currentFullTMDBItem = null; 
