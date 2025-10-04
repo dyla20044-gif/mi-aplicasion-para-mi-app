@@ -9,7 +9,7 @@ const firebaseConfig = {
     projectId: "app-aeff2",
     storageBucket: "app-aeff2.firebasestorage.app",
     messagingSenderId: "12229598213",
-    appId: "1:12229599999:web:80555d9d22c30b69ddd06c",
+    appId: "1:12229599999:web:80555d9999999999999",
     measurementId: "G-ZMQN0D6D4S"
 };
 
@@ -126,7 +126,7 @@ const relatedMoviesContainer = document.getElementById('related-movies');
 const detailsTabsHeader = document.getElementById('details-tabs-header');
 const detailsTabsContent = document.getElementById('details-tabs-content');
 
-// ELEMENTOS DE LA SECCIÓN TV 
+// ELEMENTOS DE LA SECCIÓN TV (Referenciados desde index.html)
 const tv_video = document.getElementById('tv-video-player');
 const tv_channel_grid = document.getElementById('tv-channel-grid');
 const tv_current_name = document.getElementById('tv-current-channel-name');
@@ -155,6 +155,7 @@ let allMovieGenres = {};
 let allTvGenres = {};
 let bannerInterval;
 let resumeAutoScrollTimeout;
+// Hacemos 'currentUser' global para que la lógica de TV en index.html pueda acceder al estado .isPro
 let currentUser = null; 
 let currentMovieOrSeries = null;
 let currentFullTMDBItem = null; 
@@ -560,6 +561,7 @@ async function addMovieToHistory(item) {
 }
 
 function playEmbeddedVideo(embedCode, isPremium, currentUser, item) {
+    // [MODIFICACIÓN] Se usa currentUser.isPro directamente
     if (isPremium && (!currentUser || !currentUser.isPro)) {
         showProRestrictionModal();
     } else {
@@ -584,7 +586,8 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
         playButton.onclick = async () => {
             showLoader();
             try {
-                const isProUser = currentUser && currentUser.isPro;
+                // [MODIFICACIÓN] Se usa currentUser.isPro directamente
+                const isProUser = currentUser && currentUser.isPro; 
                 let embedCode = null;
                 let isPremium = false;
 
@@ -662,7 +665,8 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                          episodeButton.onclick = async () => {
                             showLoader();
                             try {
-                                const isProUser = currentUser && currentUser.isPro;
+                                // [MODIFICACIÓN] Se usa currentUser.isPro directamente
+                                const isProUser = currentUser && currentUser.isPro; 
                                 const hasProPlayer = !!localEpisode.proEmbedCode;
                                 const hasFreePlayer = !!localEpisode.freeEmbedCode;
                                 
@@ -1082,7 +1086,7 @@ function createMovieCard(movie, type = 'movie') {
             // Guardamos el estado de dónde venimos para restaurarlo
             previousState: currentState 
         }, '', '');
-        switchScreen('details-screen');
+        showDetailsScreen(movie, type || movie.media_type)
     });
     return movieCard;
 }
@@ -1115,13 +1119,13 @@ function createBannerItem(movie) {
         playButton.addEventListener('click', (e) => {
             e.stopPropagation();
             history.pushState({ screen: 'details-screen', item: movie, type: movie.media_type || 'movie' }, '', '');
-            switchScreen('details-screen');
+            showDetailsScreen(movie, movie.media_type || 'movie');
         });
     }
 
     bannerItem.addEventListener('click', () => {
         history.pushState({ screen: 'details-screen', item: movie, type: movie.media_type || 'movie' }, '', '');
-        switchScreen('details-screen');
+        showDetailsScreen(movie, movie.media_type || 'movie')
     });
     return bannerItem;
 }
@@ -1159,6 +1163,7 @@ async function fetchHistory() {
             historySection.style.display = 'none';
         }
     } catch (e) {
+        // [Cita Firebase Error] Te aconsejo hacer clic en el enlace de la consola para crear el índice.
         console.error("Error al obtener el historial: ", e);
         historySection.style.display = 'none';
     }
@@ -1268,7 +1273,7 @@ function renderGenresModal(type) {
         const genreButton = document.createElement('button');
         genreButton.className = 'button secondary';
         genreButton.textContent = currentGenres[id];
-        button.onclick = () => {
+        genreButton.onclick = () => {
             fetchFromTMDB(`discover/${type}?with_genres=${id}`).then(items => {
                 renderGrid(type === 'movie' ? allMoviesGrid : allSeriesGrid, items, type);
                 document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
@@ -1396,11 +1401,11 @@ function switchScreen(screenId) {
     // [Lógica TV]
     else if (screenId === 'tv-live-screen') {
         // Lógica de inicialización de TV
-        if (country_nav && country_nav.children.length === 0) {
+        if (country_nav.children.length === 0) {
             renderCountryButtons();
         }
         // Llamamos al filtro por defecto (MX) si no hay uno activo
-        if (document.querySelector('#country-nav .country-button.active') === null || (tv_channel_grid && tv_channel_grid.children.length === 0)) {
+        if (document.querySelector('#country-nav .country-button.active') === null || tv_channel_grid.children.length === 0) {
             tv_filterChannels('MX');
         }
         searchFilters.style.display = 'none';
@@ -1483,8 +1488,8 @@ window.addEventListener('popstate', async (event) => {
 
 
 // Listener para el botón de Descarga
-if (btnDownloadApp) {
-    btnDownloadApp.addEventListener('click', () => {
+if (btnOpenDownload) {
+    btnOpenDownload.addEventListener('click', () => {
         showModal(downloadAppModal);
     });
 }
@@ -1742,7 +1747,6 @@ profileMyList.addEventListener('click', (e) => {
     e.preventDefault();
     if (!currentUser || currentUser.isAnonymous) {
         switchScreen('auth-screen');
-        return;
     } else {
         switchScreen('favorites-screen');
     }
@@ -1830,7 +1834,7 @@ socialLoginButtons.forEach(button => {
     });
 });
 
-// === CRÍTICO MODIFICADO: Ahora envía el userId de Firebase al backend ===
+// === CORRECCIÓN APLICADA: Incluye el userId para la activación en el servidor ===
 buyButtons.forEach(button => {
     button.addEventListener('click', async (e) => {
         const plan = e.target.getAttribute('data-plan');
@@ -1848,7 +1852,7 @@ buyButtons.forEach(button => {
                 body: JSON.stringify({ 
                     plan: plan, 
                     amount: amount,
-                    userId: currentUser.uid // Envía el ID del usuario al servidor
+                    userId: currentUser.uid // AÑADIDO: Envía el ID del usuario al servidor
                 })
             });
 
@@ -1973,6 +1977,7 @@ async function fetchAppData() {
 
 let isInitialized = false;
 onAuthStateChanged(auth, async (user) => {
+    // [MODIFICACIÓN CLAVE] Asignamos el usuario a la variable global.
     currentUser = user;
     
     // Lógica de autenticación y estado PRO (siempre debe ejecutarse para actualizar la UI)
@@ -1988,12 +1993,14 @@ onAuthStateChanged(auth, async (user) => {
         const userDocSnap = await getDoc(userDocRef);
         
         if (userDocSnap.exists() && userDocSnap.data().isPro) {
+            // Asignamos la propiedad isPro a la variable global.
             currentUser.isPro = true;
             if (proStatusButton) {
                 proStatusButton.textContent = 'Cuenta Premium Activada';
                 proStatusButton.disabled = true;
             }
         } else {
+            // Asignamos la propiedad isPro a la variable global.
             currentUser.isPro = false;
             if (proStatusButton) {
                 proStatusButton.textContent = 'Activar Cuenta Premium';
@@ -2001,6 +2008,7 @@ onAuthStateChanged(auth, async (user) => {
             }
         }
     } else {
+        // En caso de usuario anónimo o no autenticado, aseguramos que isPro sea false.
         if (currentUser) {
              currentUser.isPro = false;
         }
@@ -2017,22 +2025,27 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     if (!isInitialized) {
+        // 1. Mostrar el loader inmediatamente como primer paso de inicialización
         showLoader();
 
+        // 2. Realizar todas las tareas de configuración y carga de datos
         isInitialized = true;
         setupRealtimeNotificationsListener(); 
         
         initializeTheme();
         
+        // CORRECCIÓN CRÍTICA: Cargamos estáticamente todos los datos al inicio.
         await fetchAppData();
 
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
-        updateNotificationIndicator(); 
+        updateNotificationIndicator(); // Inicializar el indicador de notificaciones
         
+        // 3. Ocultar el loader y mostrar el contenedor principal de la aplicación.
         appContainer.style.display = 'block';
         hideLoader();
 
+        // === LÓGICA CORREGIDA: Manejar el ID de Telegram MiniApp ===
         const startAppId = getURLParameter('startapp');
         if (startAppId) {
             try {
@@ -2048,7 +2061,7 @@ onAuthStateChanged(auth, async (user) => {
                     fullItem.media_type = type; 
                     
                     history.pushState({ screen: 'details-screen', item: fullItem, type: type }, '', '');
-                    switchScreen('details-screen');
+                    showDetailsScreen(fullItem, type);
                 } else {
                     switchScreen('home-screen');
                 }
@@ -2057,6 +2070,7 @@ onAuthStateChanged(auth, async (user) => {
                 switchScreen('home-screen');
             }
         } else {
+            // 4. Navegar a la pantalla principal por defecto
             switchScreen('home-screen');
         }
     }
@@ -2091,9 +2105,6 @@ function tv_loadChannel(item, index, countryCode) {
     const url = channel.url;
     const name = channel.name;
     
-    // Verificamos si el reproductor de video existe antes de manipularlo
-    if (!tv_video) return;
-
     tv_current_name.textContent = `Reproduciendo: ${name} (${countryCode})`;
     
     if (tv_currentItem) {
@@ -2142,8 +2153,6 @@ function tv_loadChannel(item, index, countryCode) {
  * @brief Renderiza los canales en la cuadrícula.
  */
 function tv_renderChannelGrid(channels, countryCode) {
-    if (!tv_channel_grid || !premium_wall) return;
-    
     tv_channel_grid.style.display = 'grid';
     premium_wall.style.display = 'none';
 
@@ -2232,21 +2241,19 @@ async function tv_filterChannels(countryCode) {
     
     // 2. Lógica de Muro Premium (Integración Real)
     if (source.premium && (!currentUser || !currentUser.isPro)) {
-        if (tv_channel_grid) tv_channel_grid.style.display = 'none';
-        if (premium_wall) premium_wall.style.display = 'block';
-        if (tv_current_name) tv_current_name.textContent = "¡Sección Premium! Activa tu plan.";
+        tv_channel_grid.style.display = 'none';
+        premium_wall.style.display = 'block';
+        tv_current_name.textContent = "¡Sección Premium! Activa tu plan.";
         if (hls_instance) hls_instance.destroy();
-        if (tv_video) tv_video.src = '';
+        tv_video.src = '';
         return;
     }
 
     // Ocultar muro de pago y mostrar la cuadrícula
-    if (premium_wall) premium_wall.style.display = 'none';
-    if (tv_channel_grid) {
-        tv_channel_grid.style.display = 'grid';
-        tv_channel_grid.innerHTML = '<p style="color:#E50914; text-align:center; padding-top:20px;">Cargando canales, espera un momento...</p>';
-    }
-    if (tv_current_name) tv_current_name.textContent = `Cargando: ${source.name}...`;
+    premium_wall.style.display = 'none';
+    tv_channel_grid.style.display = 'grid';
+    tv_channel_grid.innerHTML = '<p style="color:#E50914; text-align:center; padding-top:20px;">Cargando canales, espera un momento...</p>';
+    tv_current_name.textContent = `Cargando: ${source.name}...`;
 
     let channelsToRender = [];
 
@@ -2264,10 +2271,10 @@ async function tv_filterChannels(countryCode) {
 
         } catch (error) {
             console.error("Fallo al obtener o parsear el M3U:", error);
-            if (tv_channel_grid) tv_channel_grid.innerHTML = `<p style="color:#f00; text-align:center; padding-top:20px;">❌ Error al cargar canales de ${source.name}.</p>`;
-            if (tv_current_name) tv_current_name.textContent = `ERROR: No se pudo cargar ${source.name}.`;
+            tv_channel_grid.innerHTML = `<p style="color:#f00; text-align:center; padding-top:20px;">❌ Error al cargar canales de ${source.name}.</p>`;
+            tv_current_name.textContent = `ERROR: No se pudo cargar ${source.name}.`;
             if (hls_instance) hls_instance.destroy();
-            if (tv_video) tv_video.src = '';
+            tv_video.src = '';
             return;
         }
     }
@@ -2279,10 +2286,10 @@ async function tv_filterChannels(countryCode) {
     if (firstChannel) {
         tv_loadChannel(firstChannel, 0, countryCode); 
     } else {
-        if (tv_current_name) tv_current_name.textContent = `No se encontraron canales disponibles para ${source.name}.`;
-        if (tv_channel_grid) tv_channel_grid.innerHTML = `<p style="color:#aaa; text-align:center; padding-top:20px;">No hay canales en esta sección. Intenta con otra o recarga la página.</p>`;
+        tv_current_name.textContent = `No se encontraron canales disponibles para ${source.name}.`;
+        tv_channel_grid.innerHTML = `<p style="color:#aaa; text-align:center; padding-top:20px;">No hay canales en esta sección. Intenta con otra o recarga la página.</p>`;
         if (hls_instance) hls_instance.destroy();
-        if (tv_video) tv_video.src = '';
+        tv_video.src = '';
     }
 }
 
@@ -2298,6 +2305,7 @@ function renderCountryButtons() {
         button.className = `country-button ${source.premium ? 'premium' : ''}`;
         button.textContent = source.name;
         button.setAttribute('data-country', code);
+        // [CORRECCIÓN CLAVE] Usamos la función global tv_filterChannels
         button.onclick = () => tv_filterChannels(code); 
         country_nav.appendChild(button);
     }
@@ -2308,5 +2316,7 @@ function renderCountryButtons() {
 // ======================================================================
 window.tv_loadChannel = tv_loadChannel;
 window.tv_filterChannels = tv_filterChannels;
+// Aseguramos que el switchScreen también esté en el global, ya que es el controlador central
+window.switchScreen = switchScreen; 
+// Y la función para renderizar los botones, que es llamada por la navegación
 window.renderCountryButtons = renderCountryButtons;
-window.switchScreen = switchScreen;
