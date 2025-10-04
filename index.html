@@ -15,8 +15,6 @@
             padding: 0;
             padding-bottom: 70px; 
             background-color: #121212; 
-            display: none;
-            min-height: 100vh;
         }
 
         #tv-player-container {
@@ -156,28 +154,6 @@
         .premium-cta-btn:hover {
             background-color: #C40812;
         }
-        /* Media query para 3 columnas en pantallas grandes */
-        @media (min-width: 600px) {
-            #tv-channel-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        /* Estilos específicos para el modal de descarga */
-        .download-content {
-            text-align: center;
-        }
-        .app-image-placeholder {
-            width: 80px;
-            height: 80px;
-            border-radius: 15px;
-            margin: 15px 0;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        .modal-buttons-ad .button, .modal-buttons-ad .secondary {
-            display: block;
-            width: 100%;
-            margin-top: 10px;
-        }
     </style>
 
 </head>
@@ -284,6 +260,7 @@
                 </section>
             </div>
         </div>
+
 
         <div id="movies-screen" class="screen">
             <div class="screen-header">
@@ -698,34 +675,20 @@
     
     <script>
         // Funciones auxiliares para la navegación global que se ejecutan inmediatamente.
-        // Se definen aquí para evitar el ReferenceError en el HTML.
+        // Estas son necesarias para que los botones de país funcionen antes de que script.js cargue totalmente.
         function tv_filterChannels(countryCode) { /* Placeholder en index.html */ }
-        function tv_loadChannel(item, index, countryCode) { /* Placeholder en index.html */ }
         function switchScreen(screenId) { /* Placeholder en index.html */ }
         
         document.addEventListener('DOMContentLoaded', () => {
+            // Conecta el botón Premium al perfil (usando switchScreen global)
             const premiumCtaBtn = document.querySelector('.premium-cta-btn');
             if(premiumCtaBtn) {
                 premiumCtaBtn.onclick = function() {
+                    // Llamamos a la función global que se definirá en script.js
                     if(typeof switchScreen === 'function') {
                         switchScreen('profile-screen');
                     }
                 };
-            }
-            // NUEVO HANDLER: Botón de descarga abre el modal
-            const btnOpenDownload = document.getElementById('btn-open-download');
-            const downloadModal = document.getElementById('download-app-modal');
-            const downloadCloseButton = document.getElementById('download-close-button');
-
-            if (btnOpenDownload && downloadModal) {
-                btnOpenDownload.addEventListener('click', () => {
-                    downloadModal.classList.add('active');
-                });
-            }
-            if (downloadCloseButton && downloadModal) {
-                downloadCloseButton.addEventListener('click', () => {
-                    downloadModal.classList.remove('active');
-                });
             }
         });
     </script>
