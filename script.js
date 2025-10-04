@@ -104,38 +104,43 @@ const historySection = document.getElementById('history-section');
 const searchFilters = document.getElementById('search-filters');
 const filterButtons = document.querySelectorAll('.filter-button');
 
-// --- Elementos del Rediseño de la Barra Superior y Social (REQs 1, 2, 3, 4) ---
+// --- Elementos de la Barra Superior y Social ---
 const btnToggleTheme = document.getElementById('btn-toggle-theme');
 const btnDownloadApp = document.getElementById('btn-download-app');
 const downloadAppModal = document.getElementById('download-app-modal');
 const btnOpenSearch = document.getElementById('btn-open-search');
 const searchOverlay = document.getElementById('search-overlay');
 const closeSearchButton = document.getElementById('close-search-button');
-const searchInput = document.getElementById('search-input'); // Usamos el input dentro del overlay
+const searchInput = document.getElementById('search-input'); 
 
-// ELEMENTOS SOCIALES REUBICADOS
-const viewCountDisplay = document.getElementById('view-count-display'); // Ahora en movie-metadata
-const likeCountDisplayText = document.getElementById('like-count-display-text'); // Contenedor de Like
-const favoriteButton = document.getElementById('favorite-button'); // Heart icon in movie-actions
+const viewCountDisplay = document.getElementById('view-count-display'); 
+const likeCountDisplayText = document.getElementById('like-count-display-text'); 
+const favoriteButton = document.getElementById('favorite-button'); 
 const commentInput = document.getElementById('comment-input');
 const btnPostComment = document.getElementById('btn-post-comment');
 const commentsFeed = document.getElementById('comments-feed');
 const noCommentsMessage = document.getElementById('no-comments-message');
-const relatedMoviesContainer = document.getElementById('related-movies'); // Contenedor de Similares
+const relatedMoviesContainer = document.getElementById('related-movies'); 
 
-// ELEMENTOS DE PESTAÑAS (TABS)
 const detailsTabsHeader = document.getElementById('details-tabs-header');
 const detailsTabsContent = document.getElementById('details-tabs-content');
 
+// ELEMENTOS DE LA SECCIÓN TV (Referenciados desde index.html)
+const tv_video = document.getElementById('tv-video-player');
+const tv_channel_grid = document.getElementById('tv-channel-grid');
+const tv_current_name = document.getElementById('tv-current-channel-name');
+const premium_wall = document.getElementById('premium-wall');
+const country_nav = document.getElementById('country-nav');
+let tv_currentItem = null;
+let hls_instance = null;
 
-// --- ELEMENTOS AGREGADOS PARA NUEVOS REQUERIMIENTOS ---
-// REQUERIMIENTO: Errores amigables
+
+// --- Variables de Estado Globales ---
 const loginMessage = document.getElementById('login-message');
 const signupMessage = document.getElementById('signup-message');
 const requestMessage = document.getElementById('request-message');
 const detailsRequestMessage = document.getElementById('details-request-message');
-// REQUERIMIENTO: Notificaciones y Eventos (SOLO CONSUMO)
-const btnOpenNotifications = document.getElementById('btn-open-avisos'); // El botón de la campana
+const btnOpenNotifications = document.getElementById('btn-open-avisos'); 
 const userNotificationsModal = document.getElementById('user-notifications-modal');
 const btnClearAllNotifications = document.getElementById('btn-clear-all-notifications');
 const notificationsClose = document.getElementById('notifications-close');
@@ -149,9 +154,10 @@ let allMovieGenres = {};
 let allTvGenres = {};
 let bannerInterval;
 let resumeAutoScrollTimeout;
-let currentUser = null;
+// Hacemos 'currentUser' global para que la lógica de TV en index.html pueda acceder al estado .isPro
+let currentUser = null; 
 let currentMovieOrSeries = null;
-let currentFullTMDBItem = null; // Variable para guardar el objeto TMDB completo
+let currentFullTMDBItem = null; 
 let lastSearchResults = [];
 
 // ======================================================================
@@ -910,10 +916,6 @@ async function showDetailsScreen(item, type) {
     if (searchOverlay.classList.contains('active')) {
         searchOverlay.classList.remove('active');
         moviesScreen.classList.remove('search-active'); 
-        // Se eliminan de aquí para hacerlas incondicionales más abajo:
-        // document.querySelector('.top-nav').style.display = 'flex'; 
-        // document.querySelector('.bottom-nav').style.display = 'flex'; 
-        // document.getElementById('app-container').style.paddingBottom = '70px';
     }
     
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1391,6 +1393,18 @@ function switchScreen(screenId) {
         document.getElementById('profile-screen').classList.add('active'); 
         searchFilters.style.display = 'none';
     }
+    // [Lógica TV]
+    else if (screenId === 'tv-live-screen') {
+        // Lógica de inicialización de TV
+        if (country_nav.children.length === 0) {
+            renderCountryButtons();
+        }
+        // Llamamos al filtro por defecto (MX) si no hay uno activo
+        if (document.querySelector('#country-nav .country-button.active') === null || tv_channel_grid.children.length === 0) {
+            tv_filterChannels('MX');
+        }
+        searchFilters.style.display = 'none';
+    }
     
     const topNav = document.querySelector('.top-nav');
     const bottomNav = document.querySelector('.bottom-nav');
@@ -1409,7 +1423,8 @@ function switchScreen(screenId) {
         }
     } else {
         topNav.style.display = 'flex';
-        if (screenId === 'home-screen' || screenId === 'movies-screen' || screenId === 'series-screen' || screenId === 'profile-screen' || screenId === 'details-screen' || screenId === 'events-screen') { 
+        // Asegura que las barras se vean en todas las pantallas de contenido (incluyendo TV)
+        if (screenId === 'home-screen' || screenId === 'movies-screen' || screenId === 'series-screen' || screenId === 'profile-screen' || screenId === 'details-screen' || screenId === 'events-screen' || screenId === 'tv-live-screen') { 
             bottomNav.style.display = 'flex';
             appContainer.style.paddingBottom = '70px';
         } else {
@@ -1730,6 +1745,7 @@ profileMyList.addEventListener('click', (e) => {
     e.preventDefault();
     if (!currentUser || currentUser.isAnonymous) {
         switchScreen('auth-screen');
+        return;
     } else {
         switchScreen('favorites-screen');
     }
@@ -1988,6 +2004,10 @@ onAuthStateChanged(auth, async (user) => {
             }
         }
     } else {
+        if (currentUser) {
+             currentUser.isPro = false;
+        }
+
         if (profileLoggedIn) {
             profileLoggedIn.style.display = 'none';
         }
@@ -2000,60 +2020,288 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     if (!isInitialized) {
-        // 1. Mostrar el loader inmediatamente como primer paso de inicialización
         showLoader();
 
-        // 2. Realizar todas las tareas de configuración y carga de datos
         isInitialized = true;
         setupRealtimeNotificationsListener(); 
         
         initializeTheme();
         
-        // CORRECCIÓN CRÍTICA: Cargamos estáticamente todos los datos al inicio.
         await fetchAppData();
 
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
-        updateNotificationIndicator(); // Inicializar el indicador de notificaciones
+        updateNotificationIndicator(); 
         
-        // 3. Ocultar el loader y mostrar el contenedor principal de la aplicación.
         appContainer.style.display = 'block';
         hideLoader();
 
-        // === LÓGICA CORREGIDA: Manejar el ID de Telegram MiniApp ===
         const startAppId = getURLParameter('startapp');
         if (startAppId) {
             try {
-                // El endpoint de TMDB /details devuelve el objeto de detalle directamente.
-                // Intentamos buscar primero como película.
                 let fullItem = await fetchFromTMDB(`movie/${startAppId}`);
                 let type = 'movie';
 
-                // Si no es una película válida (el endpoint devuelve un error), intentamos como serie de TV.
                 if (!fullItem || fullItem.status_code === 34 || !fullItem.id) {
                      fullItem = await fetchFromTMDB(`tv/${startAppId}`);
                      type = 'tv';
                 }
 
                 if (fullItem && fullItem.id) {
-                    // Aseguramos que el objeto tenga el tipo para que showDetailsScreen funcione
                     fullItem.media_type = type; 
                     
-                    // Empujamos el estado de detalles antes de mostrar
                     history.pushState({ screen: 'details-screen', item: fullItem, type: type }, '', '');
-                    showDetailsScreen(fullItem, type);
+                    switchScreen('details-screen');
                 } else {
-                    // Si no se encuentra, ir a la pantalla de inicio por defecto
                     switchScreen('home-screen');
                 }
             } catch (error) {
                 console.error("Error al cargar contenido desde Telegram:", error);
-                // Si hay error, vamos al inicio como fallback
                 switchScreen('home-screen');
             }
         } else {
-            // 4. Navegar a la pantalla principal por defecto
             switchScreen('home-screen');
         }
     }
 });
+
+// ======================================================================
+// LÓGICA DE TV EN VIVO (M3U) - BLOQUE PRINCIPAL DE LA INTEGRACIÓN
+// ======================================================================
+
+// 1. LISTA DE FUENTES EXTERNAS (Global)
+const country_sources = {
+    MX: { name: "México", url: "https://iptv-org.github.io/iptv/countries/mx.m3u" },
+    EC: { name: "Ecuador", url: "https://iptv-org.github.io/iptv/countries/ec.m3u" },
+    AR: { name: "Argentina", url: "https://iptv-org.github.io/iptv/countries/ar.m3u" },
+    CL: { name: "Chile", url: "https://iptv-org.github.io/iptv/countries/cl.m3u" },
+    MUSIC: { name: "Música", url: "https://iptv-org.github.io/iptv/categories/music.m3u" },
+    DOCS: { name: "Documentales", url: "https://iptv-org.github.io/iptv/categories/documentaries.m3u" },
+    ALL: { name: "Todos", url: "https://iptv-org.github.io/iptv/index.m3u" },
+    SPORTS: { name: "Deportes (Premium)", url: "https://iptv-org.github.io/iptv/categories/sports.m3u", premium: true }
+};
+
+let cached_channels = {}; 
+
+/**
+ * @brief Función para cargar y reproducir un canal.
+ */
+function tv_loadChannel(item, index, countryCode) {
+    const channels = cached_channels[countryCode];
+    if (!channels || channels.length === 0) return;
+
+    const channel = channels[index];
+    const url = channel.url;
+    const name = channel.name;
+    
+    tv_current_name.textContent = `Reproduciendo: ${name} (${countryCode})`;
+    
+    if (tv_currentItem) {
+        tv_currentItem.classList.remove('active');
+    }
+    // Usamos el evento del elemento clicado (que fue pasado por el onclick)
+    const currentItem = document.querySelector(`.tv-grid-item[data-index="${index}"][data-country="${countryCode}"]`);
+    if (currentItem) {
+         currentItem.classList.add('active');
+         tv_currentItem = currentItem;
+    }
+
+    if (hls_instance) {
+        hls_instance.destroy();
+        hls_instance = null;
+    }
+    
+    // Es CRÍTICO asegurar que window.Hls exista (se carga en index.html)
+    if (window.Hls && Hls.isSupported() && (url.endsWith('.m3u8') || url.includes('.m3u8'))) {
+        hls_instance = new Hls();
+        hls_instance.attachMedia(tv_video);
+        hls_instance.on(Hls.Events.MEDIA_ATTACHED, function () {
+            hls_instance.loadSource(url);
+            hls_instance.on(Hls.Events.MANIFEST_PARSED, function () {
+                tv_video.play().catch(e => console.log("Error de auto-play:", e));
+            });
+            hls_instance.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) {
+                    tv_current_name.textContent = `❌ ERROR: ${name} (Stream caído)`;
+                    hls_instance.destroy();
+                }
+            });
+        });
+    } else if (tv_video.canPlayType('application/vnd.apple.mpegurl')) {
+        tv_video.src = url;
+        tv_video.addEventListener('loadedmetadata', function () { tv_video.play().catch(e => console.log("Error de auto-play nativo:", e)); });
+    } else {
+        tv_video.src = url;
+        tv_video.play().catch(e => {
+            tv_current_name.textContent = `⚠️ ADVERTENCIA: Error al iniciar ${name} (URL no soportada)`;
+        });
+    }
+}
+
+/**
+ * @brief Renderiza los canales en la cuadrícula.
+ */
+function tv_renderChannelGrid(channels, countryCode) {
+    tv_channel_grid.style.display = 'grid';
+    premium_wall.style.display = 'none';
+
+    let htmlContent = '';
+    channels.forEach((channel, index) => {
+        const name = channel.name; 
+        const info = channel.info || 'HD/SD';
+
+        htmlContent += `
+            <div class="tv-grid-item" data-index="${index}" data-country="${countryCode}" onclick="tv_loadChannel(this, ${index}, '${countryCode}')">
+                <div class="tv-grid-item-content">
+                    <div class="tv-grid-item-title">${name}</div>
+                    <div class="tv-grid-item-info">${info} | En vivo</div>
+                </div>
+            </div>
+        `;
+    });
+    tv_channel_grid.innerHTML = htmlContent;
+}
+
+/**
+ * @brief Analiza el contenido de un archivo M3U para extraer el nombre del canal de forma robusta.
+ */
+function parseM3U(m3uContent, categoryName) {
+    const channels = [];
+    const lines = m3uContent.split('\n');
+    let currentChannel = {};
+
+    for (const line of lines) {
+        if (line.startsWith('#EXTINF:')) {
+            const parts = line.split(',');
+            let channelName = 'Canal Desconocido';
+            
+            if (parts.length > 1) {
+                channelName = parts[parts.length - 1].trim();
+            } 
+            
+            let info = categoryName;
+            const qualityMatch = line.match(/\s(\d+p|HD|SD|FHD)\b/i);
+            if (qualityMatch) {
+                info = qualityMatch[1].toUpperCase();
+            }
+
+            channelName = channelName.replace(/\s*\[.*?\]\s*/g, '').replace(/\s*\(.*?\)\s*/g, '').trim();
+            
+            if (channelName === '') {
+                const tvgNameMatch = line.match(/tvg-name="([^"]*)"/);
+                channelName = tvgNameMatch ? tvgNameMatch[1].trim() : 'Canal Desconocido';
+            }
+
+            const tvgIDMatch = line.match(/tvg-id="([^"]*)"/);
+            const tvgID = tvgIDMatch ? tvgIDMatch[1].trim() : '';
+
+            currentChannel = {
+                name: channelName,
+                info: info,
+                tvgId: tvgID
+            };
+        } else if (line.startsWith('http') || line.startsWith('https')) {
+            if (currentChannel.name) {
+                currentChannel.url = line.trim();
+                // Filtramos streams con aviso de geobloqueo
+                if (!currentChannel.name.includes('[Geo-blocked]') && !currentChannel.name.includes('[Not 24/7]')) {
+                    channels.push(currentChannel);
+                }
+            }
+            currentChannel = {};
+        }
+    }
+    return channels;
+}
+
+
+/**
+ * @brief Filtra y carga los canales por país/categoría, manejando la lógica Premium.
+ */
+async function tv_filterChannels(countryCode) {
+    // 1. Manejo de la botonera activa
+    document.querySelectorAll('#country-nav .country-button').forEach(btn => btn.classList.remove('active'));
+    const activeButton = document.querySelector(`.country-button[data-country="${countryCode}"]`);
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
+
+    const source = country_sources[countryCode];
+    
+    // 2. Lógica de Muro Premium (Integración Real)
+    if (source.premium && (!currentUser || !currentUser.isPro)) {
+        tv_channel_grid.style.display = 'none';
+        premium_wall.style.display = 'block';
+        tv_current_name.textContent = "¡Sección Premium! Activa tu plan.";
+        if (hls_instance) hls_instance.destroy();
+        tv_video.src = '';
+        return;
+    }
+
+    // Ocultar muro de pago y mostrar la cuadrícula
+    premium_wall.style.display = 'none';
+    tv_channel_grid.style.display = 'grid';
+    tv_channel_grid.innerHTML = '<p style="color:#E50914; text-align:center; padding-top:20px;">Cargando canales, espera un momento...</p>';
+    tv_current_name.textContent = `Cargando: ${source.name}...`;
+
+    let channelsToRender = [];
+
+    if (cached_channels[countryCode]) {
+        channelsToRender = cached_channels[countryCode];
+    } else {
+        try {
+            const response = await fetch(source.url);
+            if (!response.ok) throw new Error('Error al cargar la lista M3U');
+
+            const m3uContent = await response.text();
+            channelsToRender = parseM3U(m3uContent, source.name);
+            
+            cached_channels[countryCode] = channelsToRender; 
+
+        } catch (error) {
+            console.error("Fallo al obtener o parsear el M3U:", error);
+            tv_channel_grid.innerHTML = `<p style="color:#f00; text-align:center; padding-top:20px;">❌ Error al cargar canales de ${source.name}.</p>`;
+            tv_current_name.textContent = `ERROR: No se pudo cargar ${source.name}.`;
+            if (hls_instance) hls_instance.destroy();
+            tv_video.src = '';
+            return;
+        }
+    }
+
+    // 4. Renderizar y cargar el primer canal
+    tv_renderChannelGrid(channelsToRender, countryCode);
+
+    const firstChannel = document.querySelector(`#tv-channel-grid .tv-grid-item[data-country="${countryCode}"]`);
+    if (firstChannel) {
+        tv_loadChannel(firstChannel, 0, countryCode); 
+    } else {
+        tv_current_name.textContent = `No se encontraron canales disponibles para ${source.name}.`;
+        tv_channel_grid.innerHTML = `<p style="color:#aaa; text-align:center; padding-top:20px;">No hay canales en esta sección. Intenta con otra o recarga la página.</p>`;
+        if (hls_instance) hls_instance.destroy();
+        tv_video.src = '';
+    }
+}
+
+/**
+ * @brief Renderiza los botones de país en el elemento #country-nav.
+ */
+function renderCountryButtons() {
+    if (!country_nav) return;
+    country_nav.innerHTML = '';
+    for (const code in country_sources) {
+        const source = country_sources[code];
+        const button = document.createElement('button');
+        button.className = `country-button ${source.premium ? 'premium' : ''}`;
+        button.textContent = source.name;
+        button.setAttribute('data-country', code);
+        button.onclick = () => tv_filterChannels(code); 
+        country_nav.appendChild(button);
+    }
+}
+
+// ======================================================================
+// [PASO CRÍTICO] HACER FUNCIONES DE TV GLOBALES PARA EL ONCLICK DEL HTML
+// ======================================================================
+window.tv_loadChannel = tv_loadChannel;
+window.tv_filterChannels = tv_filterChannels;
+window.renderCountryButtons = renderCountryButtons;
