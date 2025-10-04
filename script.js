@@ -107,7 +107,8 @@ const filterButtons = document.querySelectorAll('.filter-button');
 // --- Elementos de la Barra Superior y Social ---
 const btnToggleTheme = document.getElementById('btn-toggle-theme');
 // [MODIFICACIÓN] Elemento de Descarga: ANTES: btnDownloadApp, AHORA: btnOpenDownload
-const btnOpenDownload = document.getElementById('btn-open-download'); 
+// FIX: El ID correcto en index.html es 'btn-download-app'
+const btnOpenDownload = document.getElementById('btn-download-app'); 
 const downloadAppModal = document.getElementById('download-app-modal');
 const btnOpenSearch = document.getElementById('btn-open-search');
 const searchOverlay = document.getElementById('search-overlay');
