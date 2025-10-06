@@ -104,6 +104,28 @@ const historySection = document.getElementById('history-section');
 const searchFilters = document.getElementById('search-filters');
 const filterButtons = document.querySelectorAll('.filter-button');
 
+// --- Nuevos elementos para la lógica de OS ---
+const osSelectionModal = document.getElementById('os-selection-modal');
+const osModalTitle = document.getElementById('os-modal-title');
+const osModalText = document.getElementById('os-modal-text');
+const osModalCta = document.getElementById('os-modal-cta');
+const selectedPlanName = document.getElementById('selected-plan-name');
+const osModalCloseButton = document.querySelector('#os-selection-modal .close-button');
+
+
+// --- Funciones de Utilidad de OS ---
+
+function isiOS() {
+    // Detección de iOS (iPhone, iPad, iPod)
+    return /iPhone|iPad|iPod/.test(navigator.userAgent);
+}
+
+function isAndroidFocus() {
+    // Si no es iOS, asumimos que es Android o un dispositivo donde la APK es la opción
+    return !isiOS();
+}
+// --- Fin nuevos elementos para la lógica de OS ---
+
 // --- Elementos de la Barra Superior y Social ---
 const btnToggleTheme = document.getElementById('btn-toggle-theme');
 // FIX APLICADO: Se corrige el nombre de la variable para que coincida con el ID del botón en index.html y se busca el ID correcto.
@@ -308,7 +330,9 @@ function closeAllModals() {
         document.getElementById('pro-restriction-modal'),
         document.getElementById('download-app-modal'),
         userNotificationsModal,
-        contentPublishingModal
+        contentPublishingModal,
+        // CRÍTICO: Añadir el nuevo modal de OS
+        osSelectionModal
     ].filter(Boolean); 
 
     modalsToClose.forEach(modal => closeModal(modal));
@@ -327,6 +351,53 @@ window.addEventListener('click', (event) => {
         closeModal(event.target);
     }
 });
+
+// --- NUEVA LÓGICA DE OS SELECTION ---
+function showOSSelectionModal(plan) {
+    // 1. Cierra el modal de pago
+    closeModal(paymentModal); 
+    
+    // 2. Define el nombre del plan para el mensaje
+    const planName = plan === 'annual' ? 'Anual' : 'Mensual';
+    selectedPlanName.textContent = planName;
+    
+    if (isAndroidFocus()) {
+        // Lógica para Android: Redirigir a la descarga de la APK
+        osModalTitle.innerHTML = `<i class="fab fa-android"></i> ¡Perfecto, Usuario Android!`;
+        osModalText.textContent = `Seleccionaste el plan ${planName}. Para activar tu cuenta, primero debes descargar nuestra aplicación oficial.`;
+        osModalCta.textContent = 'Descargar Aplicación';
+        osModalCta.onclick = () => {
+            // Enlace de descarga de la APK proporcionado por el usuario
+            window.open('https://google-play.onrender.com', '_blank');
+            closeModal(osSelectionModal);
+        };
+    } else if (isiOS()) {
+        // Lógica para iOS: Mostrar mensaje de no disponibilidad
+        osModalTitle.innerHTML = `<i class="fab fa-apple"></i> ¡Atención, Usuario iPhone!`;
+        osModalText.textContent = 'Lamentamos informarte que la activación Premium para usuarios de iPhone aún no está disponible. Estará lista muy pronto.';
+        osModalCta.textContent = 'Entendido, ¡espero!';
+        osModalCta.onclick = () => {
+            closeModal(osSelectionModal);
+        };
+    } else {
+        // Lógica por defecto (Ej: Desktop/Otro)
+        osModalTitle.innerHTML = `<i class="fas fa-desktop"></i> Selecciona tu plataforma`;
+        osModalText.textContent = 'Por favor, intenta acceder a la compra desde tu dispositivo móvil (Android/iPhone) para continuar con la activación Premium.';
+        osModalCta.textContent = 'Cerrar';
+        osModalCta.onclick = () => {
+            closeModal(osSelectionModal);
+        };
+    }
+    
+    showModal(osSelectionModal);
+}
+
+if (osModalCloseButton) {
+    osModalCloseButton.onclick = () => {
+        closeModal(osSelectionModal);
+    };
+}
+// --- FIN NUEVA LÓGICA DE OS SELECTION ---
 
 // --- NUEVA FUNCIÓN PARA LEER PARÁMETROS DE LA URL (Telegram Mini Apps) ---
 function getURLParameter(name) {
@@ -1834,39 +1905,15 @@ socialLoginButtons.forEach(button => {
     });
 });
 
-// === CORRECCIÓN APLICADA: Incluye el userId para la activación en el servidor ===
+// === NUEVA LÓGICA: Redirigir a ventana de selección de OS antes de iniciar pago ===
 buyButtons.forEach(button => {
-    button.addEventListener('click', async (e) => {
-        const plan = e.target.getAttribute('data-plan');
-        const amount = (plan === 'annual') ? '19.99' : '1.99';
-
+    button.addEventListener('click', (e) => {
         if (!currentUser || currentUser.isAnonymous) {
             switchScreen('auth-screen');
             return;
         }
-
-        try {
-            const response = await fetch('https://serivisios.onrender.com/create-paypal-payment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    plan: plan, 
-                    amount: amount,
-                    userId: currentUser.uid // AÑADIDO: Envía el ID del usuario al servidor
-                })
-            });
-
-            const data = await response.json();
-            
-            if (response.ok && data.approval_url) {
-                window.location.href = data.approval_url;
-            } else {
-                alert('Error al iniciar el pago con PayPal. Verifica la configuración en tu servidor.');
-            }
-        } catch (error) {
-            console.error("Error processing payment:", error);
-            alert('Hubo un error al procesar tu pago. Intenta de nuevo.');
-        }
+        const plan = e.target.getAttribute('data-plan');
+        showOSSelectionModal(plan);
     });
 });
 
