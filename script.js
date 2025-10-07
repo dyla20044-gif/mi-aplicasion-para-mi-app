@@ -401,7 +401,19 @@ if (osModalCloseButton) {
 
 // --- NUEVA FUNCIÓN PARA LEER PARÁMETROS DE LA URL (Telegram Mini Apps) ---
 function getURLParameter(name) {
-    const urlParams = new URLSearchParams(window.location.search);
+    // CORRECCIÓN CRÍTICA:
+    // 1. Intenta leer el parámetro 'startapp' del SDK de Telegram Web App
+    if (name === 'startapp' && 
+        window.Telegram && 
+        window.Telegram.WebApp && 
+        window.Telegram.WebApp.initDataUnsafe && 
+        window.Telegram.WebApp.initDataUnsafe.start_param) {
+        
+        return window.Telegram.WebApp.initDataUnsafe.start_param; //
+    }
+    
+    // 2. Fallback a la lectura tradicional de parámetros de URL (para navegadores externos)
+    const urlParams = new URLSearchParams(window.location.search); //
     return urlParams.get(name);
 }
 // --- FIN FUNCIÓN DE UTILIDAD ---
@@ -2243,7 +2255,7 @@ function parseM3U(m3uContent, categoryName) {
                 info = qualityMatch[1].toUpperCase();
             }
 
-            channelName = channelName.replace(/\s*\[.*?\]\s*/g, '').replace(/\s*\(.*?\)\s*/g, '').trim();
+            channelName = channelName.replace(/\s*\[.*?\]\s**/g, '').replace(/\s*\(.*?\)\s*/g, '').trim();
             
             if (channelName === '') {
                 const tvgNameMatch = line.match(/tvg-name="([^"]*)"/);
