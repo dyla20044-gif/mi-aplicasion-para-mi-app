@@ -80,7 +80,7 @@ const signupButton = document.getElementById('signup-button');
 const socialLoginButtons = document.querySelectorAll('.social-button');
 const profileMyList = document.getElementById('profile-my-list');
 const profilePrivacy = document.getElementById('profile-privacy');
-const profileTerms = document.getElementById('terms-screen');
+const profileTerms = document.getElementById('profile-terms');
 const profileSubscription = document.getElementById('profile-subscription');
 const profileHelpCenter = document.getElementById('profile-help-center');
 const authBackButton = document.getElementById('auth-back-button');
@@ -643,49 +643,21 @@ async function addMovieToHistory(item) {
     }
 }
 
-// <--- LÓGICA MODIFICADA PARA MANEJAR MP4 Y EMBED --->
 function playEmbeddedVideo(embedCode, isPremium, currentUser, item) {
+    // [MODIFICACIÓN] Se usa currentUser.isPro directamente
     if (isPremium && (!currentUser || !currentUser.isPro)) {
         showProRestrictionModal();
-        return;
-    }
-
-    detailsPosterTop.style.backgroundImage = 'none';
-    detailsPosterTop.style.backgroundColor = '#000';
-    playButtonContainer.style.display = 'none';
-    embeddedPlayerContainer.style.display = 'block';
-    
-    // Limpia el contenido anterior para evitar problemas
-    embeddedPlayerContainer.innerHTML = '';
-    
-    // <--- AÑADIDO: Lógica para decidir si usar un reproductor HTML5 o un iframe --->
-    // Enlaces de embed suelen ser de la forma 'https://dominio.com/embed-codigo.html'
-    // Enlaces .mp4 terminan con la extensión del archivo
-    if (embedCode.endsWith('.mp4')) {
-        const videoElement = document.createElement('video');
-        videoElement.src = embedCode;
-        videoElement.controls = true;
-        videoElement.autoplay = true;
-        videoElement.style.width = '100%';
-        videoElement.style.height = '100%';
-        embeddedPlayerContainer.appendChild(videoElement);
     } else {
-        const iframeElement = document.createElement('iframe');
-        iframeElement.src = embedCode;
-        iframeElement.frameBorder = 0;
-        iframeElement.width = '100%';
-        iframeElement.height = '100%';
-        iframeElement.allowFullscreen = true;
-        embeddedPlayerContainer.appendChild(iframeElement);
+        detailsPosterTop.style.backgroundImage = 'none';
+        detailsPosterTop.style.backgroundColor = '#000';
+        playButtonContainer.style.display = 'none';
+        embeddedPlayerContainer.style.display = 'block';
+        embeddedPlayerContainer.innerHTML = embedCode;
+        // SE MANTIENE LA LLAMADA A INCREMENTAR VISTAS AL INICIAR LA REPRODUCCIÓN
+        incrementViewCount(currentMovieOrSeries.tmdbId);
+        addMovieToHistory(item);
     }
-    // <--- FIN DE LÓGICA AÑADIDA --->
-
-    // Se mantiene la llamada a incrementar vistas al iniciar la reproducción
-    incrementViewCount(currentMovieOrSeries.tmdbId);
-    addMovieToHistory(item);
 }
-// <--- FIN DE LÓGICA MODIFICADA --->
-
 
 function renderMoviePlayButtons(localMovie, tmdbMovie) {
     playButtonContainer.innerHTML = '';
@@ -704,22 +676,14 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
 
                 if (isProUser && localMovie.proEmbedCode) {
                     isPremium = true;
-                    // Llamada al backend para obtener el enlace .mp4 para usuarios PRO
                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=true`);
                     const data = await response.json();
                     embedCode = data.embedCode;
                 } else if (localMovie.freeEmbedCode) {
                     isPremium = false;
-                    // Llamada al backend para obtener el enlace embed para usuarios GRATIS
                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=false`);
                     const data = await response.json();
                     embedCode = data.embedCode;
-                } else if (isProUser && !localMovie.proEmbedCode) {
-                    // Si el usuario es PRO pero la película solo tiene versión gratis, se reproduce la gratis
-                     isPremium = false;
-                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=false`);
-                     const data = await response.json();
-                     embedCode = data.embedCode;
                 } else {
                     showProRestrictionModal();
                     hideLoader();
@@ -730,7 +694,6 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
                     if (isPremium) {
                         playEmbeddedVideo(embedCode, true, currentUser, tmdbMovie);
                     } else {
-                        // <--- CORRECCIÓN CLAVE: Pasamos el embedCode a showFreeAdModal --->
                         showFreeAdModal(embedCode);
                     }
                 } else {
@@ -799,7 +762,6 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                                         alert('No se encontró un reproductor PRO para este episodio.');
                                     }
                                 } else if (hasFreePlayer) {
-                                    // <--- CORRECCIÓN CLAVE: Pasamos el embedCode a showFreeAdModal --->
                                     showFreeAdModal(localEpisode.freeEmbedCode);
                                 } else {
                                     showProRestrictionModal();
@@ -1028,19 +990,11 @@ async function fetchRelatedContent(item, type) {
     try {
         // CORRECCIÓN CLAVE: Usar el tipo de endpoint correcto (movie o tv)
         const tmdbEndpointType = type === 'movie' ? 'movie' : 'tv';
-
-        // Aseguramos que el contenedor exista antes de manipularlo
-        if (relatedMoviesContainer) {
-            relatedMoviesContainer.innerHTML = '';
-        }
-
         const related = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/similar`);
         renderCarousel('related-movies', related, type);
     } catch (error) {
         console.error("Error fetching related content:", error);
-        if (relatedMoviesContainer) {
-            relatedMoviesContainer.innerHTML = '<p style="padding: 10px;">No se encontraron contenidos similares.</p>';
-        }
+        relatedMoviesContainer.innerHTML = '<p style="padding: 10px;">No se encontraron contenidos similares.</p>';
     }
 }
 
@@ -1299,7 +1253,7 @@ async function fetchHistory() {
 }
 
 async function fetchHomeContent() {
-    // CORRECCIÓN CRÍTICA: Se añade un try-catch para manejar errores de carga de contenido
+    showLoader();
     try {
         await fetchHistory();
 
@@ -1331,8 +1285,9 @@ async function fetchHomeContent() {
         renderBannerCarousel();
     } catch (error) {
         console.error("Error fetching home content:", error);
-        // Alertar al usuario de que el contenido no se cargó
         alert('Hubo un error al cargar el contenido principal. Por favor, recarga la página.');
+    } finally {
+        hideLoader();
     }
 }
 
@@ -2132,55 +2087,51 @@ onAuthStateChanged(auth, async (user) => {
         // 1. Mostrar el loader inmediatamente como primer paso de inicialización
         showLoader();
 
-        // <--- AÑADIDO: Bloque try-finally para asegurar que el loader se oculte siempre --->
-        try {
-            // 2. Realizar todas las tareas de configuración y carga de datos
-            isInitialized = true;
-            setupRealtimeNotificationsListener(); 
-            
-            initializeTheme();
-            
-            // CORRECCIÓN CRÍTICA: Cargamos estáticamente todos los datos al inicio.
-            await fetchAppData();
+        // 2. Realizar todas las tareas de configuración y carga de datos
+        isInitialized = true;
+        setupRealtimeNotificationsListener(); 
+        
+        initializeTheme();
+        
+        // CORRECCIÓN CRÍTICA: Cargamos estáticamente todos los datos al inicio.
+        await fetchAppData();
 
-            await fetchAllGenres('movie');
-            await fetchAllGenres('tv');
-            updateNotificationIndicator(); // Inicializar el indicador de notificaciones
-            
-            // === LÓGICA CORREGIDA: Manejar el ID de Telegram MiniApp ===
-            const startAppId = getURLParameter('startapp');
-            if (startAppId) {
-                try {
-                    let fullItem = await fetchFromTMDB(`movie/${startAppId}`);
-                    let type = 'movie';
+        await fetchAllGenres('movie');
+        await fetchAllGenres('tv');
+        updateNotificationIndicator(); // Inicializar el indicador de notificaciones
+        
+        // 3. Ocultar el loader y mostrar el contenedor principal de la aplicación.
+        appContainer.style.display = 'block';
+        hideLoader();
 
-                    if (!fullItem || fullItem.status_code === 34 || !fullItem.id) {
-                         fullItem = await fetchFromTMDB(`tv/${startAppId}`);
-                         type = 'tv';
-                    }
+        // === LÓGICA CORREGIDA: Manejar el ID de Telegram MiniApp ===
+        const startAppId = getURLParameter('startapp');
+        if (startAppId) {
+            try {
+                let fullItem = await fetchFromTMDB(`movie/${startAppId}`);
+                let type = 'movie';
 
-                    if (fullItem && fullItem.id) {
-                        fullItem.media_type = type; 
-                        
-                        history.pushState({ screen: 'details-screen', item: fullItem, type: type }, '', '');
-                        showDetailsScreen(fullItem, type);
-                    } else {
-                        switchScreen('home-screen');
-                    }
-                } catch (error) {
-                    console.error("Error al cargar contenido desde Telegram:", error);
+                if (!fullItem || fullItem.status_code === 34 || !fullItem.id) {
+                     fullItem = await fetchFromTMDB(`tv/${startAppId}`);
+                     type = 'tv';
+                }
+
+                if (fullItem && fullItem.id) {
+                    fullItem.media_type = type; 
+                    
+                    history.pushState({ screen: 'details-screen', item: fullItem, type: type }, '', '');
+                    showDetailsScreen(fullItem, type);
+                } else {
                     switchScreen('home-screen');
                 }
-            } else {
-                // 4. Navegar a la pantalla principal por defecto
+            } catch (error) {
+                console.error("Error al cargar contenido desde Telegram:", error);
                 switchScreen('home-screen');
             }
-        } finally {
-            // 3. Ocultar el loader y mostrar el contenedor principal de la aplicación.
-            appContainer.style.display = 'block';
-            hideLoader();
+        } else {
+            // 4. Navegar a la pantalla principal por defecto
+            switchScreen('home-screen');
         }
-        // <--- FIN DE BLOQUE AÑADIDO --->
     }
 });
 
