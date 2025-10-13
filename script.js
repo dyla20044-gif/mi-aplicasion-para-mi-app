@@ -643,21 +643,47 @@ async function addMovieToHistory(item) {
     }
 }
 
+// <--- LÓGICA MODIFICADA PARA MANEJAR MP4 Y EMBED --->
 function playEmbeddedVideo(embedCode, isPremium, currentUser, item) {
-    // [MODIFICACIÓN] Se usa currentUser.isPro directamente
     if (isPremium && (!currentUser || !currentUser.isPro)) {
         showProRestrictionModal();
-    } else {
-        detailsPosterTop.style.backgroundImage = 'none';
-        detailsPosterTop.style.backgroundColor = '#000';
-        playButtonContainer.style.display = 'none';
-        embeddedPlayerContainer.style.display = 'block';
-        embeddedPlayerContainer.innerHTML = embedCode;
-        // SE MANTIENE LA LLAMADA A INCREMENTAR VISTAS AL INICIAR LA REPRODUCCIÓN
-        incrementViewCount(currentMovieOrSeries.tmdbId);
-        addMovieToHistory(item);
+        return;
     }
+
+    detailsPosterTop.style.backgroundImage = 'none';
+    detailsPosterTop.style.backgroundColor = '#000';
+    playButtonContainer.style.display = 'none';
+    embeddedPlayerContainer.style.display = 'block';
+    
+    // Limpia el contenido anterior para evitar problemas
+    embeddedPlayerContainer.innerHTML = '';
+    
+    // <--- AÑADIDO: Lógica para decidir si usar un reproductor HTML5 o un iframe --->
+    if (embedCode.endsWith('.mp4')) {
+        const videoElement = document.createElement('video');
+        videoElement.src = embedCode;
+        videoElement.controls = true;
+        videoElement.autoplay = true;
+        videoElement.style.width = '100%';
+        videoElement.style.height = '100%';
+        embeddedPlayerContainer.appendChild(videoElement);
+    } else {
+        const iframeElement = document.createElement('iframe');
+        iframeElement.src = embedCode;
+        iframeElement.frameBorder = 0;
+        iframeElement.width = '100%';
+        iframeElement.height = '100%';
+        iframeElement.allowFullscreen = true;
+        embeddedPlayerContainer.appendChild(iframeElement);
+    }
+    // <--- FIN DE LÓGICA AÑADIDA --->
+
+    // Se mantiene la llamada a incrementar vistas al iniciar la reproducción
+    incrementViewCount(currentMovieOrSeries.tmdbId);
+    addMovieToHistory(item);
 }
+// <--- FIN DE LÓGICA MODIFICADA --->
+
 
 function renderMoviePlayButtons(localMovie, tmdbMovie) {
     playButtonContainer.innerHTML = '';
@@ -990,11 +1016,19 @@ async function fetchRelatedContent(item, type) {
     try {
         // CORRECCIÓN CLAVE: Usar el tipo de endpoint correcto (movie o tv)
         const tmdbEndpointType = type === 'movie' ? 'movie' : 'tv';
+
+        // Aseguramos que el contenedor exista antes de manipularlo
+        if (relatedMoviesContainer) {
+            relatedMoviesContainer.innerHTML = '';
+        }
+
         const related = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/similar`);
         renderCarousel('related-movies', related, type);
     } catch (error) {
         console.error("Error fetching related content:", error);
-        relatedMoviesContainer.innerHTML = '<p style="padding: 10px;">No se encontraron contenidos similares.</p>';
+        if (relatedMoviesContainer) {
+            relatedMoviesContainer.innerHTML = '<p style="padding: 10px;">No se encontraron contenidos similares.</p>';
+        }
     }
 }
 
@@ -2380,3 +2414,5 @@ window.tv_filterChannels = tv_filterChannels;
 window.switchScreen = switchScreen; 
 // Y la función para renderizar los botones, que es llamada por la navegación
 window.renderCountryButtons = renderCountryButtons;
+
+}
