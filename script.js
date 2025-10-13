@@ -80,7 +80,7 @@ const signupButton = document.getElementById('signup-button');
 const socialLoginButtons = document.querySelectorAll('.social-button');
 const profileMyList = document.getElementById('profile-my-list');
 const profilePrivacy = document.getElementById('profile-privacy');
-const profileTerms = document.getElementById('profile-terms');
+const profileTerms = document.getElementById('terms-screen');
 const profileSubscription = document.getElementById('profile-subscription');
 const profileHelpCenter = document.getElementById('profile-help-center');
 const authBackButton = document.getElementById('auth-back-button');
@@ -1287,7 +1287,7 @@ async function fetchHistory() {
 }
 
 async function fetchHomeContent() {
-    showLoader();
+    // CORRECCIÓN CRÍTICA: Se añade un try-catch para manejar errores de carga de contenido
     try {
         await fetchHistory();
 
@@ -1319,9 +1319,8 @@ async function fetchHomeContent() {
         renderBannerCarousel();
     } catch (error) {
         console.error("Error fetching home content:", error);
+        // Alertar al usuario de que el contenido no se cargó
         alert('Hubo un error al cargar el contenido principal. Por favor, recarga la página.');
-    } finally {
-        hideLoader();
     }
 }
 
@@ -2121,51 +2120,55 @@ onAuthStateChanged(auth, async (user) => {
         // 1. Mostrar el loader inmediatamente como primer paso de inicialización
         showLoader();
 
-        // 2. Realizar todas las tareas de configuración y carga de datos
-        isInitialized = true;
-        setupRealtimeNotificationsListener(); 
-        
-        initializeTheme();
-        
-        // CORRECCIÓN CRÍTICA: Cargamos estáticamente todos los datos al inicio.
-        await fetchAppData();
+        // <--- AÑADIDO: Bloque try-finally para asegurar que el loader se oculte siempre --->
+        try {
+            // 2. Realizar todas las tareas de configuración y carga de datos
+            isInitialized = true;
+            setupRealtimeNotificationsListener(); 
+            
+            initializeTheme();
+            
+            // CORRECCIÓN CRÍTICA: Cargamos estáticamente todos los datos al inicio.
+            await fetchAppData();
 
-        await fetchAllGenres('movie');
-        await fetchAllGenres('tv');
-        updateNotificationIndicator(); // Inicializar el indicador de notificaciones
-        
-        // 3. Ocultar el loader y mostrar el contenedor principal de la aplicación.
-        appContainer.style.display = 'block';
-        hideLoader();
+            await fetchAllGenres('movie');
+            await fetchAllGenres('tv');
+            updateNotificationIndicator(); // Inicializar el indicador de notificaciones
+            
+            // === LÓGICA CORREGIDA: Manejar el ID de Telegram MiniApp ===
+            const startAppId = getURLParameter('startapp');
+            if (startAppId) {
+                try {
+                    let fullItem = await fetchFromTMDB(`movie/${startAppId}`);
+                    let type = 'movie';
 
-        // === LÓGICA CORREGIDA: Manejar el ID de Telegram MiniApp ===
-        const startAppId = getURLParameter('startapp');
-        if (startAppId) {
-            try {
-                let fullItem = await fetchFromTMDB(`movie/${startAppId}`);
-                let type = 'movie';
+                    if (!fullItem || fullItem.status_code === 34 || !fullItem.id) {
+                         fullItem = await fetchFromTMDB(`tv/${startAppId}`);
+                         type = 'tv';
+                    }
 
-                if (!fullItem || fullItem.status_code === 34 || !fullItem.id) {
-                     fullItem = await fetchFromTMDB(`tv/${startAppId}`);
-                     type = 'tv';
-                }
-
-                if (fullItem && fullItem.id) {
-                    fullItem.media_type = type; 
-                    
-                    history.pushState({ screen: 'details-screen', item: fullItem, type: type }, '', '');
-                    showDetailsScreen(fullItem, type);
-                } else {
+                    if (fullItem && fullItem.id) {
+                        fullItem.media_type = type; 
+                        
+                        history.pushState({ screen: 'details-screen', item: fullItem, type: type }, '', '');
+                        showDetailsScreen(fullItem, type);
+                    } else {
+                        switchScreen('home-screen');
+                    }
+                } catch (error) {
+                    console.error("Error al cargar contenido desde Telegram:", error);
                     switchScreen('home-screen');
                 }
-            } catch (error) {
-                console.error("Error al cargar contenido desde Telegram:", error);
+            } else {
+                // 4. Navegar a la pantalla principal por defecto
                 switchScreen('home-screen');
             }
-        } else {
-            // 4. Navegar a la pantalla principal por defecto
-            switchScreen('home-screen');
+        } finally {
+            // 3. Ocultar el loader y mostrar el contenedor principal de la aplicación.
+            appContainer.style.display = 'block';
+            hideLoader();
         }
+        // <--- FIN DE BLOQUE AÑADIDO --->
     }
 });
 
@@ -2414,5 +2417,3 @@ window.tv_filterChannels = tv_filterChannels;
 window.switchScreen = switchScreen; 
 // Y la función para renderizar los botones, que es llamada por la navegación
 window.renderCountryButtons = renderCountryButtons;
-
-}
