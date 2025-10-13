@@ -659,6 +659,8 @@ function playEmbeddedVideo(embedCode, isPremium, currentUser, item) {
     embeddedPlayerContainer.innerHTML = '';
     
     // <--- AÑADIDO: Lógica para decidir si usar un reproductor HTML5 o un iframe --->
+    // Enlaces de embed suelen ser de la forma 'https://dominio.com/embed-codigo.html'
+    // Enlaces .mp4 terminan con la extensión del archivo
     if (embedCode.endsWith('.mp4')) {
         const videoElement = document.createElement('video');
         videoElement.src = embedCode;
@@ -702,14 +704,22 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
 
                 if (isProUser && localMovie.proEmbedCode) {
                     isPremium = true;
+                    // Llamada al backend para obtener el enlace .mp4 para usuarios PRO
                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=true`);
                     const data = await response.json();
                     embedCode = data.embedCode;
                 } else if (localMovie.freeEmbedCode) {
                     isPremium = false;
+                    // Llamada al backend para obtener el enlace embed para usuarios GRATIS
                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=false`);
                     const data = await response.json();
                     embedCode = data.embedCode;
+                } else if (isProUser && !localMovie.proEmbedCode) {
+                    // Si el usuario es PRO pero la película solo tiene versión gratis, se reproduce la gratis
+                     isPremium = false;
+                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=false`);
+                     const data = await response.json();
+                     embedCode = data.embedCode;
                 } else {
                     showProRestrictionModal();
                     hideLoader();
