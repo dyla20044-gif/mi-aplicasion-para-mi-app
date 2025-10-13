@@ -730,6 +730,7 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
                     if (isPremium) {
                         playEmbeddedVideo(embedCode, true, currentUser, tmdbMovie);
                     } else {
+                        // <--- CORRECCIÓN CLAVE: Pasamos el embedCode a showFreeAdModal --->
                         showFreeAdModal(embedCode);
                     }
                 } else {
@@ -798,6 +799,7 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                                         alert('No se encontró un reproductor PRO para este episodio.');
                                     }
                                 } else if (hasFreePlayer) {
+                                    // <--- CORRECCIÓN CLAVE: Pasamos el embedCode a showFreeAdModal --->
                                     showFreeAdModal(localEpisode.freeEmbedCode);
                                 } else {
                                     showProRestrictionModal();
