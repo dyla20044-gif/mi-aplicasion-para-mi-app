@@ -652,7 +652,16 @@ function playEmbeddedVideo(embedCode, isPremium, currentUser, item) {
         detailsPosterTop.style.backgroundColor = '#000';
         playButtonContainer.style.display = 'none';
         embeddedPlayerContainer.style.display = 'block';
-        embeddedPlayerContainer.innerHTML = embedCode;
+
+        // LÓGICA CORREGIDA: Detectar si es un enlace MP4 o un iframe
+        if (embedCode.startsWith('http') && embedCode.includes('.mp4')) {
+            // Es una URL directa a un archivo de video
+            embeddedPlayerContainer.innerHTML = `<video src="${embedCode}" controls autoplay playsinline class="full-screen-video"></video>`;
+        } else {
+            // Asume que es un iframe
+            embeddedPlayerContainer.innerHTML = embedCode;
+        }
+
         // SE MANTIENE LA LLAMADA A INCREMENTAR VISTAS AL INICIAR LA REPRODUCCIÓN
         incrementViewCount(currentMovieOrSeries.tmdbId);
         addMovieToHistory(item);
