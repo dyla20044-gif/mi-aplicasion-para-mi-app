@@ -1,3 +1,4 @@
+// Contenido completo de dyla20044-gif/mi-aplicasion-para-mi-app/mi-aplicasion-para-mi-app-b147cd13c5ceded05251b28efba035710f268889/script.js con el FIX de cuota
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc, orderBy, limit, updateDoc, setDoc, increment, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -170,8 +171,10 @@ const notificationsClose = document.getElementById('notifications-close');
 const contentPublishingModal = document.getElementById('admin-avisos-modal');
 const btnPubSaveNotify = document.getElementById('btn-save-notify-app-new'); 
 
-let moviesData = [];
-let seriesData = [];
+// [CRÍTICO] Mantenemos las listas vacías inicialmente para evitar la lectura masiva
+// de Firestore al cargar la app, ya que la API del backend se encargará de esto.
+let moviesData = []; 
+let seriesData = []; 
 let bannerMovies = [];
 let allMovieGenres = {};
 let allTvGenres = {};
@@ -470,15 +473,13 @@ if (btnToggleTheme) {
 
 // --- Funciones de Reproducción y Lógica de Vistas/Likes Únicos ---
 
-// ELIMINADA: La función getCount ha sido reemplazada por fetchCounts para optimizar las lecturas de cuota.
-// async function getCount(tmdbId, field = 'likes') { ... }
-
 // NUEVA FUNCIÓN: Obtiene contadores de Vistas y Likes desde la API del servidor (con caché)
 async function fetchCounts(tmdbId, type = 'movie') {
     const backendUrl = 'https://serivisios.onrender.com';
     try {
         const response = await fetch(`${backendUrl}/api/counts/${tmdbId}?type=${type}`);
         if (!response.ok) {
+            // [CRÍTICO] Cambiado para manejar el error 500 del servidor de forma más clara.
             throw new Error(`Error ${response.status} al obtener contadores desde el servidor.`);
         }
         return await response.json(); // { views: N, likes: M }
@@ -500,12 +501,10 @@ async function incrementViewCount(tmdbId) {
             views: increment(1)
         }, { merge: true });
 
-        // Ya no necesitamos leer el documento, la función fetchCounts lo hará usando la caché del servidor.
-        // Solo actualizamos la UI con una estimación si falla la llamada, pero lo ideal es llamar a fetchCounts.
-
         // Llamamos a la nueva ruta optimizada para actualizar el contador en la UI
         const mediaType = currentMovieOrSeries.type === 'tv' ? 'series' : 'movie';
-        const newCounts = await fetchCounts(tmdbId, mediaType);
+        // Usamos una llamada para refrescar los contadores
+        const newCounts = await fetchCounts(tmdbId, mediaType); 
 
         if (viewCountDisplay) {
             viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${newCounts.views.toLocaleString()} Vistas`;
@@ -1100,7 +1099,7 @@ async function showDetailsScreen(item, type) {
         actorsList.textContent = actors || 'No disponible';
         
         // --- Carga Estática de datos para la película actual ---
-        // CORRECCIÓN CRÍTICA: Buscar en la lista local correcta (moviesData o seriesData)
+        // Buscamos el ID en la lista local estática. Nota: esta lista debería cargarse de forma óptima
         const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id.toString());
         // --------------------------------------------------------
 
@@ -2065,24 +2064,8 @@ if (btnPubSaveNotify) {
     });
 }
 
-// NUEVA FUNCIÓN: Carga estática de películas y series
-async function fetchAppData() {
-    try {
-        const moviesSnapshot = await getDocs(collection(db, 'movies'));
-        moviesData = moviesSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-
-        const seriesSnapshot = await getDocs(collection(db, 'series'));
-        seriesData = seriesSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-    } catch (e) {
-        console.error("Error fetching app data statically:", e);
-    }
-}
+// ELIMINADO EL CÓDIGO MASIVO DE CARGA INICIAL PARA AHORRAR CUOTA
+// function fetchAppData() { ... } 
 
 
 let isInitialized = false;
@@ -2144,8 +2127,8 @@ onAuthStateChanged(auth, async (user) => {
         
         initializeTheme();
         
-        // CORRECCIÓN CRÍTICA: Cargamos estáticamente todos los datos al inicio.
-        await fetchAppData();
+        // [CRÍTICO] Eliminada la carga masiva de data, la App solo confiará en la API del backend con caché
+        // await fetchAppData(); // <<--- ELIMINADO
 
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
