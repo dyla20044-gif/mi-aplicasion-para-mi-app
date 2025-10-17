@@ -1,4 +1,3 @@
-// Contenido completo de dyla20044-gif/mi-aplicasion-para-mi-app/mi-aplicasion-para-mi-app-b147cd13c5ceded05251b28efba035710f268889/script.js con el FIX de cuota
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInAnonymously, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, query, where, addDoc, orderBy, limit, updateDoc, setDoc, increment, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -22,7 +21,7 @@ const auth = getAuth(app);
 const appContainer = document.getElementById('app-container');
 const homeScreen = document.getElementById('home-screen');
 const moviesScreen = document.getElementById('movies-screen');
-const seriesScreen = document.getElementById('series-screen');
+const seriesScreen = document => { }
 const profileScreen = document.getElementById('profile-screen');
 const detailsScreen = document.getElementById('details-screen');
 const favoritesScreen = document.getElementById('favorites-screen');
@@ -171,10 +170,8 @@ const notificationsClose = document.getElementById('notifications-close');
 const contentPublishingModal = document.getElementById('admin-avisos-modal');
 const btnPubSaveNotify = document.getElementById('btn-save-notify-app-new'); 
 
-// [CRÍTICO] Mantenemos las listas vacías inicialmente para evitar la lectura masiva
-// de Firestore al cargar la app, ya que la API del backend se encargará de esto.
-let moviesData = []; 
-let seriesData = []; 
+let moviesData = [];
+let seriesData = [];
 let bannerMovies = [];
 let allMovieGenres = {};
 let allTvGenres = {};
@@ -473,26 +470,15 @@ if (btnToggleTheme) {
 
 // --- Funciones de Reproducción y Lógica de Vistas/Likes Únicos ---
 
-// NUEVA FUNCIÓN: Obtiene contadores de Vistas y Likes desde la API del servidor (con caché)
-async function fetchCounts(tmdbId, type = 'movie') {
-    const backendUrl = 'https://serivisios.onrender.com';
-    try {
-        const response = await fetch(`${backendUrl}/api/counts/${tmdbId}?type=${type}`);
-        if (!response.ok) {
-            // [CRÍTICO] Cambiado para manejar el error 500 del servidor de forma más clara.
-            throw new Error(`Error ${response.status} al obtener contadores desde el servidor.`);
-        }
-        return await response.json(); // { views: N, likes: M }
-    } catch (error) {
-        console.error("Error fetching counts from server cache:", error);
-        return { views: 0, likes: 0 }; 
-    }
+// Función para obtener el contador de Vistas o Likes global
+async function getCount(tmdbId, field = 'likes') {
+    const itemRef = doc(db, 'movies', tmdbId.toString());
+    const docSnap = await getDoc(itemRef);
+    return docSnap.exists() ? docSnap.data()[field] || 0 : 0;
 }
 
 // LÓGICA DE VISTAS (REVERTIDA A CONTAR CADA CLIC)
 async function incrementViewCount(tmdbId) {
-    // Nota: El backend ya maneja el tipo de contenido ('movies' o 'series') a través de la lógica del endpoint
-    // sin necesidad de especificar el tipo aquí, ya que el ID de TMDB es el ID del documento.
     const itemRef = doc(db, 'movies', tmdbId.toString());
     
     try {
@@ -501,15 +487,12 @@ async function incrementViewCount(tmdbId) {
             views: increment(1)
         }, { merge: true });
 
-        // Llamamos a la nueva ruta optimizada para actualizar el contador en la UI
-        const mediaType = currentMovieOrSeries.type === 'tv' ? 'series' : 'movie';
-        // Usamos una llamada para refrescar los contadores
-        const newCounts = await fetchCounts(tmdbId, mediaType); 
-
-        if (viewCountDisplay) {
-            viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${newCounts.views.toLocaleString()} Vistas`;
-        }
+        const docSnap = await getDoc(itemRef);
+        let views = docSnap.exists() ? docSnap.data().views || 0 : 0;
         
+        if (viewCountDisplay) {
+            viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${views.toLocaleString()} Vistas`;
+        }
     } catch (e) {
         console.warn("Error al incrementar vistas:", e);
         if (viewCountDisplay) {
@@ -589,14 +572,10 @@ async function handleLike(tmdbId) {
         // Actualiza la interfaz
         renderLikeState(tmdbId); // Llama a la función para ponerlo sólido
         
-        // Llamada a la nueva ruta optimizada para actualizar el contador en la UI
-        const mediaType = currentMovieOrSeries.type === 'tv' ? 'series' : 'movie';
-        const newCounts = await fetchCounts(tmdbId, mediaType);
-
+        const newCount = await getCount(tmdbId, 'likes');
         if (likeCountDisplayText) {
-            likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${newCounts.likes} Me Gusta`;
+            likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${newCount} Me Gusta`;
         }
-
     } catch (e) {
         console.error("Error al registrar like:", e);
         alert('Hubo un error al registrar tu "Me Gusta".');
@@ -621,10 +600,7 @@ function showFreeAdModal(freeEmbedCode) {
 function setupFreeAdModalButtons(freeEmbedCode) {
     verGratisButton.onclick = () => {
         closeModal(freeAdModal);
-        // Note: The backend is expected to return the embed code directly or a direct MP4 link
-        // if the old logic was to return a 'directLink' for free users (which is not expected with GodStream)
-        // For free users, we assume embedCode is the iframe or a link that should be embedded.
-        playEmbeddedVideo(freeEmbedCode, false, currentUser, currentMovieOrSeries); 
+        playEmbeddedVideo(freeEmbedCode, false, currentUser, currentMovieOrSeries);
     };
 
     verProButton.onclick = () => {
@@ -676,16 +652,7 @@ function playEmbeddedVideo(embedCode, isPremium, currentUser, item) {
         detailsPosterTop.style.backgroundColor = '#000';
         playButtonContainer.style.display = 'none';
         embeddedPlayerContainer.style.display = 'block';
-
-        // LÓGICA CORREGIDA: Detectar si es un enlace MP4 o un iframe
-        if (embedCode.startsWith('http') && (embedCode.includes('.mp4') || embedCode.includes('.m3u8'))) {
-            // Es una URL directa a un archivo de video (incluyendo HLS .m3u8)
-            embeddedPlayerContainer.innerHTML = `<video src="${embedCode}" controls autoplay playsinline class="full-screen-video"></video>`;
-        } else {
-            // Asume que es un iframe
-            embeddedPlayerContainer.innerHTML = embedCode;
-        }
-
+        embeddedPlayerContainer.innerHTML = embedCode;
         // SE MANTIENE LA LLAMADA A INCREMENTAR VISTAS AL INICIAR LA REPRODUCCIÓN
         incrementViewCount(currentMovieOrSeries.tmdbId);
         addMovieToHistory(item);
@@ -709,10 +676,9 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
 
                 if (isProUser && localMovie.proEmbedCode) {
                     isPremium = true;
-                    // El backend ahora devuelve { embedCode: directLink/iframe } para ambos casos
                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=true`);
                     const data = await response.json();
-                    embedCode = data.embedCode; // <--- CORRECCIÓN CRÍTICA AQUÍ
+                    embedCode = data.embedCode;
                 } else if (localMovie.freeEmbedCode) {
                     isPremium = false;
                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=false`);
@@ -787,35 +753,19 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                                 const hasProPlayer = !!localEpisode.proEmbedCode;
                                 const hasFreePlayer = !!localEpisode.freeEmbedCode;
                                 
-                                let embedCode = null;
-                                let isPremium = false;
-                                
                                 if (isProUser && hasProPlayer) {
-                                    isPremium = true;
                                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localSeries.tmdbId}&season=${season.season_number}&episode=${episode.episode_number}&isPro=true`);
                                     const data = await response.json();
-                                    embedCode = data.embedCode;
+                                    if (data.embedCode) {
+                                        playEmbeddedVideo(data.embedCode, true, currentUser, episode);
+                                    } else {
+                                        alert('No se encontró un reproductor PRO para este episodio.');
+                                    }
                                 } else if (hasFreePlayer) {
-                                    isPremium = false;
-                                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localSeries.tmdbId}&season=${season.season_number}&episode=${episode.episode_number}&isPro=false`);
-                                    const data = await response.json();
-                                    embedCode = data.embedCode;
+                                    showFreeAdModal(localEpisode.freeEmbedCode);
                                 } else {
                                     showProRestrictionModal();
-                                    hideLoader();
-                                    return;
                                 }
-                                
-                                if (embedCode) {
-                                    if (isPremium) {
-                                        playEmbeddedVideo(embedCode, true, currentUser, episode);
-                                    } else {
-                                        showFreeAdModal(embedCode);
-                                    }
-                                } else {
-                                    alert('No se encontró un reproductor para este episodio.');
-                                }
-                                
                             } catch(error) {
                                 console.error('Error al obtener el código del reproductor:', error);
                                 alert('Hubo un error al cargar el reproductor. Intenta de nuevo.');
@@ -853,7 +803,7 @@ function renderRequestButton(tmdbItem) {
             return;
         }
         try {
-            await fetch('https://serivisios.onrender.com/request-movie', {
+            const response = await fetch('https://serivisios.onrender.com/request-movie', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -862,15 +812,17 @@ function renderRequestButton(tmdbItem) {
                     tmdbId: tmdbItem.id
                 })
             });
-            
-            const successMsg = "Tu solicitud fue enviada. Si eres usuario gratuito, espera 3 a 6 horas. Si eres usuario premium, espera alrededor de 2 horas.";
-            const detailsRequestMessage = document.getElementById('details-request-message');
-            if (detailsRequestMessage) {
-                showAppMessage(detailsRequestMessage, successMsg, 'success');
+            if (response.ok) {
+                const successMsg = "Tu solicitud fue enviada. Si eres usuario gratuito, espera 3 a 6 horas. Si eres usuario premium, espera alrededor de 2 horas.";
+                const detailsRequestMessage = document.getElementById('details-request-message');
+                if (detailsRequestMessage) {
+                    showAppMessage(detailsRequestMessage, successMsg, 'success');
+                } else {
+                    alert(successMsg);
+                }
             } else {
-                alert(successMsg);
+                alert('Hubo un error al enviar la solicitud. Intenta de nuevo.');
             }
-
         } catch (error) {
             console.error('Error al solicitar el contenido:', error);
             alert('No se pudo conectar con el servidor para enviar la solicitud.');
@@ -948,8 +900,7 @@ if (commentInput) {
 
 function renderComments(tmdbId) {
     const commentsColRef = collection(db, 'comments');
-    // MODIFICADOR DE CUOTA CRÍTICO: Añadimos limit(10)
-    const q = query(commentsColRef, where("tmdbId", "==", tmdbId.toString()), orderBy("timestamp", "desc"), limit(10)); 
+    const q = query(commentsColRef, where("tmdbId", "==", tmdbId.toString()), orderBy("timestamp", "desc"));
     
     // Configurar listener en tiempo real (Fix Comentarios)
     onSnapshot(q, (snapshot) => {
@@ -1099,7 +1050,7 @@ async function showDetailsScreen(item, type) {
         actorsList.textContent = actors || 'No disponible';
         
         // --- Carga Estática de datos para la película actual ---
-        // Buscamos el ID en la lista local estática. Nota: esta lista debería cargarse de forma óptima
+        // CORRECCIÓN CRÍTICA: Buscar en la lista local correcta (moviesData o seriesData)
         const localData = (type === 'movie' ? moviesData : seriesData).find(d => d.tmdbId === item.id.toString());
         // --------------------------------------------------------
 
@@ -1114,20 +1065,19 @@ async function showDetailsScreen(item, type) {
         
         // --- INICIALIZACIÓN DE LA SECCIÓN SOCIAL Y PESTAÑAS ---
         if (currentMovieOrSeries && currentMovieOrSeries.tmdbId) {
-            const mediaType = type === 'tv' ? 'series' : 'movie'; // Mapeo a lo que espera el backend
-            
-            // 1 & 2. Vistas y Likes: Llamada a la nueva ruta optimizada del servidor (CRÍTICO)
-            const counts = await fetchCounts(currentMovieOrSeries.tmdbId, mediaType);
-
+            // 1. Vistas (REVERTIDA A CONTAR CADA CLIC)
+            // Solo se muestra el contador inicial aquí; el incremento ocurre en playEmbeddedVideo
+            const viewCount = await getCount(currentMovieOrSeries.tmdbId, 'views'); 
             if (viewCountDisplay) {
-                viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${counts.views.toLocaleString()} Vistas`;
+                viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${viewCount.toLocaleString()} Vistas`;
             }
             
+            // 2. Likes (PERSISTENTE POR USUARIO)
+            const likeCount = await getCount(currentMovieOrSeries.tmdbId, 'likes');
             if (likeCountDisplayText) {
-                likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${counts.likes} Me Gusta`;
+                likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${likeCount} Me Gusta`;
             }
-            
-            renderLikeState(currentMovieOrSeries.tmdbId); // Se mantiene la comprobación de si el usuario dio like
+            renderLikeState(currentMovieOrSeries.tmdbId); // Establece el ícono de corazón (hollow/solid)
 
             // 3. Comentarios (REAL-TIME)
             renderComments(currentMovieOrSeries.tmdbId);
@@ -2064,8 +2014,24 @@ if (btnPubSaveNotify) {
     });
 }
 
-// ELIMINADO EL CÓDIGO MASIVO DE CARGA INICIAL PARA AHORRAR CUOTA
-// function fetchAppData() { ... } 
+// NUEVA FUNCIÓN: Carga estática de películas y series
+async function fetchAppData() {
+    try {
+        const moviesSnapshot = await getDocs(collection(db, 'movies'));
+        moviesData = moviesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        const seriesSnapshot = await getDocs(collection(db, 'series'));
+        seriesData = seriesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (e) {
+        console.error("Error fetching app data statically:", e);
+    }
+}
 
 
 let isInitialized = false;
@@ -2127,8 +2093,8 @@ onAuthStateChanged(auth, async (user) => {
         
         initializeTheme();
         
-        // [CRÍTICO] Eliminada la carga masiva de data, la App solo confiará en la API del backend con caché
-        // await fetchAppData(); // <<--- ELIMINADO
+        // CORRECCIÓN CRÍTICA: Cargamos estáticamente todos los datos al inicio.
+        await fetchAppData();
 
         await fetchAllGenres('movie');
         await fetchAllGenres('tv');
