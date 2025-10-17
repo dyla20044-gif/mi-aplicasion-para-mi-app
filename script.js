@@ -470,15 +470,28 @@ if (btnToggleTheme) {
 
 // --- Funciones de Reproducción y Lógica de Vistas/Likes Únicos ---
 
-// Función para obtener el contador de Vistas o Likes global
-async function getCount(tmdbId, field = 'likes') {
-    const itemRef = doc(db, 'movies', tmdbId.toString());
-    const docSnap = await getDoc(itemRef);
-    return docSnap.exists() ? docSnap.data()[field] || 0 : 0;
+// ELIMINADA: La función getCount ha sido reemplazada por fetchCounts para optimizar las lecturas de cuota.
+// async function getCount(tmdbId, field = 'likes') { ... }
+
+// NUEVA FUNCIÓN: Obtiene contadores de Vistas y Likes desde la API del servidor (con caché)
+async function fetchCounts(tmdbId, type = 'movie') {
+    const backendUrl = 'https://serivisios.onrender.com';
+    try {
+        const response = await fetch(`${backendUrl}/api/counts/${tmdbId}?type=${type}`);
+        if (!response.ok) {
+            throw new Error(`Error ${response.status} al obtener contadores desde el servidor.`);
+        }
+        return await response.json(); // { views: N, likes: M }
+    } catch (error) {
+        console.error("Error fetching counts from server cache:", error);
+        return { views: 0, likes: 0 }; 
+    }
 }
 
 // LÓGICA DE VISTAS (REVERTIDA A CONTAR CADA CLIC)
 async function incrementViewCount(tmdbId) {
+    // Nota: El backend ya maneja el tipo de contenido ('movies' o 'series') a través de la lógica del endpoint
+    // sin necesidad de especificar el tipo aquí, ya que el ID de TMDB es el ID del documento.
     const itemRef = doc(db, 'movies', tmdbId.toString());
     
     try {
@@ -487,12 +500,17 @@ async function incrementViewCount(tmdbId) {
             views: increment(1)
         }, { merge: true });
 
-        const docSnap = await getDoc(itemRef);
-        let views = docSnap.exists() ? docSnap.data().views || 0 : 0;
-        
+        // Ya no necesitamos leer el documento, la función fetchCounts lo hará usando la caché del servidor.
+        // Solo actualizamos la UI con una estimación si falla la llamada, pero lo ideal es llamar a fetchCounts.
+
+        // Llamamos a la nueva ruta optimizada para actualizar el contador en la UI
+        const mediaType = currentMovieOrSeries.type === 'tv' ? 'series' : 'movie';
+        const newCounts = await fetchCounts(tmdbId, mediaType);
+
         if (viewCountDisplay) {
-            viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${views.toLocaleString()} Vistas`;
+            viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${newCounts.views.toLocaleString()} Vistas`;
         }
+        
     } catch (e) {
         console.warn("Error al incrementar vistas:", e);
         if (viewCountDisplay) {
@@ -572,10 +590,14 @@ async function handleLike(tmdbId) {
         // Actualiza la interfaz
         renderLikeState(tmdbId); // Llama a la función para ponerlo sólido
         
-        const newCount = await getCount(tmdbId, 'likes');
+        // Llamada a la nueva ruta optimizada para actualizar el contador en la UI
+        const mediaType = currentMovieOrSeries.type === 'tv' ? 'series' : 'movie';
+        const newCounts = await fetchCounts(tmdbId, mediaType);
+
         if (likeCountDisplayText) {
-            likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${newCount} Me Gusta`;
+            likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${newCounts.likes} Me Gusta`;
         }
+
     } catch (e) {
         console.error("Error al registrar like:", e);
         alert('Hubo un error al registrar tu "Me Gusta".');
@@ -600,7 +622,10 @@ function showFreeAdModal(freeEmbedCode) {
 function setupFreeAdModalButtons(freeEmbedCode) {
     verGratisButton.onclick = () => {
         closeModal(freeAdModal);
-        playEmbeddedVideo(freeEmbedCode, false, currentUser, currentMovieOrSeries);
+        // Note: The backend is expected to return the embed code directly or a direct MP4 link
+        // if the old logic was to return a 'directLink' for free users (which is not expected with GodStream)
+        // For free users, we assume embedCode is the iframe or a link that should be embedded.
+        playEmbeddedVideo(freeEmbedCode, false, currentUser, currentMovieOrSeries); 
     };
 
     verProButton.onclick = () => {
@@ -654,8 +679,8 @@ function playEmbeddedVideo(embedCode, isPremium, currentUser, item) {
         embeddedPlayerContainer.style.display = 'block';
 
         // LÓGICA CORREGIDA: Detectar si es un enlace MP4 o un iframe
-        if (embedCode.startsWith('http') && embedCode.includes('.mp4')) {
-            // Es una URL directa a un archivo de video
+        if (embedCode.startsWith('http') && (embedCode.includes('.mp4') || embedCode.includes('.m3u8'))) {
+            // Es una URL directa a un archivo de video (incluyendo HLS .m3u8)
             embeddedPlayerContainer.innerHTML = `<video src="${embedCode}" controls autoplay playsinline class="full-screen-video"></video>`;
         } else {
             // Asume que es un iframe
@@ -685,9 +710,10 @@ function renderMoviePlayButtons(localMovie, tmdbMovie) {
 
                 if (isProUser && localMovie.proEmbedCode) {
                     isPremium = true;
+                    // El backend ahora devuelve { embedCode: directLink/iframe } para ambos casos
                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=true`);
                     const data = await response.json();
-                    embedCode = data.directLink; // <--- CORRECCIÓN CRÍTICA AQUÍ
+                    embedCode = data.embedCode; // <--- CORRECCIÓN CRÍTICA AQUÍ
                 } else if (localMovie.freeEmbedCode) {
                     isPremium = false;
                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localMovie.tmdbId}&isPro=false`);
@@ -762,19 +788,35 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
                                 const hasProPlayer = !!localEpisode.proEmbedCode;
                                 const hasFreePlayer = !!localEpisode.freeEmbedCode;
                                 
+                                let embedCode = null;
+                                let isPremium = false;
+                                
                                 if (isProUser && hasProPlayer) {
+                                    isPremium = true;
                                     const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localSeries.tmdbId}&season=${season.season_number}&episode=${episode.episode_number}&isPro=true`);
                                     const data = await response.json();
-                                    if (data.directLink) {
-                                        playEmbeddedVideo(data.directLink, true, currentUser, episode);
-                                    } else {
-                                        alert('No se encontró un reproductor PRO para este episodio.');
-                                    }
+                                    embedCode = data.embedCode;
                                 } else if (hasFreePlayer) {
-                                    showFreeAdModal(localEpisode.freeEmbedCode);
+                                    isPremium = false;
+                                    const response = await fetch(`https://serivisios.onrender.com/api/get-embed-code?id=${localSeries.tmdbId}&season=${season.season_number}&episode=${episode.episode_number}&isPro=false`);
+                                    const data = await response.json();
+                                    embedCode = data.embedCode;
                                 } else {
                                     showProRestrictionModal();
+                                    hideLoader();
+                                    return;
                                 }
+                                
+                                if (embedCode) {
+                                    if (isPremium) {
+                                        playEmbeddedVideo(embedCode, true, currentUser, episode);
+                                    } else {
+                                        showFreeAdModal(embedCode);
+                                    }
+                                } else {
+                                    alert('No se encontró un reproductor para este episodio.');
+                                }
+                                
                             } catch(error) {
                                 console.error('Error al obtener el código del reproductor:', error);
                                 alert('Hubo un error al cargar el reproductor. Intenta de nuevo.');
@@ -812,7 +854,7 @@ function renderRequestButton(tmdbItem) {
             return;
         }
         try {
-            const response = await fetch('https://serivisios.onrender.com/request-movie', {
+            await fetch('https://serivisios.onrender.com/request-movie', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -821,17 +863,15 @@ function renderRequestButton(tmdbItem) {
                     tmdbId: tmdbItem.id
                 })
             });
-            if (response.ok) {
-                const successMsg = "Tu solicitud fue enviada. Si eres usuario gratuito, espera 3 a 6 horas. Si eres usuario premium, espera alrededor de 2 horas.";
-                const detailsRequestMessage = document.getElementById('details-request-message');
-                if (detailsRequestMessage) {
-                    showAppMessage(detailsRequestMessage, successMsg, 'success');
-                } else {
-                    alert(successMsg);
-                }
+            
+            const successMsg = "Tu solicitud fue enviada. Si eres usuario gratuito, espera 3 a 6 horas. Si eres usuario premium, espera alrededor de 2 horas.";
+            const detailsRequestMessage = document.getElementById('details-request-message');
+            if (detailsRequestMessage) {
+                showAppMessage(detailsRequestMessage, successMsg, 'success');
             } else {
-                alert('Hubo un error al enviar la solicitud. Intenta de nuevo.');
+                alert(successMsg);
             }
+
         } catch (error) {
             console.error('Error al solicitar el contenido:', error);
             alert('No se pudo conectar con el servidor para enviar la solicitud.');
@@ -909,7 +949,8 @@ if (commentInput) {
 
 function renderComments(tmdbId) {
     const commentsColRef = collection(db, 'comments');
-    const q = query(commentsColRef, where("tmdbId", "==", tmdbId.toString()), orderBy("timestamp", "desc"));
+    // MODIFICADOR DE CUOTA CRÍTICO: Añadimos limit(10)
+    const q = query(commentsColRef, where("tmdbId", "==", tmdbId.toString()), orderBy("timestamp", "desc"), limit(10)); 
     
     // Configurar listener en tiempo real (Fix Comentarios)
     onSnapshot(q, (snapshot) => {
@@ -1074,19 +1115,20 @@ async function showDetailsScreen(item, type) {
         
         // --- INICIALIZACIÓN DE LA SECCIÓN SOCIAL Y PESTAÑAS ---
         if (currentMovieOrSeries && currentMovieOrSeries.tmdbId) {
-            // 1. Vistas (REVERTIDA A CONTAR CADA CLIC)
-            // Solo se muestra el contador inicial aquí; el incremento ocurre en playEmbeddedVideo
-            const viewCount = await getCount(currentMovieOrSeries.tmdbId, 'views'); 
+            const mediaType = type === 'tv' ? 'series' : 'movie'; // Mapeo a lo que espera el backend
+            
+            // 1 & 2. Vistas y Likes: Llamada a la nueva ruta optimizada del servidor (CRÍTICO)
+            const counts = await fetchCounts(currentMovieOrSeries.tmdbId, mediaType);
+
             if (viewCountDisplay) {
-                viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${viewCount.toLocaleString()} Vistas`;
+                viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${counts.views.toLocaleString()} Vistas`;
             }
             
-            // 2. Likes (PERSISTENTE POR USUARIO)
-            const likeCount = await getCount(currentMovieOrSeries.tmdbId, 'likes');
             if (likeCountDisplayText) {
-                likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${likeCount} Me Gusta`;
+                likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${counts.likes} Me Gusta`;
             }
-            renderLikeState(currentMovieOrSeries.tmdbId); // Establece el ícono de corazón (hollow/solid)
+            
+            renderLikeState(currentMovieOrSeries.tmdbId); // Se mantiene la comprobación de si el usuario dio like
 
             // 3. Comentarios (REAL-TIME)
             renderComments(currentMovieOrSeries.tmdbId);
