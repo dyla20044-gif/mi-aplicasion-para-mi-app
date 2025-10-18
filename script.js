@@ -999,11 +999,12 @@ function setupDetailsTabs(tmdbItem, type) {
             if (targetPane) {
                 targetPane.classList.add('active');
                 
-                if (targetTabId === 'related-content-pane') {
-                    if (relatedMoviesContainer.children.length === 0) {
-                        fetchRelatedContent(tmdbItem, type);
-                    }
-                }
+                // [MODIFICADO] Se elimina la lógica de carga aquí. Ahora la carga es automática en showDetailsScreen.
+                // if (targetTabId === 'related-content-pane') {
+                //     if (relatedMoviesContainer.children.length === 0) {
+                //         fetchRelatedContent(tmdbItem, type);
+                //     }
+                // }
             }
         });
     });
@@ -1017,8 +1018,28 @@ function setupDetailsTabs(tmdbItem, type) {
 async function fetchRelatedContent(item, type) {
     try {
         const tmdbEndpointType = type === 'movie' ? 'movie' : 'tv';
-        const related = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/similar`);
-        renderCarousel('related-movies', related, type);
+        
+        // REQUERIMIENTO: Obtener ID's de género para filtrar
+        const genreIds = (item.genres || []).map(g => g.id).join(',');
+        
+        let related;
+        if (genreIds) {
+            // [MODIFICADO] Usar el endpoint discover con los géneros, ordenado por popularidad.
+            const endpoint = `discover/${tmdbEndpointType}?with_genres=${genreIds}&sort_by=popularity.desc`;
+            // NOTA: fetchFromTMDB maneja la estructura de la respuesta.
+            const results = await fetchFromTMDB(endpoint); 
+            
+            // FILTRO ADICIONAL: Eliminar el elemento actual de la lista de resultados relacionados.
+            const filteredRelated = (Array.isArray(results) ? results : results.results || []).filter(r => r.id !== item.id);
+            related = filteredRelated.slice(0, 20); // Limitar a 20 resultados
+        } else {
+            // Fallback a "Similar" si no hay géneros (ej. para contenido sin metadata)
+            related = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/similar`);
+        }
+        
+        // El tipo de contenido puede variar en los resultados (mixed results)
+        renderCarousel('related-movies', related, type); 
+        
     } catch (error) {
         console.error("Error fetching related content:", error);
         relatedMoviesContainer.innerHTML = '<p style="padding: 10px;">No se encontraron contenidos similares.</p>';
@@ -1797,7 +1818,7 @@ function renderGrid(containerElement, items, type) {
     const filteredItems = Array.isArray(items) ? items.filter(item => item.poster_path) : [];
 
     filteredItems.forEach(item => {
-        const card = createMovieCard(item, type);
+        const card = createMovieCard(item, item.media_type || type);
         containerElement.appendChild(card);
     });
 
@@ -1873,6 +1894,10 @@ async function showDetailsScreen(item, type) {
     updateMetricsDisplay(item.id);
     renderLikeState(item.id);
     renderComments(item.id);
+    
+    // [MODIFICACIÓN] Limpiar y cargar el contenido similar automáticamente (Requerimiento 2)
+    if(relatedMoviesContainer) relatedMoviesContainer.innerHTML = '';
+    fetchRelatedContent(item, type); 
 
     // Play Buttons (The critical part)
     if (type === 'movie') {
@@ -1931,14 +1956,15 @@ function renderBanner(items) {
         const itemType = item.media_type || (item.title ? 'movie' : 'tv');
         const itemTitle = item.title || item.name;
 
-        // Escapar el título para el onclick para evitar errores con comillas simples (ej. "King's Man")
+        // [CORREGIDO] Escapar títulos y paths para evitar error de sintaxis en el onclick (Requerimiento 1)
         const safeTitle = (itemTitle || '').replace(/'/g, "\\'"); 
         const safePoster = (item.poster_path || '').replace(/'/g, "\\'"); 
+        const safeBackdrop = (item.backdrop_path || '').replace(/'/g, "\\'"); 
         
         banner.innerHTML = `
             <div class="banner-buttons-container">
                  <div class="pro-badge">PRO</div>
-                <button class="banner-button red" onclick="showDetailsScreen({id: ${item.id}, title: '${safeTitle}', name: '${safeTitle}', media_type: '${itemType}', backdrop_path: '${item.backdrop_path}'}, '${itemType}')"><i class="fas fa-play"></i> Ver Ahora</button>
+                <button class="banner-button red" onclick="showDetailsScreen({id: ${item.id}, title: '${safeTitle}', name: '${safeTitle}', media_type: '${itemType}', backdrop_path: '${safeBackdrop}'}, '${itemType}')"><i class="fas fa-play"></i> Ver Ahora</button>
                 <button class="banner-button" onclick="addToFavorites({id: ${item.id}, title: '${safeTitle}', poster_path: '${safePoster}', type: '${itemType}'})"><i class="fas fa-plus"></i> Mi Lista</button>
             </div>
         `;
