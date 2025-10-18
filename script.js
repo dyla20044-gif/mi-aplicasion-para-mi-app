@@ -393,7 +393,7 @@ function resetDetailsPlayer() {
     playButtonContainer.style.display = 'flex';
 }
 
-// --- FUNCIÓN FALTANTE: showDetailsScreen (Soluciona el ReferenceError) ---
+// --- FUNCIÓN showDetailsScreen (ACTUALIZADA con Optimización y Fix de Carga) ---
 async function showDetailsScreen(item, type) {
     if (!item || !item.id) return;
     showLoader();
@@ -401,26 +401,20 @@ async function showDetailsScreen(item, type) {
     switchScreen('details-screen');
     resetDetailsPlayer(); 
     
-    // Almacena el elemento actual
-    currentMovieOrSeries = {
-        tmdbId: item.id,
-        type: type,
-        isMovie: type === 'movie'
-    };
+    currentMovieOrSeries = { tmdbId: item.id, type: type, isMovie: type === 'movie' };
 
     try {
         const tmdbEndpointType = type === 'movie' ? 'movie' : 'tv';
+        
+        // 1. Fetch main details (blocking call, needed for rendering)
         const fullDetails = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}?append_to_response=credits`);
         currentFullTMDBItem = fullDetails;
 
-        // --- RENDERIZAR INFO BÁSICA ---
+        // 2. Render Basic Info immediately (to reduce perceived latency)
         detailsTitle.textContent = fullDetails.title || fullDetails.name;
         detailsYear.textContent = (fullDetails.release_date || fullDetails.first_air_date || 'N/A').substring(0, 4);
         detailsSinopsis.textContent = fullDetails.overview || 'Sinopsis no disponible.';
-        
         detailsGenres.textContent = fullDetails.genres ? fullDetails.genres.map(g => g.name).join(', ') : 'N/A';
-
-        // Poster/Backdrop
         const posterPath = fullDetails.backdrop_path || fullDetails.poster_path;
         if (posterPath) {
             detailsPosterTop.style.backgroundImage = `url('https://image.tmdb.org/t/p/original${posterPath}')`;
@@ -428,38 +422,33 @@ async function showDetailsScreen(item, type) {
             detailsPosterTop.style.backgroundImage = 'none';
             detailsPosterTop.style.backgroundColor = '#222';
         }
-
-        // Director y Actores
         const credits = fullDetails.credits;
         if (credits) {
             const director = credits.crew.find(c => c.job === 'Director');
             directorName.textContent = director ? director.name : 'N/A';
-            
             const actors = credits.cast.slice(0, 5).map(a => a.name).join(', ');
             actorsList.textContent = actors || 'N/A';
         }
 
-        // --- RENDERIZAR METRICAS (Views/Likes) ---
-        const views = await getCount(item.id, 'views');
-        const likes = await getCount(item.id, 'likes');
+        // 3. Setup Tabs/Comments
+        setupDetailsTabs(fullDetails, type);
+        renderComments(item.id);
+
+        // 4. Parallelize secondary tasks (Optimization and Fix for Similares content):
+        const viewsPromise = getCount(item.id, 'views').catch(() => 0); // Default to 0 on failure
+        const likesPromise = getCount(item.id, 'likes').catch(() => 0); // Default to 0 on failure
+        const playButtonsPromise = type === 'movie' ? renderMoviePlayButtons(item, fullDetails) : renderSeriesButtons(item, fullDetails);
+        const relatedContentPromise = fetchRelatedContent(fullDetails, type); // FIX 1 & 2: Carga inmediata y lógica de saga/recomendación
+
+        // 5. Wait for asynchronous tasks to complete (ignoring errors in promises other than metrics for now)
+        await Promise.allSettled([playButtonsPromise, relatedContentPromise]); 
+        
+        // 6. Render Metrics Info (Awaits promises, using 0 if the catch block was hit)
+        const [views, likes] = await Promise.all([viewsPromise, likesPromise]); 
 
         viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${views} Vistas`;
         likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${likes} Me Gusta`;
         renderLikeState(item.id);
-
-        // --- RENDERIZAR BOTONES DE REPRODUCCIÓN y Episodios ---
-        seasonsContainer.style.display = 'none';
-        episodesContainer.innerHTML = '';
-        
-        if (type === 'movie') {
-            await renderMoviePlayButtons(item, fullDetails);
-        } else {
-            await renderSeriesButtons(item, fullDetails);
-        }
-
-        // --- RENDERIZAR TABS (Similares/Comentarios) ---
-        setupDetailsTabs(fullDetails, type);
-        renderComments(item.id);
         
     } catch (error) {
         console.error("Error al mostrar detalles:", error);
@@ -469,6 +458,7 @@ async function showDetailsScreen(item, type) {
     }
 }
 // --- FIN FUNCIÓN showDetailsScreen ---
+
 
 // --- Lógica del Tema Dual (Sin cambios) ---
 
@@ -703,7 +693,8 @@ function playEmbeddedVideo(embedCode, isPremium, currentUser, item) {
 // *** FUNCIÓN CORREGIDA: renderMoviePlayButtons (On-demand check + Bypass Premium) ***
 async function renderMoviePlayButtons(localMovie, tmdbMovie) {
     playButtonContainer.innerHTML = '';
-    showLoader(); 
+    // Loader control is handled by the calling function (showDetailsScreen)
+    // showLoader(); 
 
     let embedCodeAvailable = false;
     const tmdbIdToUse = tmdbMovie.id;
@@ -768,13 +759,13 @@ async function renderMoviePlayButtons(localMovie, tmdbMovie) {
         console.error('Error de disponibilidad:', error);
         renderRequestButton(tmdbMovie);
     } finally {
-        hideLoader();
+        // hideLoader(); // Loader control is handled by the calling function (showDetailsScreen)
     }
 }
 
 // *** FUNCIÓN CORREGIDA Y OPTIMIZADA: renderSeriesButtons ***
 async function renderSeriesButtons(localSeries, tmdbSeries) {
-    showLoader(); 
+    // showLoader(); // Loader control is handled by the calling function (showDetailsScreen)
     const tmdbIdToUse = tmdbSeries.id;
 
     try {
@@ -880,7 +871,7 @@ async function renderSeriesButtons(localSeries, tmdbSeries) {
         seasonsContainer.innerHTML = '<p>No se encontraron temporadas para esta serie.</p>';
         renderRequestButton(tmdbSeries);
     } finally {
-        hideLoader(); 
+        // hideLoader(); // Loader control is handled by the calling function (showDetailsScreen)
     }
 }
 
@@ -1076,11 +1067,7 @@ function setupDetailsTabs(tmdbItem, type) {
             if (targetPane) {
                 targetPane.classList.add('active');
                 
-                if (targetTabId === 'related-content-pane') {
-                    if (relatedMoviesContainer.children.length === 0) {
-                        fetchRelatedContent(tmdbItem, type);
-                    }
-                }
+                // NOTA: Se ha movido la carga de fetchRelatedContent a showDetailsScreen para que sea automática.
             }
         });
     });
@@ -1091,16 +1078,56 @@ function setupDetailsTabs(tmdbItem, type) {
     document.querySelector('.tab-button[data-tab="comments-content-pane"]').classList.remove('active');
 }
 
+// --- FUNCIÓN fetchRelatedContent (ACTUALIZADA con lógica de Saga y Recomendación) ---
 async function fetchRelatedContent(item, type) {
-    try {
-        const tmdbEndpointType = type === 'movie' ? 'movie' : 'tv';
-        const related = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/similar`);
-        renderCarousel('related-movies', related, type);
-    } catch (error) {
-        console.error("Error fetching related content:", error);
-        relatedMoviesContainer.innerHTML = '<p style="padding: 10px;">No se encontraron contenidos similares.</p>';
+    let relatedContent = [];
+    const tmdbEndpointType = type === 'movie' ? 'movie' : 'tv';
+    const relatedMoviesContainer = document.getElementById('related-movies');
+
+    // 1. Priority 1: Saga/Collection (Movies only)
+    if (type === 'movie' && item.belongs_to_collection) {
+        try {
+            // El fetchFromTMDB devuelve el objeto de la colección directamente (no en un array "results")
+            const collectionData = await fetchFromTMDB(`collection/${item.belongs_to_collection.id}`); 
+            // Filtramos la película actual de la lista de la saga
+            relatedContent = collectionData.parts ? collectionData.parts.filter(p => p.id !== item.id) : [];
+        } catch (e) {
+            console.error("Error fetching collection:", e);
+        }
+    }
+    
+    // 2. Priority 2: Recommendations (Si no hay saga, o para TV)
+    if (relatedContent.length === 0) {
+        try {
+            const recommendationResults = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/recommendations`);
+            // fetchFromTMDB ya retorna el array 'results'
+            relatedContent = recommendationResults || [];
+        } catch (e) {
+            console.error("Error fetching recommendations:", e);
+        }
+    }
+    
+    // 3. Fallback: Similar (Si no hay recomendaciones)
+    if (relatedContent.length === 0) {
+        try {
+            const similarResults = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/similar`);
+            relatedContent = similarResults || [];
+        } catch (e) {
+            console.error("Error fetching similar:", e);
+        }
+    }
+    
+    if (relatedContent.length > 0) {
+        // renderCarousel se encarga de limpiar y renderizar
+        renderCarousel('related-movies', relatedContent, type);
+    } else {
+        if (relatedMoviesContainer) {
+            relatedMoviesContainer.innerHTML = '<p style="padding: 10px;">No se encontraron contenidos relacionados.</p>';
+        }
     }
 }
+// --- FIN FUNCIÓN fetchRelatedContent ---
+
 
 async function fetchAllGenres(type = 'movie') {
     try {
@@ -2332,6 +2359,7 @@ window.tv_loadChannel = tv_loadChannel;
 window.tv_filterChannels = tv_filterChannels;
 window.renderCountryButtons = renderCountryButtons;
 window.switchScreen = switchScreen;
+window.showDetailsScreen = showDetailsScreen; // Aseguramos que la función sea global
 // ======================================================================
 // FIN BLOQUE TV
 // ======================================================================
