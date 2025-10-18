@@ -2392,7 +2392,7 @@ async function tv_filterChannels(countryCode) {
 
     tv_renderChannelGrid(channelsToRender, countryCode);
 
-    const firstChannel = document.querySelector(`#tv-channel-grid .tv-grid-item[data-country="${countryCode}"]`);
+    const firstChannel = document.querySelector(`#tv-channel-grid .tv-grid-item[data-index="${index}"][data-country="${countryCode}"]`);
     if (firstChannel) {
         tv_loadChannel(firstChannel, 0, countryCode); 
     } else {
