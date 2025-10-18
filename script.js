@@ -1032,6 +1032,7 @@ async function fetchFromTMDB(endpoint, query = '') {
             throw new Error(`Error de la API: ${response.status}`);
         }
         const data = await response.json();
+        // Nota: fetchFromTMDB está diseñada para devolver 'results' si existe, o el objeto completo si es una llamada simple (ej: /details)
         return data.results || data.items || data;
     } catch (error) {
         console.error("Error en la llamada a fetchFromTMDB:", error);
@@ -1078,36 +1079,21 @@ function setupDetailsTabs(tmdbItem, type) {
     document.querySelector('.tab-button[data-tab="comments-content-pane"]').classList.remove('active');
 }
 
-// --- FUNCIÓN fetchRelatedContent (ACTUALIZADA con lógica de Saga y Recomendación) ---
+// --- FUNCIÓN fetchRelatedContent (ACTUALIZADA con lógica de Género/Afinidad) ---
 async function fetchRelatedContent(item, type) {
     let relatedContent = [];
     const tmdbEndpointType = type === 'movie' ? 'movie' : 'tv';
     const relatedMoviesContainer = document.getElementById('related-movies');
 
-    // 1. Priority 1: Saga/Collection (Movies only)
-    if (type === 'movie' && item.belongs_to_collection) {
-        try {
-            // El fetchFromTMDB devuelve el objeto de la colección directamente (no en un array "results")
-            const collectionData = await fetchFromTMDB(`collection/${item.belongs_to_collection.id}`); 
-            // Filtramos la película actual de la lista de la saga
-            relatedContent = collectionData.parts ? collectionData.parts.filter(p => p.id !== item.id) : [];
-        } catch (e) {
-            console.error("Error fetching collection:", e);
-        }
+    // 1. Priority 1: Recommendations (Based on genre/user history - high affinity)
+    try {
+        const recommendationResults = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/recommendations`);
+        relatedContent = recommendationResults || [];
+    } catch (e) {
+        console.warn("Error fetching recommendations, trying similar:", e);
     }
     
-    // 2. Priority 2: Recommendations (Si no hay saga, o para TV)
-    if (relatedContent.length === 0) {
-        try {
-            const recommendationResults = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/recommendations`);
-            // fetchFromTMDB ya retorna el array 'results'
-            relatedContent = recommendationResults || [];
-        } catch (e) {
-            console.error("Error fetching recommendations:", e);
-        }
-    }
-    
-    // 3. Fallback: Similar (Si no hay recomendaciones)
+    // 2. Priority 2: Similar (Generic genre/keyword search - fallback)
     if (relatedContent.length === 0) {
         try {
             const similarResults = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/similar`);
@@ -1117,9 +1103,20 @@ async function fetchRelatedContent(item, type) {
         }
     }
     
+    // 3. Fallback: Saga/Collection (Kept as last resort for movies, or removed if strictly disallowed)
+    if (relatedContent.length === 0 && type === 'movie' && item.belongs_to_collection) {
+        try {
+            const collectionData = await fetchFromTMDB(`collection/${item.belongs_to_collection.id}`); 
+            relatedContent = collectionData.parts ? collectionData.parts.filter(p => p.id !== item.id) : [];
+        } catch (e) {
+            console.warn("Error fetching collection, no other results available:", e);
+        }
+    }
+    
     if (relatedContent.length > 0) {
-        // renderCarousel se encarga de limpiar y renderizar
-        renderCarousel('related-movies', relatedContent, type);
+        // Aseguramos que solo se muestre contenido con poster
+        const filteredContent = relatedContent.filter(c => c.poster_path);
+        renderCarousel('related-movies', filteredContent, type);
     } else {
         if (relatedMoviesContainer) {
             relatedMoviesContainer.innerHTML = '<p style="padding: 10px;">No se encontraron contenidos relacionados.</p>';
