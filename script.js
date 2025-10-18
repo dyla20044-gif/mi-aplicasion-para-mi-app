@@ -2267,7 +2267,7 @@ function renderCountryButtons() {
 
 // ======================================================================
 // [PASO CRÍTICO] HACER FUNCIONES DE TV GLOBALES PARA EL ONCLICK DEL HTML
-// ======================================================================
+// ======================================================================\
 window.tv_loadChannel = tv_loadChannel;
 window.tv_filterChannels = tv_filterChannels;
 window.renderCountryButtons = renderCountryButtons;
@@ -2275,3 +2275,11 @@ window.switchScreen = switchScreen;
 // ======================================================================
 // FIN BLOQUE TV
 // ======================================================================
+
+// --- LISTENER DE BÚSQUEDA DE TV EN VIVO (Implementación solicitada) ---
+const tvSearchInput = document.getElementById('tv-search-input');
+if (tvSearchInput) {
+    tvSearchInput.addEventListener('input', (e) => {
+        tv_searchChannels(e.target.value);
+    });
+}
