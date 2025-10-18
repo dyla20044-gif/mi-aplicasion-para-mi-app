@@ -1166,7 +1166,7 @@ function switchScreen(screenId) {
         renderAllSeries();
         searchFilters.style.display = 'none';
     } else if (screenId === 'home-screen') {
-        fetchHomeContent();
+        fetchHomeContent(); // 👈 Función CRÍTICA añadida
         searchFilters.style.display = 'none';
     } else if (screenId === 'favorites-screen') {
         fetchFavorites();
@@ -1331,6 +1331,7 @@ seeMoreButtons.forEach(button => {
         showLoader();
         try {
             const items = await fetchFromTMDB(endpoint);
+            // Aseguramos que la navegación a la pantalla correcta se realice después de cargar
             if (type === 'movie') {
                 renderGrid(allMoviesGrid, items, 'movie');
                 switchScreen('movies-screen');
@@ -1375,7 +1376,7 @@ async function renderAllSeries() {
     showLoader();
     try {
         const series = await fetchFromTMDB('discover/tv?sort_by=popularity.desc');
-        renderGrid(allSeriesGrid, series, 'tv');
+        renderGrid(allSeriesGrid, series, 'tv'); // 👈 El llamado a renderGrid ahora funciona
     } catch (error) {
         console.error("Error rendering all series:", error);
         alert('No se pudieron cargar las series. Intenta de nuevo.');
@@ -1744,6 +1745,277 @@ async function fetchAppData() {
     seriesData = [];
 }
 
+// ======================================================================
+// 📌 FUNCIONES AGREGADAS PARA CORREGIR ReferenceError (fetchHomeContent, renderGrid, etc.)
+// ======================================================================
+
+// --- Base Rendering Functions (Fixes renderGrid not defined) ---
+
+function createMovieCard(item, type) {
+    const card = document.createElement('div');
+    card.className = 'movie-card';
+    
+    // Check if the item is a full TMDB item or a simplified favorite
+    const itemId = item.id || item.tmdbId;
+    const itemType = item.media_type || type;
+    const itemTitle = item.title || item.name;
+    const posterPath = item.poster_path;
+
+    card.innerHTML = `
+        <img src="https://image.tmdb.org/t/p/w500${posterPath}" alt="${itemTitle}" class="movie-poster" onerror="this.onerror=null;this.src='https://placehold.co/130x195?text=No+Poster'">
+        ${item.vote_average ? `<span class="badge">${item.vote_average.toFixed(1)}</span>` : ''}
+        ${itemType === 'tv' ? '<span class="media-type-label">Serie</span>' : '<span class="media-type-label">Película</span>'}
+    `;
+
+    card.addEventListener('click', async () => {
+        showLoader();
+        try {
+            // Fetch full details since card data is often partial
+            let fullItem = await fetchFromTMDB(`${itemType}/${itemId}`);
+            if (fullItem) {
+                 fullItem.media_type = itemType; 
+                 currentMovieOrSeries = { tmdbId: itemId, type: itemType, title: itemTitle };
+                 history.pushState({ screen: 'details-screen', item: fullItem, type: itemType }, '', `?screen=details-screen&id=${itemId}&type=${itemType}`);
+                 showDetailsScreen(fullItem, itemType);
+            }
+        } catch (error) {
+             console.error("Error al cargar detalles:", error);
+             alert('No se pudo cargar la información detallada.');
+        } finally {
+             hideLoader();
+        }
+    });
+
+    return card;
+}
+
+function renderGrid(containerElement, items, type) {
+    if (!containerElement) return;
+    containerElement.innerHTML = '';
+    
+    // Filter out items without posters
+    const filteredItems = Array.isArray(items) ? items.filter(item => item.poster_path) : [];
+
+    filteredItems.forEach(item => {
+        const card = createMovieCard(item, type);
+        containerElement.appendChild(card);
+    });
+
+    if (filteredItems.length === 0) {
+        containerElement.innerHTML = '<p style="padding: 20px;">No se encontraron resultados para mostrar.</p>';
+    }
+}
+
+// --- Detail Screen Helper Functions ---
+
+async function fetchMovieCastAndDirector(tmdbId, type) {
+    try {
+        const credits = await fetchFromTMDB(`${type}/${tmdbId}/credits`);
+        const cast = credits.cast.slice(0, 5).map(c => c.name).join(', ');
+        
+        let director = 'N/A';
+        const directorCrew = credits.crew.find(crew => crew.job === 'Director');
+        if (directorCrew) {
+            director = directorCrew.name;
+        }
+
+        return { cast, director };
+    } catch (error) {
+        console.error("Error fetching cast/director:", error);
+        return { cast: 'N/A', director: 'N/A' };
+    }
+}
+
+async function updateMetricsDisplay(tmdbId) {
+    try {
+        const views = await getCount(tmdbId, 'views');
+        const likes = await getCount(tmdbId, 'likes');
+
+        if (viewCountDisplay) {
+            viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${views} Vistas`;
+        }
+        if (likeCountDisplayText) {
+            likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${likes} Me Gusta`;
+        }
+    } catch (e) {
+        console.error("Error al actualizar métricas:", e);
+    }
+}
+
+async function showDetailsScreen(item, type) {
+    currentFullTMDBItem = item;
+    currentMovieOrSeries = { tmdbId: item.id, type: type, title: item.title || item.name };
+    resetDetailsPlayer();
+    
+    // UI Updates
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    detailsScreen.classList.add('active');
+    appContainer.scrollTo(0, 0);
+
+    // Populate Info
+    detailsTitle.textContent = item.title || item.name;
+    detailsYear.textContent = item.release_date ? item.release_date.substring(0, 4) : (item.first_air_date ? item.first_air_date.substring(0, 4) : 'N/A');
+    detailsSinopsis.textContent = item.overview || 'Sinopsis no disponible.';
+
+    const genreNames = (item.genres || []).map(g => g.name).join(', ');
+    detailsGenres.textContent = genreNames;
+
+    const posterUrl = item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : 'https://placehold.co/800x450?text=No+Image';
+    detailsPosterTop.style.backgroundImage = `url(${posterUrl})`;
+    
+    // Cast & Director
+    const { cast, director } = await fetchMovieCastAndDirector(item.id, type);
+    directorName.textContent = director;
+    actorsList.textContent = cast;
+    
+    // Tabs & Metrics
+    setupDetailsTabs(item, type);
+    updateMetricsDisplay(item.id);
+    renderLikeState(item.id);
+    renderComments(item.id);
+
+    // Play Buttons (The critical part)
+    if (type === 'movie') {
+        seasonsContainer.style.display = 'none';
+        episodesContainer.innerHTML = '';
+        renderMoviePlayButtons(null, item);
+    } else { // type === 'tv'
+        seasonsContainer.style.display = 'block';
+        renderSeriesButtons(null, item);
+    }
+}
+
+// Making showDetailsScreen globally available (for onclick in createMovieCard and banner)
+window.showDetailsScreen = showDetailsScreen;
+
+// --- Home Screen Content Loading Functions (Fixes fetchHomeContent not defined) ---
+
+// Función para simplificar la carga y renderizado de un carrusel
+async function fetchAndRenderCarousel(endpoint, containerId, type) {
+    try {
+        const items = await fetchFromTMDB(endpoint);
+        // Maneja la estructura de respuesta de TMDB
+        const dataToRender = Array.isArray(items) ? items : (items.results ? items.results : []);
+        // Filtra para asegurar que haya un poster
+        renderCarousel(containerId, dataToRender.filter(i => i.poster_path), type);
+    } catch (error) {
+        console.warn(`Error al cargar carrusel ${containerId}:`, error);
+    }
+}
+
+// Función para renderizar el contenido en un carrusel horizontal
+function renderCarousel(containerId, items, type) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    items.forEach(item => {
+        const card = createMovieCard(item, item.media_type || type); 
+        container.appendChild(card);
+    });
+}
+
+// Función para renderizar el carrusel de banners superiores
+function renderBanner(items) {
+    const bannerList = document.getElementById('banner-list');
+    if (!bannerList) return;
+    bannerList.innerHTML = '';
+    
+    items.forEach(item => {
+        const banner = document.createElement('div');
+        banner.className = 'banner-item';
+        // Usa backdrop_path para las imágenes de banner
+        const imagePath = item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : 'https://placehold.co/800x450?text=No+Image';
+        banner.style.backgroundImage = `url(${imagePath})`;
+        
+        const itemType = item.media_type || (item.title ? 'movie' : 'tv');
+        const itemTitle = item.title || item.name;
+        
+        banner.innerHTML = `
+            <div class="banner-buttons-container">
+                 <div class="pro-badge">PRO</div>
+                <button class="banner-button red" onclick="showDetailsScreen({id: ${item.id}, title: '${itemTitle}', name: '${itemTitle}', media_type: '${itemType}'}, '${itemType}')"><i class="fas fa-play"></i> Ver Ahora</button>
+                <button class="banner-button" onclick="addToFavorites({id: ${item.id}, title: '${itemTitle}', poster_path: '${item.poster_path}', type: '${itemType}'})"><i class="fas fa-plus"></i> Mi Lista</button>
+            </div>
+        `;
+        bannerList.appendChild(banner);
+    });
+    
+    // Start auto-scrolling only if there are banners
+    if (items.length > 0) {
+        startBannerAutoScroll();
+    }
+}
+
+function startBannerAutoScroll() {
+    let currentBannerIndex = 0;
+    const bannerList = document.getElementById('banner-list');
+    const bannerItems = bannerList.querySelectorAll('.banner-item');
+
+    if (bannerItems.length < 2) return;
+
+    // Clear any existing interval to prevent overlap
+    if (bannerInterval) clearInterval(bannerInterval);
+
+    bannerInterval = setInterval(() => {
+        currentBannerIndex = (currentBannerIndex + 1) % bannerItems.length;
+        bannerList.scrollTo({
+            left: currentBannerIndex * bannerItems[0].offsetWidth,
+            behavior: 'smooth'
+        });
+    }, 5000); // Change banner every 5 seconds
+    
+    // Stop scrolling on user interaction
+    bannerList.addEventListener('pointerdown', pauseBannerAutoScroll);
+    bannerList.addEventListener('scroll', resetBannerAutoScroll);
+}
+
+function pauseBannerAutoScroll() {
+    if (bannerInterval) clearInterval(bannerInterval);
+}
+
+function resetBannerAutoScroll() {
+    if (resumeAutoScrollTimeout) clearTimeout(resumeAutoScrollTimeout);
+    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); // Resume after 10 seconds of no scrolling
+}
+
+async function fetchHomeContent() {
+    showLoader();
+    try {
+        // Cargar el banner principal (tendencias de la semana)
+        const trendingBanners = await fetchFromTMDB('trending/movie/week'); 
+        if (trendingBanners && Array.isArray(trendingBanners.results)) {
+             renderBanner(trendingBanners.results.filter(i => i.backdrop_path).slice(0, 5));
+        }
+
+        // Cargar los carruseles de categorías (usando los IDs del index.html)
+        await fetchAndRenderCarousel('movie/popular', 'populares-movies', 'movie');
+        await fetchAndRenderCarousel('trending/all/day', 'tendencias-movies', 'movie');
+        await fetchAndRenderCarousel('discover/movie?with_genres=28', 'accion-movies', 'movie'); 
+        await fetchAndRenderCarousel('discover/movie?with_genres=27,9648', 'terror-movies', 'movie'); 
+        await fetchAndRenderCarousel('discover/movie?with_genres=16', 'animacion-movies', 'movie'); 
+        await fetchAndRenderCarousel('discover/movie?with_genres=99', 'documentales-movies', 'movie'); 
+        await fetchAndRenderCarousel('discover/movie?with_genres=878', 'scifi-movies', 'movie'); 
+        await fetchAndRenderCarousel('tv/popular', 'populares-series', 'tv');
+
+        // Lógica para mostrar/ocultar el historial (history-section)
+        const historySection = document.getElementById('history-section');
+        if (currentUser && !currentUser.isAnonymous) {
+             if(historySection) historySection.style.display = 'block';
+             // Asumiendo que existe una función fetchHistory()
+             // fetchHistory(); 
+        } else {
+             if(historySection) historySection.style.display = 'none';
+        }
+
+    } catch (error) {
+        console.error("Error al cargar contenido de la pantalla de inicio:", error);
+    } finally {
+        hideLoader();
+    }
+}
+// ======================================================================
+// 📌 FIN FUNCIONES AGREGADAS
+// ======================================================================
 
 let isInitialized = false;
 onAuthStateChanged(auth, async (user) => {
