@@ -1079,44 +1079,56 @@ function setupDetailsTabs(tmdbItem, type) {
     document.querySelector('.tab-button[data-tab="comments-content-pane"]').classList.remove('active');
 }
 
-// --- FUNCIÓN fetchRelatedContent (ACTUALIZADA con lógica de Género/Afinidad) ---
+// --- FUNCIÓN fetchRelatedContent (ACTUALIZADA con lógica de Saga, luego Género/Afinidad) ---
 async function fetchRelatedContent(item, type) {
     let relatedContent = [];
     const tmdbEndpointType = type === 'movie' ? 'movie' : 'tv';
     const relatedMoviesContainer = document.getElementById('related-movies');
+    
+    // Función de utilidad para filtrar duplicados
+    const filterDuplicates = (newItems) => {
+        return newItems.filter(newItem => 
+            !relatedContent.some(existingItem => existingItem.id === newItem.id) && newItem.poster_path
+        );
+    };
 
-    // 1. Priority 1: Recommendations (Based on genre/user history - high affinity)
+    // 1. Priority 1: Saga/Collection (Movies only)
+    if (type === 'movie' && item.belongs_to_collection) {
+        try {
+            const collectionData = await fetchFromTMDB(`collection/${item.belongs_to_collection.id}`); 
+            // Filtramos la película actual y añadimos a relatedContent
+            const collectionParts = collectionData.parts ? collectionData.parts.filter(p => p.id !== item.id) : [];
+            relatedContent = [...collectionParts.filter(c => c.poster_path)];
+            
+        } catch (e) {
+            console.warn("Error fetching collection, falling back to recommendations:", e);
+        }
+    }
+    
+    // 2. Priority 2: Recommendations (Genre/Afinity) - Add unique items
     try {
         const recommendationResults = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/recommendations`);
-        relatedContent = recommendationResults || [];
+        const uniqueRecommendations = filterDuplicates(recommendationResults || []);
+        relatedContent = [...relatedContent, ...uniqueRecommendations];
+        
     } catch (e) {
         console.warn("Error fetching recommendations, trying similar:", e);
     }
     
-    // 2. Priority 2: Similar (Generic genre/keyword search - fallback)
-    if (relatedContent.length === 0) {
+    // 3. Priority 3: Similar (Generic Genre/Keyword search - final fallback)
+    if (relatedContent.length < 10) { // Si aún no tenemos suficientes, añadimos similares.
         try {
             const similarResults = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}/similar`);
-            relatedContent = similarResults || [];
+            const uniqueSimilar = filterDuplicates(similarResults || []);
+            relatedContent = [...relatedContent, ...uniqueSimilar];
         } catch (e) {
             console.error("Error fetching similar:", e);
         }
     }
     
-    // 3. Fallback: Saga/Collection (Kept as last resort for movies, or removed if strictly disallowed)
-    if (relatedContent.length === 0 && type === 'movie' && item.belongs_to_collection) {
-        try {
-            const collectionData = await fetchFromTMDB(`collection/${item.belongs_to_collection.id}`); 
-            relatedContent = collectionData.parts ? collectionData.parts.filter(p => p.id !== item.id) : [];
-        } catch (e) {
-            console.warn("Error fetching collection, no other results available:", e);
-        }
-    }
-    
     if (relatedContent.length > 0) {
-        // Aseguramos que solo se muestre contenido con poster
-        const filteredContent = relatedContent.filter(c => c.poster_path);
-        renderCarousel('related-movies', filteredContent, type);
+        // Renderizamos el carrusel
+        renderCarousel('related-movies', relatedContent, type);
     } else {
         if (relatedMoviesContainer) {
             relatedMoviesContainer.innerHTML = '<p style="padding: 10px;">No se encontraron contenidos relacionados.</p>';
