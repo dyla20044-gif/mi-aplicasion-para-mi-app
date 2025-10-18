@@ -1938,11 +1938,11 @@ function renderBanner(items) {
     bannerList.innerHTML = '';
     
     if (items.length === 0) {
-        // [MODIFICACIÓN DE FALLBACK] Mensaje de depuración visible si no hay banners.
+        // Mensaje de depuración visible si no hay banners.
         bannerList.style.display = 'block'; 
         bannerList.innerHTML = `
             <div style="text-align: center; padding: 50px 20px; color: #E50914; background: #1a1a1a; height: 250px; display: flex; align-items: center; justify-content: center;">
-                <p>⚠️ ERROR: No se encontraron películas válidas para el carrusel. (Usando fallback de Populares)</p>
+                <p>⚠️ ERROR: No se encontraron películas válidas para el carrusel.</p>
             </div>
         `;
         if (bannerInterval) clearInterval(bannerInterval);
@@ -2018,37 +2018,27 @@ function resetBannerAutoScroll() {
 async function fetchHomeContent() {
     showLoader();
     try {
-        // Cargar el banner principal (tendencias de la semana)
-        const trendingBanners = await fetchFromTMDB('trending/movie/week'); 
+        // [MODIFICACIÓN CRÍTICA] Intentar con Populares como fuente principal para el banner.
+        const bannerSource = await fetchFromTMDB('movie/popular'); 
         
         let validBanners = [];
 
-        if (trendingBanners && Array.isArray(trendingBanners.results)) {
+        if (bannerSource && Array.isArray(bannerSource.results)) {
              // Aplicar filtro para asegurar que haya una imagen de PÓSTER
-             validBanners = trendingBanners.results.filter(i => i.poster_path).slice(0, 5); 
+             validBanners = bannerSource.results.filter(i => i.poster_path).slice(0, 5); 
         }
 
-        // [IMPLEMENTACIÓN DEL FALLBACK] Si no hay banners válidos, usar Populares como fallback.
+        // Si no hay banners válidos, mostrar error explícito (la función renderBanner lo manejará)
         if (validBanners.length === 0) {
-            console.error("DEBUG: La API de TMDB no devolvió banners válidos. Intentando con Populares como fallback.");
-            
-            // 1. Intentar con Populares
-            const popularBanners = await fetchFromTMDB('movie/popular');
-            if (popularBanners && Array.isArray(popularBanners.results)) {
-                validBanners = popularBanners.results.filter(i => i.poster_path).slice(0, 5);
-            }
-            
-            // 2. Si todavía está vacío, usar el banner de error explícito (último recurso)
-            if (validBanners.length === 0) {
-                 validBanners.push({
-                    id: 999999,
-                    title: 'Error de API',
-                    name: 'Error de API',
-                    media_type: 'movie',
-                    backdrop_path: 'https://placehold.co/800x450/E50914/FFF?text=API+FAIL',
-                    poster_path: 'https://placehold.co/130x195/E50914/FFF?text=API+FAIL'
-                });
-            }
+            console.error("DEBUG: La API de Populares falló. Mostrando Error Explícito.");
+            validBanners.push({
+                id: 999999,
+                title: 'Error de Carga',
+                name: 'Error de Carga',
+                media_type: 'movie',
+                backdrop_path: 'https://placehold.co/800x450/E50914/FFF?text=API+FAIL',
+                poster_path: 'https://placehold.co/130x195/E50914/FFF?text=API+FAIL'
+            });
         }
         
         renderBanner(validBanners); 
