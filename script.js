@@ -1225,23 +1225,6 @@ bannerList.addEventListener('touchend', () => {
     resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); 
 });
 
-async function fetchAllGenres(type = 'movie') {
-    try {
-        const genres = await fetchFromTMDB(`genre/${type}/list`);
-        const genreMap = {};
-        genres.genres.forEach(genre => {
-            genreMap[genre.id] = genre.name;
-        });
-        if (type === 'movie') {
-            allMovieGenres = genreMap;
-        } else {
-            allTvGenres = genreMap;
-        }
-    } catch (error) {
-        console.error("Error fetching genres:", error);
-    }
-}
-
 function renderGenresModal(type) {
     genresList.innerHTML = '';
     const currentGenres = type === 'movie' ? allMovieGenres : allTvGenres;
