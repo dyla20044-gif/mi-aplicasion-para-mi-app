@@ -1038,8 +1038,7 @@ async function fetchRelatedContent(item, type) {
     }
 }
 
-// ** FUNCIÓN ORIGINAL CAUSANTE DEL ERROR (Ahora renombrada en el backend para evitar conflicto) **
-// La función original era fetchAllGenres.
+// ** FUNCIÓN PARA OBTENER GÉNEROS **
 async function getTMDBGenres(type = 'movie') {
     try {
         const genres = await fetchFromTMDB(`genre/${type}/list`);
@@ -1179,7 +1178,7 @@ function switchScreen(screenId) {
         renderAllSeries();
         searchFilters.style.display = 'none';
     } else if (screenId === 'home-screen') {
-        fetchHomeContent(); // 👈 Función CRÍTICA añadida
+        fetchHomeContent();
         searchFilters.style.display = 'none';
     } else if (screenId === 'favorites-screen') {
         fetchFavorites();
@@ -1759,8 +1758,150 @@ async function fetchAppData() {
 }
 
 // ======================================================================
-// 📌 FUNCIONES AGREGADAS PARA CORREGIR ERRORES DE CARGA Y RENDERIZADO
+// 📌 FUNCIONES AGREGADAS Y CORREGIDAS PARA EL BANNER Y CAROUSEL
 // ======================================================================
+
+/**
+ * @brief Crea un ítem de banner completo con sus listeners de evento.
+ * @param {object} item Objeto de TMDB (película o serie).
+ * @param {string} type Tipo de contenido ('movie' o 'tv').
+ */
+function createBannerItem(item, type) {
+    const banner = document.createElement('div');
+    banner.className = 'banner-item';
+    
+    // Usar backdrop_path o un placeholder
+    const imagePath = item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : 'https://placehold.co/800x450/1e1e1e/FFF?text=Contenido+Premium';
+    banner.style.backgroundImage = `url('${imagePath}')`; 
+    
+    const itemType = item.media_type || type;
+    const itemTitle = item.title || item.name;
+
+    banner.innerHTML = `
+        <div class="banner-buttons-container">
+             <div class="pro-badge">PRO</div>
+            <button class="banner-button red"><i class="fas fa-play"></i> Ver Ahora</button>
+            <button class="banner-button"><i class="fas fa-plus"></i> Mi Lista</button>
+        </div>
+    `;
+
+    // 1. Listener para el botón de Reproducir (Ver Ahora)
+    const playButton = banner.querySelector('.banner-button.red');
+    if (playButton) {
+        playButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            history.pushState({ screen: 'details-screen', item: item, type: itemType }, '', '');
+            showDetailsScreen(item, itemType);
+        });
+    }
+
+    // 2. Listener para el botón de Mi Lista (Favorites)
+    const favoriteButton = banner.querySelector('.banner-button:not(.red)');
+    if (favoriteButton) {
+        favoriteButton.addEventListener('click', (e) => {
+             e.stopPropagation();
+             // La función addToFavorites toma un objeto simplificado
+             const simplifiedItem = {id: item.id, title: itemTitle, poster_path: item.poster_path, type: itemType};
+             addToFavorites(simplifiedItem);
+        });
+    }
+    
+    // 3. Listener para el clic en el banner completo
+    banner.addEventListener('click', () => {
+        history.pushState({ screen: 'details-screen', item: item, type: itemType }, '', '');
+        showDetailsScreen(item, itemType);
+    });
+    
+    return banner;
+}
+
+/**
+ * @brief Función para pausar el desplazamiento automático del banner.
+ */
+function pauseBannerAutoScroll() {
+    // Detiene el intervalo y el timeout de reanudación
+    if (bannerInterval) clearInterval(bannerInterval);
+    if (resumeAutoScrollTimeout) clearTimeout(resumeAutoScrollTimeout);
+}
+
+/**
+ * @brief Función para reanudar el desplazamiento automático del banner tras una pausa.
+ */
+function resetBannerAutoScroll() {
+    // Reanudar después de 10 segundos
+    if (resumeAutoScrollTimeout) clearTimeout(resumeAutoScrollTimeout);
+    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); 
+}
+
+/**
+ * @brief Inicia el desplazamiento automático del carrusel.
+ */
+function startBannerAutoScroll() {
+    let currentBannerIndex = 0;
+    const bannerList = document.getElementById('banner-list');
+    const bannerItems = bannerList.querySelectorAll('.banner-item');
+
+    if (bannerItems.length < 2) {
+        if (bannerInterval) clearInterval(bannerInterval);
+        return;
+    }
+
+    if (bannerInterval) clearInterval(bannerInterval);
+
+    // Intervalo de 3 segundos (3000ms) como en la versión funcional
+    bannerInterval = setInterval(() => {
+        // Calcular el índice
+        currentBannerIndex = (currentBannerIndex + 1) % bannerItems.length;
+        
+        // El desplazamiento se calcula con la dimensión del contenedor (clientWidth)
+        const scrollAmount = bannerList.clientWidth; 
+        
+        bannerList.scrollTo({
+            left: currentBannerIndex * scrollAmount,
+            behavior: 'smooth'
+        });
+    }, 3000); 
+}
+
+/**
+ * @brief Renderiza el carrusel de banners superiores con la lógica de control de scroll.
+ * @param {Array} items Lista de objetos de TMDB para el banner.
+ */
+function renderBanner(items) {
+    const bannerList = document.getElementById('banner-list');
+    if (!bannerList) return;
+
+    // 1. Limpiar listeners antiguos para evitar duplicados y bugs
+    bannerList.removeEventListener('pointerdown', pauseBannerAutoScroll);
+    bannerList.removeEventListener('pointerup', resetBannerAutoScroll); 
+    bannerList.removeEventListener('pointerleave', resetBannerAutoScroll); 
+
+    bannerList.innerHTML = '';
+    
+    const validBanners = items.filter(i => i.backdrop_path);
+    
+    if (validBanners.length === 0) {
+        if (bannerInterval) clearInterval(bannerInterval);
+        bannerList.innerHTML = `<div style="text-align: center; padding: 50px 20px; color: #aaa; background: var(--secondary-bg); height: 250px; width: 100%; display: flex; align-items: center; justify-content: center;">
+                <p>⚠️ No hay banners para mostrar.</p>
+            </div>`;
+        return; 
+    }
+    
+    // 2. Renderizar ítems usando la nueva función
+    validBanners.forEach(item => {
+        const itemType = item.media_type || (item.title ? 'movie' : 'tv');
+        bannerList.appendChild(createBannerItem(item, itemType));
+    });
+    
+    // 3. Iniciar auto-scroll después de un breve retraso
+    setTimeout(startBannerAutoScroll, 100); 
+    
+    // 4. Añadir listeners de interacción para pausa/reanudación
+    bannerList.addEventListener('pointerdown', pauseBannerAutoScroll); 
+    bannerList.addEventListener('pointerup', resetBannerAutoScroll); 
+    bannerList.addEventListener('pointerleave', resetBannerAutoScroll); 
+}
 
 // --- Base Rendering Functions ---
 
@@ -1931,90 +2072,6 @@ function renderCarousel(containerId, items, type) {
     });
 }
 
-// Función para renderizar el carrusel de banners superiores
-function renderBanner(items) {
-    const bannerList = document.getElementById('banner-list');
-    if (!bannerList) return;
-    bannerList.innerHTML = '';
-    
-    if (items.length === 0) {
-        // Mensaje de depuración visible si no hay banners.
-        console.error("DEBUG: La API de Populares falló. Mostrando Error Explícito.");
-        bannerList.style.display = 'block'; 
-        bannerList.innerHTML = `
-            <div style="text-align: center; padding: 50px 20px; color: #E50914; background: #1a1a1a; height: 250px; display: flex; align-items: center; justify-content: center;">
-                <p>⚠️ ERROR: No se encontraron películas válidas para el carrusel.</p>
-            </div>
-        `;
-        if (bannerInterval) clearInterval(bannerInterval);
-        return; 
-    }
-
-    items.forEach(item => {
-        const banner = document.createElement('div');
-        banner.className = 'banner-item';
-        
-        // Usar backdrop_path o un placeholder
-        const imagePath = item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : 'https://placehold.co/800x450/1e1e1e/FFF?text=Contenido+Premium';
-        banner.style.backgroundImage = `url('${imagePath}')`; 
-        
-        const itemType = item.media_type || (item.title ? 'movie' : 'tv');
-        const itemTitle = item.title || item.name;
-
-        // Escapar títulos y paths para evitar error de sintaxis en el onclick
-        const safeTitle = (itemTitle || '').replace(/'/g, "\\'"); 
-        const safePoster = (item.poster_path || '').replace(/'/g, "\\'"); 
-        const safeBackdrop = (item.backdrop_path || '').replace(/'/g, "\\'"); 
-        
-        banner.innerHTML = `
-            <div class="banner-buttons-container">
-                 <div class="pro-badge">PRO</div>
-                <button class="banner-button red" onclick="showDetailsScreen({id: ${item.id}, title: '${safeTitle}', name: '${safeTitle}', media_type: '${itemType}', backdrop_path: '${safeBackdrop}'}, '${itemType}')"><i class="fas fa-play"></i> Ver Ahora</button>
-                <button class="banner-button" onclick="addToFavorites({id: ${item.id}, title: '${safeTitle}', poster_path: '${safePoster}', type: '${itemType}'})"><i class="fas fa-plus"></i> Mi Lista</button>
-            </div>
-        `;
-        bannerList.appendChild(banner);
-    });
-    
-    // Start auto-scrolling only if there are banners
-    if (items.length > 0) {
-        // FIX CRÍTICO: Añadir timeout para asegurar que el DOM cargue las dimensiones antes de iniciar el scroll.
-        setTimeout(startBannerAutoScroll, 100); 
-    }
-}
-
-function startBannerAutoScroll() {
-    let currentBannerIndex = 0;
-    const bannerList = document.getElementById('banner-list');
-    const bannerItems = bannerList.querySelectorAll('.banner-item');
-
-    // Re-chequeo si hay elementos después del timeout
-    if (bannerItems.length < 2) return;
-
-    // Clear any existing interval to prevent overlap
-    if (bannerInterval) clearInterval(bannerInterval);
-
-    bannerInterval = setInterval(() => {
-        currentBannerIndex = (currentBannerIndex + 1) % bannerItems.length;
-        bannerList.scrollTo({
-            left: currentBannerIndex * bannerItems[0].offsetWidth,
-            behavior: 'smooth'
-        });
-    }, 5000); // Change banner every 5 seconds
-    
-    // Stop scrolling on user interaction
-    bannerList.addEventListener('pointerdown', pauseBannerAutoScroll);
-    bannerList.addEventListener('scroll', resetBannerAutoScroll);
-}
-
-function pauseBannerAutoScroll() {
-    if (bannerInterval) clearInterval(bannerInterval);
-}
-
-function resetBannerAutoScroll() {
-    if (resumeAutoScrollTimeout) clearTimeout(resumeAutoScrollTimeout);
-    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); // Resume after 10 seconds of no scrolling
-}
 
 async function fetchHomeContent() {
     showLoader();
@@ -2029,19 +2086,7 @@ async function fetchHomeContent() {
              validBanners = bannerSource.results.filter(i => i.backdrop_path).slice(0, 5); 
         }
 
-        // Si no hay banners válidos, mostrar error explícito (la función renderBanner lo manejará)
-        if (validBanners.length === 0) {
-            console.error("DEBUG: La API de Populares falló. Mostrando Error Explícito.");
-            validBanners.push({
-                id: 999999,
-                title: 'Error de Carga',
-                name: 'Error de Carga',
-                media_type: 'movie',
-                backdrop_path: 'https://placehold.co/800x450/E50914/FFF?text=API+FAIL',
-                poster_path: 'https://placehold.co/130x195/E50914/FFF?text=API+FAIL'
-            });
-        }
-        
+        // Renderiza el banner usando la función corregida
         renderBanner(validBanners); 
         
         // Cargar los carruseles de categorías (usando los IDs del index.html)
@@ -2069,7 +2114,7 @@ async function fetchHomeContent() {
     }
 }
 // ======================================================================
-// FIN FUNCIONES AGREGADAS
+// FIN FUNCIONES AGREGADAS Y CORREGIDAS PARA EL BANNER Y CAROUSEL
 // ======================================================================
 
 let isInitialized = false;
