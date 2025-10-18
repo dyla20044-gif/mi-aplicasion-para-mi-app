@@ -1017,7 +1017,7 @@ async function fetchRelatedContent(item, type) {
         
         let related;
         if (genreIds) {
-            // [MODIFICADO] Usar el endpoint discover con los géneros, ordenado por popularidad.
+            // Usar el endpoint discover con los géneros, ordenado por popularidad.
             const endpoint = `discover/${tmdbEndpointType}?with_genres=${genreIds}&sort_by=popularity.desc`;
             const results = await fetchFromTMDB(endpoint); 
             
@@ -1887,7 +1887,7 @@ async function showDetailsScreen(item, type) {
     renderLikeState(item.id);
     renderComments(item.id);
     
-    // [MODIFICACIÓN] Limpiar y cargar el contenido similar automáticamente (Requerimiento 2)
+    // [MODIFICACIÓN] Limpiar y cargar el contenido similar automáticamente
     if(relatedMoviesContainer) relatedMoviesContainer.innerHTML = '';
     fetchRelatedContent(item, type); 
 
@@ -1938,11 +1938,11 @@ function renderBanner(items) {
     bannerList.innerHTML = '';
     
     if (items.length === 0) {
-        // [AÑADIDO] Mensaje de depuración visible si no hay banners.
+        // [MODIFICACIÓN DE FALLBACK] Mensaje de depuración visible si no hay banners.
         bannerList.style.display = 'block'; 
         bannerList.innerHTML = `
             <div style="text-align: center; padding: 50px 20px; color: #E50914; background: #1a1a1a; height: 250px; display: flex; align-items: center; justify-content: center;">
-                <p>⚠️ ERROR: No se encontraron películas de tendencia para el carrusel. (Revise la API de TMDB)</p>
+                <p>⚠️ ERROR: No se encontraron películas válidas para el carrusel. (Usando fallback de Populares)</p>
             </div>
         `;
         if (bannerInterval) clearInterval(bannerInterval);
@@ -1960,7 +1960,7 @@ function renderBanner(items) {
         const itemType = item.media_type || (item.title ? 'movie' : 'tv');
         const itemTitle = item.title || item.name;
 
-        // [CORREGIDO] Escapar títulos y paths para evitar error de sintaxis en el onclick (Requerimiento 1)
+        // Escapar títulos y paths para evitar error de sintaxis en el onclick
         const safeTitle = (itemTitle || '').replace(/'/g, "\\'"); 
         const safePoster = (item.poster_path || '').replace(/'/g, "\\'"); 
         const safeBackdrop = (item.backdrop_path || '').replace(/'/g, "\\'"); 
@@ -2028,17 +2028,27 @@ async function fetchHomeContent() {
              validBanners = trendingBanners.results.filter(i => i.poster_path).slice(0, 5); 
         }
 
-        // [MODIFICACIÓN CRÍTICA] Si no hay banners válidos, forzar un banner de fallback para depuración.
+        // [IMPLEMENTACIÓN DEL FALLBACK] Si no hay banners válidos, usar Populares como fallback.
         if (validBanners.length === 0) {
-            console.error("DEBUG: La API de TMDB no devolvió banners válidos. Usando fallback.");
-            validBanners.push({
-                id: 999999,
-                title: 'No hay Banners (Error de API)',
-                name: 'No hay Banners (Error de API)',
-                media_type: 'movie',
-                backdrop_path: 'https://placehold.co/800x450/E50914/FFF?text=API+FAIL',
-                poster_path: 'https://placehold.co/130x195/E50914/FFF?text=API+FAIL'
-            });
+            console.error("DEBUG: La API de TMDB no devolvió banners válidos. Intentando con Populares como fallback.");
+            
+            // 1. Intentar con Populares
+            const popularBanners = await fetchFromTMDB('movie/popular');
+            if (popularBanners && Array.isArray(popularBanners.results)) {
+                validBanners = popularBanners.results.filter(i => i.poster_path).slice(0, 5);
+            }
+            
+            // 2. Si todavía está vacío, usar el banner de error explícito (último recurso)
+            if (validBanners.length === 0) {
+                 validBanners.push({
+                    id: 999999,
+                    title: 'Error de API',
+                    name: 'Error de API',
+                    media_type: 'movie',
+                    backdrop_path: 'https://placehold.co/800x450/E50914/FFF?text=API+FAIL',
+                    poster_path: 'https://placehold.co/130x195/E50914/FFF?text=API+FAIL'
+                });
+            }
         }
         
         renderBanner(validBanners); 
