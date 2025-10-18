@@ -434,11 +434,17 @@ async function showDetailsScreen(item, type) {
         setupDetailsTabs(fullDetails, type);
         renderComments(item.id);
 
+        // --- FIX 2: Limpieza total de contenedores de temporadas/episodios al entrar a Detalles ---
+        seasonsContainer.style.display = 'none';
+        seasonsContainer.innerHTML = ''; // Limpia todo el contenido residual (incluyendo el h3 de 'Temporadas' de la serie anterior)
+        episodesContainer.innerHTML = '';
+        // ---------------------------------------------------------------------------------------
+
         // 4. Parallelize secondary tasks (Optimization and Fix for Similares content):
         const viewsPromise = getCount(item.id, 'views').catch(() => 0); // Default to 0 on failure
         const likesPromise = getCount(item.id, 'likes').catch(() => 0); // Default to 0 on failure
         const playButtonsPromise = type === 'movie' ? renderMoviePlayButtons(item, fullDetails) : renderSeriesButtons(item, fullDetails);
-        const relatedContentPromise = fetchRelatedContent(fullDetails, type); // FIX 1 & 2: Carga inmediata y lógica de saga/recomendación
+        const relatedContentPromise = fetchRelatedContent(fullDetails, type); 
 
         // 5. Wait for asynchronous tasks to complete (ignoring errors in promises other than metrics for now)
         await Promise.allSettled([playButtonsPromise, relatedContentPromise]); 
@@ -1175,6 +1181,14 @@ function createMovieCard(movie, type = 'movie') {
     `;
     
     movieCard.addEventListener('click', () => {
+        // --- FIX 1: Ocultar barra de búsqueda si está activa al hacer clic en un resultado ---
+        if (searchOverlay.classList.contains('active')) {
+            searchOverlay.classList.remove('active');
+            moviesScreen.classList.remove('search-active');
+            document.querySelector('.top-nav').style.display = 'flex';
+            searchInput.value = '';
+        }
+        // --------------------------------------------------------
         const currentState = history.state || { screen: 'home-screen' };
         
         history.pushState({ 
@@ -1207,12 +1221,28 @@ function createBannerItem(movie) {
     if (playButton) {
         playButton.addEventListener('click', (e) => {
             e.stopPropagation();
+            // --- FIX 1: Ocultar barra de búsqueda (si por alguna razón estuviera activa) ---
+            if (searchOverlay.classList.contains('active')) {
+                searchOverlay.classList.remove('active');
+                moviesScreen.classList.remove('search-active');
+                document.querySelector('.top-nav').style.display = 'flex';
+                searchInput.value = '';
+            }
+            // ---------------------------------------------------------------------------------
             history.pushState({ screen: 'details-screen', item: movie, type: movie.media_type || 'movie' }, '', '');
             showDetailsScreen(movie, movie.media_type || 'movie');
         });
     }
 
     bannerItem.addEventListener('click', () => {
+        // --- FIX 1: Ocultar barra de búsqueda (si por alguna razón estuviera activa) ---
+        if (searchOverlay.classList.contains('active')) {
+            searchOverlay.classList.remove('active');
+            moviesScreen.classList.remove('search-active');
+            document.querySelector('.top-nav').style.display = 'flex';
+            searchInput.value = '';
+        }
+        // ---------------------------------------------------------------------------------
         history.pushState({ screen: 'details-screen', item: movie, type: movie.media_type || 'movie' }, '', '');
         showDetailsScreen(movie, movie.media_type || 'movie')
     });
