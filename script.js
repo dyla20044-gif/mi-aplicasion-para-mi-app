@@ -146,8 +146,8 @@ const notificationsClose = document.getElementById('notifications-close');
 const contentPublishingModal = document.getElementById('admin-avisos-modal');
 const btnPubSaveNotify = document.getElementById('btn-save-notify-app-new'); 
 
-let moviesData = []; // Se vacía al inicio
-let seriesData = []; // Se vacía al inicio
+let moviesData = []; 
+let seriesData = []; 
 let bannerMovies = [];
 let allMovieGenres = {};
 let allTvGenres = {};
@@ -1251,7 +1251,7 @@ function renderGenresModal(type) {
         genreButton.textContent = currentGenres[id];
         genreButton.onclick = () => {
             fetchFromTMDB(`discover/${type}?with_genres=${id}`).then(items => {
-                renderGrid(type === 'movie' ? allMoviesGrid : allSeriesGrid, items, type);
+                renderGrid(allMoviesGrid, items, type);
                 document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
                 if (type === 'movie') moviesScreen.classList.add('active');
                 else seriesScreen.classList.add('active');
@@ -2272,4 +2272,6 @@ window.tv_loadChannel = tv_loadChannel;
 window.tv_filterChannels = tv_filterChannels;
 window.renderCountryButtons = renderCountryButtons;
 window.switchScreen = switchScreen;
+// ======================================================================
+// FIN BLOQUE TV
 // ======================================================================
