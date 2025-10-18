@@ -2076,13 +2076,14 @@ function renderCarousel(containerId, items, type) {
 async function fetchHomeContent() {
     showLoader();
     try {
-        // [MODIFICACIÓN CRÍTICA] Intentar con Populares como fuente principal para el banner.
-        const bannerSource = await fetchFromTMDB('movie/popular'); 
+        // CORRECCIÓN CRÍTICA: Usamos 'trending/all/day' para el banner para garantizar la disponibilidad
+        // de 'backdrop_path' y la estabilidad del carrusel.
+        const bannerSource = await fetchFromTMDB('trending/all/day'); 
         
         let validBanners = [];
 
         if (bannerSource && Array.isArray(bannerSource.results)) {
-             // 🎯 CORRECCIÓN: Filtrar por backdrop_path, que es la imagen del banner, no poster_path.
+             // Filtrar por backdrop_path y tomar los primeros 5
              validBanners = bannerSource.results.filter(i => i.backdrop_path).slice(0, 5); 
         }
 
