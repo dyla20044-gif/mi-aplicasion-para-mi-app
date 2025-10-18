@@ -695,7 +695,7 @@ async function renderMoviePlayButtons(localMovie, tmdbMovie) {
     }
 }
 
-// *** FUNCIÓN CORREGIDA Y OPTIMIZADA: renderSeriesButtons ***
+// *** FUNCIÓN CORREGIDA Y OPTIMIZADA: renderSeriesButtons (Usa la optimización del servidor) ***
 async function renderSeriesButtons(localSeries, tmdbSeries) {
     showLoader(); 
     const tmdbIdToUse = tmdbSeries.id;
@@ -1025,8 +1025,6 @@ async function fetchRelatedContent(item, type) {
     }
 }
 
-// ** FUNCIÓN ORIGINAL CAUSANTE DEL ERROR (Ahora renombrada en el backend para evitar conflicto) **
-// La función original era fetchAllGenres.
 async function getTMDBGenres(type = 'movie') {
     try {
         const genres = await fetchFromTMDB(`genre/${type}/list`);
@@ -1166,7 +1164,7 @@ function switchScreen(screenId) {
         renderAllSeries();
         searchFilters.style.display = 'none';
     } else if (screenId === 'home-screen') {
-        fetchHomeContent(); // 👈 Función CRÍTICA añadida
+        fetchHomeContent(); 
         searchFilters.style.display = 'none';
     } else if (screenId === 'favorites-screen') {
         fetchFavorites();
@@ -1331,7 +1329,6 @@ seeMoreButtons.forEach(button => {
         showLoader();
         try {
             const items = await fetchFromTMDB(endpoint);
-            // Aseguramos que la navegación a la pantalla correcta se realice después de cargar
             if (type === 'movie') {
                 renderGrid(allMoviesGrid, items, 'movie');
                 switchScreen('movies-screen');
@@ -1376,7 +1373,7 @@ async function renderAllSeries() {
     showLoader();
     try {
         const series = await fetchFromTMDB('discover/tv?sort_by=popularity.desc');
-        renderGrid(allSeriesGrid, series, 'tv'); // 👈 El llamado a renderGrid ahora funciona
+        renderGrid(allSeriesGrid, series, 'tv');
     } catch (error) {
         console.error("Error rendering all series:", error);
         alert('No se pudieron cargar las series. Intenta de nuevo.');
@@ -1740,282 +1737,46 @@ if (btnPubSaveNotify) {
 
 // NUEVA FUNCIÓN: Carga estática de películas y series (VACIADA para usar TMDB)
 async function fetchAppData() {
-    // CORRECCIÓN CRÍTICA: Se vacía la carga de catálogo masivo de Firebase.
+    // La función que cargaba masivamente datos de Firebase se vacía para ahorrar cuota.
     moviesData = [];
     seriesData = [];
 }
 
-// ======================================================================
-// 📌 FUNCIONES AGREGADAS PARA CORREGIR ReferenceError (fetchHomeContent, renderGrid, etc.)
-// ======================================================================
-
-// --- Base Rendering Functions (Fixes renderGrid not defined) ---
-
-function createMovieCard(item, type) {
-    const card = document.createElement('div');
-    card.className = 'movie-card';
-    
-    // Check if the item is a full TMDB item or a simplified favorite
-    const itemId = item.id || item.tmdbId;
-    const itemType = item.media_type || type;
-    const itemTitle = item.title || item.name;
-    const posterPath = item.poster_path;
-
-    card.innerHTML = `
-        <img src="https://image.tmdb.org/t/p/w500${posterPath}" alt="${itemTitle}" class="movie-poster" onerror="this.onerror=null;this.src='https://placehold.co/130x195?text=No+Poster'">
-        ${item.vote_average ? `<span class="badge">${item.vote_average.toFixed(1)}</span>` : ''}
-        ${itemType === 'tv' ? '<span class="media-type-label">Serie</span>' : '<span class="media-type-label">Película</span>'}
-    `;
-
-    card.addEventListener('click', async () => {
-        showLoader();
-        try {
-            // Fetch full details since card data is often partial
-            let fullItem = await fetchFromTMDB(`${itemType}/${itemId}`);
-            if (fullItem) {
-                 fullItem.media_type = itemType; 
-                 currentMovieOrSeries = { tmdbId: itemId, type: itemType, title: itemTitle };
-                 history.pushState({ screen: 'details-screen', item: fullItem, type: itemType }, '', `?screen=details-screen&id=${itemId}&type=${itemType}`);
-                 showDetailsScreen(fullItem, itemType);
-            }
-        } catch (error) {
-             console.error("Error al cargar detalles:", error);
-             alert('No se pudo cargar la información detallada.');
-        } finally {
-             hideLoader();
-        }
-    });
-
-    return card;
-}
-
-function renderGrid(containerElement, items, type) {
-    if (!containerElement) return;
-    containerElement.innerHTML = '';
-    
-    // Filter out items without posters
-    const filteredItems = Array.isArray(items) ? items.filter(item => item.poster_path) : [];
-
-    filteredItems.forEach(item => {
-        const card = createMovieCard(item, type);
-        containerElement.appendChild(card);
-    });
-
-    if (filteredItems.length === 0) {
-        containerElement.innerHTML = '<p style="padding: 20px;">No se encontraron resultados para mostrar.</p>';
-    }
-}
-
-// --- Detail Screen Helper Functions ---
-
-async function fetchMovieCastAndDirector(tmdbId, type) {
-    try {
-        const credits = await fetchFromTMDB(`${type}/${tmdbId}/credits`);
-        const cast = credits.cast.slice(0, 5).map(c => c.name).join(', ');
-        
-        let director = 'N/A';
-        const directorCrew = credits.crew.find(crew => crew.job === 'Director');
-        if (directorCrew) {
-            director = directorCrew.name;
-        }
-
-        return { cast, director };
-    } catch (error) {
-        console.error("Error fetching cast/director:", error);
-        return { cast: 'N/A', director: 'N/A' };
-    }
-}
-
-async function updateMetricsDisplay(tmdbId) {
-    try {
-        const views = await getCount(tmdbId, 'views');
-        const likes = await getCount(tmdbId, 'likes');
-
-        if (viewCountDisplay) {
-            viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${views} Vistas`;
-        }
-        if (likeCountDisplayText) {
-            likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${likes} Me Gusta`;
-        }
-    } catch (e) {
-        console.error("Error al actualizar métricas:", e);
-    }
-}
-
-async function showDetailsScreen(item, type) {
-    currentFullTMDBItem = item;
-    currentMovieOrSeries = { tmdbId: item.id, type: type, title: item.title || item.name };
-    resetDetailsPlayer();
-    
-    // UI Updates
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    detailsScreen.classList.add('active');
-    appContainer.scrollTo(0, 0);
-
-    // Populate Info
-    detailsTitle.textContent = item.title || item.name;
-    detailsYear.textContent = item.release_date ? item.release_date.substring(0, 4) : (item.first_air_date ? item.first_air_date.substring(0, 4) : 'N/A');
-    detailsSinopsis.textContent = item.overview || 'Sinopsis no disponible.';
-
-    const genreNames = (item.genres || []).map(g => g.name).join(', ');
-    detailsGenres.textContent = genreNames;
-
-    const posterUrl = item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : 'https://placehold.co/800x450?text=No+Image';
-    detailsPosterTop.style.backgroundImage = `url(${posterUrl})`;
-    
-    // Cast & Director
-    const { cast, director } = await fetchMovieCastAndDirector(item.id, type);
-    directorName.textContent = director;
-    actorsList.textContent = cast;
-    
-    // Tabs & Metrics
-    setupDetailsTabs(item, type);
-    updateMetricsDisplay(item.id);
-    renderLikeState(item.id);
-    renderComments(item.id);
-
-    // Play Buttons (The critical part)
-    if (type === 'movie') {
-        seasonsContainer.style.display = 'none';
-        episodesContainer.innerHTML = '';
-        renderMoviePlayButtons(null, item);
-    } else { // type === 'tv'
-        seasonsContainer.style.display = 'block';
-        renderSeriesButtons(null, item);
-    }
-}
-
-// Making showDetailsScreen globally available (for onclick in createMovieCard and banner)
-window.showDetailsScreen = showDetailsScreen;
-
-// --- Home Screen Content Loading Functions (Fixes fetchHomeContent not defined) ---
-
-// Función para simplificar la carga y renderizado de un carrusel
-async function fetchAndRenderCarousel(endpoint, containerId, type) {
-    try {
-        const items = await fetchFromTMDB(endpoint);
-        // Maneja la estructura de respuesta de TMDB
-        const dataToRender = Array.isArray(items) ? items : (items.results ? items.results : []);
-        // Filtra para asegurar que haya un poster
-        renderCarousel(containerId, dataToRender.filter(i => i.poster_path), type);
-    } catch (error) {
-        console.warn(`Error al cargar carrusel ${containerId}:`, error);
-    }
-}
-
-// Función para renderizar el contenido en un carrusel horizontal
-function renderCarousel(containerId, items, type) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.innerHTML = '';
-    items.forEach(item => {
-        const card = createMovieCard(item, item.media_type || type); 
-        container.appendChild(card);
-    });
-}
-
-// Función para renderizar el carrusel de banners superiores
-function renderBanner(items) {
-    const bannerList = document.getElementById('banner-list');
-    if (!bannerList) return;
-    bannerList.innerHTML = '';
-    
-    items.forEach(item => {
-        const banner = document.createElement('div');
-        banner.className = 'banner-item';
-        // Usa backdrop_path para las imágenes de banner
-        const imagePath = item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : 'https://placehold.co/800x450?text=No+Image';
-        banner.style.backgroundImage = `url(${imagePath})`;
-        
-        const itemType = item.media_type || (item.title ? 'movie' : 'tv');
-        const itemTitle = item.title || item.name;
-        
-        banner.innerHTML = `
-            <div class="banner-buttons-container">
-                 <div class="pro-badge">PRO</div>
-                <button class="banner-button red" onclick="showDetailsScreen({id: ${item.id}, title: '${itemTitle}', name: '${itemTitle}', media_type: '${itemType}'}, '${itemType}')"><i class="fas fa-play"></i> Ver Ahora</button>
-                <button class="banner-button" onclick="addToFavorites({id: ${item.id}, title: '${itemTitle}', poster_path: '${item.poster_path}', type: '${itemType}'})"><i class="fas fa-plus"></i> Mi Lista</button>
-            </div>
-        `;
-        bannerList.appendChild(banner);
-    });
-    
-    // Start auto-scrolling only if there are banners
-    if (items.length > 0) {
-        startBannerAutoScroll();
-    }
-}
-
-function startBannerAutoScroll() {
-    let currentBannerIndex = 0;
-    const bannerList = document.getElementById('banner-list');
-    const bannerItems = bannerList.querySelectorAll('.banner-item');
-
-    if (bannerItems.length < 2) return;
-
-    // Clear any existing interval to prevent overlap
-    if (bannerInterval) clearInterval(bannerInterval);
-
-    bannerInterval = setInterval(() => {
-        currentBannerIndex = (currentBannerIndex + 1) % bannerItems.length;
-        bannerList.scrollTo({
-            left: currentBannerIndex * bannerItems[0].offsetWidth,
-            behavior: 'smooth'
-        });
-    }, 5000); // Change banner every 5 seconds
-    
-    // Stop scrolling on user interaction
-    bannerList.addEventListener('pointerdown', pauseBannerAutoScroll);
-    bannerList.addEventListener('scroll', resetBannerAutoScroll);
-}
-
-function pauseBannerAutoScroll() {
-    if (bannerInterval) clearInterval(bannerInterval);
-}
-
-function resetBannerAutoScroll() {
-    if (resumeAutoScrollTimeout) clearTimeout(resumeAutoScrollTimeout);
-    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); // Resume after 10 seconds of no scrolling
-}
-
-async function fetchHomeContent() {
+// *** FUNCIÓN CRÍTICA DE INICIO Y LLAMADA A CARGA DE CONTENIDO ***
+function fetchHomeContent() { // Declarada como función tradicional para Hoisting
     showLoader();
     try {
-        // Cargar el banner principal (tendencias de la semana)
-        const trendingBanners = await fetchFromTMDB('trending/movie/week'); 
-        if (trendingBanners && Array.isArray(trendingBanners.results)) {
-             renderBanner(trendingBanners.results.filter(i => i.backdrop_path).slice(0, 5));
-        }
+        fetchHistory().then(() => {
+            const promises = [
+                fetchFromTMDB('movie/popular').then(movies => renderCarousel('populares-movies', movies, 'movie')),
+                fetchFromTMDB('trending/all/day').then(content => {
+                    renderCarousel('tendencias-movies', content);
+                    bannerMovies = content.filter(m => m.backdrop_path);
+                    renderBannerCarousel();
+                }),
+                fetchFromTMDB('discover/movie?with_genres=28').then(movies => renderCarousel('accion-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with_genres=27,9648').then(movies => renderCarousel('terror-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with_genres=16').then(movies => renderCarousel('animacion-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with_genres=99').then(movies => renderCarousel('documentales-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with-genres=878').then(movies => renderCarousel('scifi-movies', movies, 'movie')),
+                fetchFromTMDB('tv/popular').then(series => renderCarousel('populares-series', series, 'tv'))
+            ];
 
-        // Cargar los carruseles de categorías (usando los IDs del index.html)
-        await fetchAndRenderCarousel('movie/popular', 'populares-movies', 'movie');
-        await fetchAndRenderCarousel('trending/all/day', 'tendencias-movies', 'movie');
-        await fetchAndRenderCarousel('discover/movie?with_genres=28', 'accion-movies', 'movie'); 
-        await fetchAndRenderCarousel('discover/movie?with_genres=27,9648', 'terror-movies', 'movie'); 
-        await fetchAndRenderCarousel('discover/movie?with_genres=16', 'animacion-movies', 'movie'); 
-        await fetchAndRenderCarousel('discover/movie?with_genres=99', 'documentales-movies', 'movie'); 
-        await fetchAndRenderCarousel('discover/movie?with_genres=878', 'scifi-movies', 'movie'); 
-        await fetchAndRenderCarousel('tv/popular', 'populares-series', 'tv');
-
-        // Lógica para mostrar/ocultar el historial (history-section)
-        const historySection = document.getElementById('history-section');
-        if (currentUser && !currentUser.isAnonymous) {
-             if(historySection) historySection.style.display = 'block';
-             // Asumiendo que existe una función fetchHistory()
-             // fetchHistory(); 
-        } else {
-             if(historySection) historySection.style.display = 'none';
-        }
-
+            // Permite que todo se cargue de forma concurrente
+            Promise.all(promises).catch(error => {
+                console.error("Error en la carga de carruseles:", error);
+                alert('Error al cargar contenido principal. Revisa la API de TMDB.');
+            }).finally(() => {
+                hideLoader();
+            });
+        });
     } catch (error) {
-        console.error("Error al cargar contenido de la pantalla de inicio:", error);
-    } finally {
+        console.error("Error al iniciar fetchHomeContent:", error);
+        alert('Hubo un error crítico al iniciar la carga. Intenta recargar.');
         hideLoader();
     }
 }
-// ======================================================================
-// 📌 FIN FUNCIONES AGREGADAS
-// ======================================================================
+
 
 let isInitialized = false;
 onAuthStateChanged(auth, async (user) => {
@@ -2106,248 +1867,1789 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// ======================================================================
-// LÓGICA DE TV EN VIVO (M3U) - SIN CAMBIOS SIGNIFICATIVOS
-// ======================================================================
+// --- Funciones Auxiliares de Renderizado ---
 
-const country_sources = {
-    MX: { name: "México", url: "https://iptv-org.github.io/iptv/countries/mx.m3u" },
-    EC: { name: "Ecuador", url: "https://iptv-org.github.io/iptv/countries/ec.m3u" },
-    AR: { name: "Argentina", url: "https://iptv-org.github.io/iptv/countries/ar.m3u" },
-    CL: { name: "Chile", url: "https://iptv-org.github.io/iptv/countries/cl.m3u" },
-    MUSIC: { name: "Música", url: "https://iptv-org.github.io/iptv/categories/music.m3u" },
-    DOCS: { name: "Documentales", url: "https://iptv-org.github.io/iptv/categories/documentaries.m3u" },
-    ALL: { name: "Todos", url: "https://iptv-org.github.io/iptv/index.m3u" },
-    SPORTS: { name: "Deportes (Premium)", url: "https://iptv-org.github.io/iptv/categories/sports.m3u", premium: true }
-};
-
-let cached_channels = {}; 
-
-function tv_loadChannel(item, index, countryCode) {
-    const channels = cached_channels[countryCode];
-    if (!channels || channels.length === 0) return;
-
-    const channel = channels[index];
-    const url = channel.url;
-    const name = channel.name;
-    
-    tv_current_name.textContent = `Reproduciendo: ${name} (${countryCode})`;
-    
-    if (tv_currentItem) {
-        tv_currentItem.classList.remove('active');
-    }
-    const currentItem = document.querySelector(`.tv-grid-item[data-index="${index}"][data-country="${countryCode}"]`);
-    if (currentItem) {
-         currentItem.classList.add('active');
-         tv_currentItem = currentItem;
-    }
-
-    if (hls_instance) {
-        hls_instance.destroy();
-        hls_instance = null;
-    }
-    
-    if (window.Hls && Hls.isSupported() && (url.endsWith('.m3u8') || url.includes('.m3u8'))) {
-        hls_instance = new Hls();
-        hls_instance.attachMedia(tv_video);
-        hls_instance.on(Hls.Events.MEDIA_ATTACHED, function () {
-            hls_instance.loadSource(url);
-            hls_instance.on(Hls.Events.MANIFEST_PARSED, function () {
-                tv_video.play().catch(e => console.log("Error de auto-play:", e));
-            });
-            hls_instance.on(Hls.Events.ERROR, function (event, data) {
-                if (data.fatal) {
-                    tv_current_name.textContent = `❌ ERROR: ${name} (Stream caído)`;
-                    hls_instance.destroy();
-                }
-            });
-        });
-    } else if (tv_video.canPlayType('application/vnd.apple.mpegurl')) {
-        tv_video.src = url;
-        tv_video.addEventListener('loadedmetadata', function () { tv_video.play().catch(e => console.log("Error de auto-play nativo:", e)); });
-    } else {
-        tv_video.src = url;
-        tv_video.play().catch(e => {
-            tv_current_name.textContent = `⚠️ ADVERTENCIA: Error al iniciar ${name} (URL no soportada)`;
-        });
-    }
-}
-
-function tv_renderChannelGrid(channels, countryCode) {
-    tv_channel_grid.style.display = 'grid';
-    premium_wall.style.display = 'none';
-
-    let htmlContent = '';
-    channels.forEach((channel, index) => {
-        const name = channel.name; 
-        const info = channel.info || 'HD/SD';
-
-        htmlContent += `
-            <div class="tv-grid-item" data-index="${index}" data-country="${countryCode}" onclick="tv_loadChannel(this, ${index}, '${countryCode}')">
-                <div class="tv-grid-item-content">
-                    <div class="tv-grid-item-title">${name}</div>
-                    <div class="tv-grid-item-info">${info} | En vivo</div>
-                </div>
-            </div>
-        `;
+function renderBannerCarousel() {
+    bannerList.innerHTML = '';
+    bannerMovies.forEach(movie => {
+        bannerList.appendChild(createBannerItem(movie));
     });
-    tv_channel_grid.innerHTML = htmlContent;
+    startBannerAutoScroll();
 }
 
-function parseM3U(m3uContent, categoryName) {
-    const channels = [];
-    const lines = m3uContent.split('\n');
-    let currentChannel = {};
+function stopBannerAutoScroll() {
+    clearInterval(bannerInterval);
+    if (resumeAutoScrollTimeout) {
+        clearTimeout(resumeAutoScrollTimeout);
+    }
+}
 
-    for (const line of lines) {
-        if (line.startsWith('#EXTINF:')) {
-            const parts = line.split(',');
-            let channelName = 'Canal Desconocido';
-            
-            if (parts.length > 1) {
-                channelName = parts[parts.length - 1].trim();
-            } 
-            
-            let info = categoryName;
-            const qualityMatch = line.match(/\s(\d+p|HD|SD|FHD)\b/i);
-            if (qualityMatch) {
-                info = qualityMatch[1].toUpperCase();
-            }
-            
-            channelName = channelName.replace(/\s*\[.*?\]\s*/g, '').replace(/\s*\(.*?\)\s*/g, '').trim();
-            
-            if (channelName === '') {
-                const tvgNameMatch = line.match(/tvg-name="([^"]*)"/);
-                channelName = tvgNameMatch ? tvgNameMatch[1].trim() : 'Canal Desconocido';
-            }
-
-            const tvgIDMatch = line.match(/tvg-id="([^"]*)"/);
-            const tvgID = tvgIDMatch ? tvgIDMatch[1].trim() : '';
-
-            currentChannel = {
-                name: channelName,
-                info: info,
-                tvgId: tvgID
-            };
-        } else if (line.startsWith('http') || line.startsWith('https')) {
-            if (currentChannel.name) {
-                currentChannel.url = line.trim();
-                if (!currentChannel.name.includes('[Geo-blocked]') && !currentChannel.name.includes('[Not 24/7]')) {
-                    channels.push(currentChannel);
-                }
-            }
-            currentChannel = {};
+function startBannerAutoScroll() {
+    let currentIndex = 0;
+    const scrollAmount = bannerList.clientWidth;
+    stopBannerAutoScroll();
+    bannerInterval = setInterval(() => {
+        if (currentIndex < bannerMovies.length - 1) {
+            currentIndex++;
+        } else {
+            currentIndex = 0;
         }
+        bannerList.scrollTo({
+            left: currentIndex * scrollAmount,
+            behavior: 'smooth'
+        });
+    }, 3000);
+}
+
+bannerList.addEventListener('mousedown', stopBannerAutoScroll);
+bannerList.addEventListener('mouseup', () => {
+    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); 
+});
+bannerList.addEventListener('touchstart', stopBannerAutoScroll);
+bannerList.addEventListener('touchend', () => {
+    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); 
+});
+
+async function getTMDBGenres(type = 'movie') {
+    try {
+        const genres = await fetchFromTMDB(`genre/${type}/list`);
+        const genreMap = {};
+        genres.genres.forEach(genre => {
+            genreMap[genre.id] = genre.name;
+        });
+        if (type === 'movie') {
+            allMovieGenres = genreMap;
+        } else {
+            allTvGenres = genreMap;
+        }
+    } catch (error) {
+        console.error("Error fetching genres:", error);
     }
-    return channels;
+}
+
+function renderGenresModal(type) {
+    genresList.innerHTML = '';
+    const currentGenres = type === 'movie' ? allMovieGenres : allTvGenres;
+    for (const id in currentGenres) {
+        const genreButton = document.createElement('button');
+        genreButton.className = 'button secondary';
+        genreButton.textContent = currentGenres[id];
+        genreButton.onclick = () => {
+            fetchFromTMDB(`discover/${type}?with_genres=${id}`).then(items => {
+                renderGrid(allMoviesGrid, items, type);
+                document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+                if (type === 'movie') moviesScreen.classList.add('active');
+                else seriesScreen.classList.add('active');
+                closeModal(genresModal);
+            });
+        };
+        genresList.appendChild(genreButton);
+    }
+}
+
+searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        handleSearch(searchInput.value);
+    }
+});
+
+searchInput.addEventListener('input', (e) => {
+    const query = e.target.value;
+    if (query.length > 2) {
+        handleSearch(query);
+    } else if (query.length === 0) {
+        moviesScreen.classList.remove('search-active');
+        switchScreen('home-screen'); 
+    }
+});
+
+function renderSearchResults(results, filterType = 'all') {
+    allMoviesGrid.innerHTML = '';
+    
+    const filteredResults = results.filter(item => {
+        if (filterType === 'all') {
+            return true;
+        }
+        return item.media_type === filterType;
+    });
+
+    filteredResults.forEach(item => {
+        if (item.media_type === 'movie' || item.media_type === 'tv') {
+            const card = createMovieCard(item, item.media_type);
+            allMoviesGrid.appendChild(card);
+        }
+    });
+
+    if (filteredResults.length === 0) {
+        allMoviesGrid.innerHTML = '<p>No se encontraron resultados.</p>';
+    }
+}
+
+async function handleSearch(query) {
+    if (query.length > 2) {
+        showLoader();
+        try {
+            const searchResults = await fetchFromTMDB('search/multi', query);
+            lastSearchResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
+            
+            renderSearchResults(lastSearchResults);
+
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            moviesScreen.classList.add('active', 'search-active');
+            
+            document.querySelector('.top-nav').style.display = 'none';
+            document.querySelector('.bottom-nav').style.display = 'flex';
+            appContainer.style.paddingBottom = '70px'; 
+
+            history.replaceState({ screen: 'movies-screen', searchActive: true, query: searchInput.value, results: lastSearchResults }, '', `?screen=movies-screen&search=${encodeURIComponent(searchInput.value)}`);
+            
+        } catch (error) {
+            console.error("Error performing search:", error);
+            alert('Hubo un error en la búsqueda. Por favor, intenta de nuevo.');
+        } finally {
+            hideLoader();
+        }
+    } else if (query.length === 0) {
+        moviesScreen.classList.remove('search-active');
+        switchScreen('home-screen'); 
+    }
 }
 
 
-async function tv_filterChannels(countryCode) {
-    document.querySelectorAll('#country-nav .country-button').forEach(btn => btn.classList.remove('active'));
-    const activeButton = document.querySelector(`.country-button[data-country="${countryCode}"]`);
-    if (activeButton) {
-        activeButton.classList.add('active');
-    }
+filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        const filterType = button.getAttribute('data-filter');
+        renderSearchResults(lastSearchResults, filterType);
+    });
+});
+// La función switchScreen ya está definida arriba y es accesible.
 
-    const source = country_sources[countryCode];
+window.addEventListener('popstate', async (event) => {
+    const state = event.state;
     
-    if (source.premium && (!currentUser || !currentUser.isPro)) {
-        tv_channel_grid.style.display = 'none';
-        premium_wall.style.display = 'block';
-        tv_current_name.textContent = "¡Sección Premium! Activa tu plan.";
-        if (hls_instance) hls_instance.destroy();
-        tv_video.src = '';
+    resetDetailsPlayer(); 
+    closeAllModals(); 
+    
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+
+    if (state) {
+        if (state.screen === 'details-screen') {
+            const item = state.item;
+            const type = state.type;
+            if (item && type) {
+                showDetailsScreen(item, type); 
+            } else {
+                switchScreen('home-screen');
+            }
+        } else {
+            const previousStateIsSearch = state.searchActive;
+
+            if (previousStateIsSearch) {
+                searchOverlay.classList.add('active');
+                moviesScreen.classList.add('active'); 
+                moviesScreen.classList.add('search-active'); 
+
+                searchInput.value = state.query || '';
+                if (state.results) {
+                    lastSearchResults = state.results;
+                    renderSearchResults(lastSearchResults, 'all'); 
+                }
+                
+                document.querySelector('.top-nav').style.display = 'none';
+                document.querySelector('.bottom-nav').style.display = 'flex';
+                appContainer.style.paddingBottom = '70px';
+                searchFilters.style.display = 'flex'; 
+
+            } else {
+                searchOverlay.classList.remove('active');
+                moviesScreen.classList.remove('search-active');
+                switchScreen(state.screen); 
+            }
+        }
+    } else {
+        switchScreen('home-screen');
+    }
+});
+
+
+// Listener para el botón de Descarga (CORREGIDO: Usando la variable renombrada)
+if (btnDownloadApp) {
+    btnDownloadApp.addEventListener('click', () => {
+        showModal(downloadAppModal);
+    });
+}
+
+// Listener para Abrir Búsqueda
+if (btnOpenSearch) {
+    btnOpenSearch.addEventListener('click', () => {
+        searchOverlay.classList.add('active');
+        searchInput.focus();
+        
+        document.querySelector('.top-nav').style.display = 'none';
+        document.querySelector('.bottom-nav').style.display = 'flex';
+        appContainer.style.paddingBottom = '70px'; 
+
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        moviesScreen.classList.add('active', 'search-active');
+        searchFilters.style.display = 'flex'; 
+
+        if (lastSearchResults.length > 0) {
+            renderSearchResults(lastSearchResults);
+        } else {
+            allMoviesGrid.innerHTML = '';
+        }
+
+        history.pushState({ screen: 'movies-screen', searchActive: true, query: searchInput.value, results: lastSearchResults }, '', `?screen=movies-screen&search=${encodeURIComponent(searchInput.value)}`);
+    });
+}
+
+// Listener para Cerrar Búsqueda
+if (closeSearchButton) {
+    closeSearchButton.addEventListener('click', () => {
+        searchOverlay.classList.remove('active');
+        moviesScreen.classList.remove('search-active'); 
+        
+        searchInput.value = '';
+        lastSearchResults = [];
+        renderSearchResults(lastSearchResults); 
+        
+        switchScreen('home-screen');
+    });
+}
+
+
+document.querySelectorAll('.nav-item, .profile-button[data-screen]').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetScreenId = e.currentTarget.getAttribute('data-screen');
+        if (targetScreenId) {
+            switchScreen(targetScreenId);
+        }
+    });
+});
+authBackButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    history.back();
+});
+
+seeMoreButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const endpoint = e.currentTarget.getAttribute('data-endpoint');
+        const type = e.currentTarget.getAttribute('data-type');
+        
+        showLoader();
+        try {
+            const items = await fetchFromTMDB(endpoint);
+            if (type === 'movie') {
+                renderGrid(allMoviesGrid, items, 'movie');
+                switchScreen('movies-screen');
+            } else {
+                renderGrid(allSeriesGrid, items, 'tv');
+                switchScreen('series-screen');
+            }
+        } catch (error) {
+            console.error("Error loading 'See more' content:", error);
+            alert('No se pudo cargar el contenido. Intenta de nuevo.');
+        } finally {
+            hideLoader();
+        }
+    });
+});
+
+// Los listeners de género llaman a la función local getTMDBGenres()
+genresButton.addEventListener('click', () => {
+    getTMDBGenres('movie');
+    renderGenresModal('movie');
+    showModal(genresModal);
+});
+seriesGenresButton.addEventListener('click', () => {
+    getTMDBGenres('tv');
+    renderGenresModal('tv');
+    showModal(genresModal);
+});
+
+async function renderAllMovies() {
+    showLoader();
+    try {
+        const movies = await fetchFromTMDB('discover/movie?sort_by=popularity.desc');
+        renderGrid(allMoviesGrid, movies, 'movie');
+    } catch (error) {
+        console.error("Error rendering all movies:", error);
+        alert('No se pudieron cargar las películas. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function renderAllSeries() {
+    showLoader();
+    try {
+        const series = await fetchFromTMDB('discover/tv?sort_by=popularity.desc');
+        renderGrid(allSeriesGrid, series, 'tv');
+    } catch (error) {
+        console.error("Error rendering all series:", error);
+        alert('No se pudieron cargar las series. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function addToFavorites(movie) {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+        return;
+    }
+    try {
+        await addDoc(collection(db, "favorites"), {
+            userId: auth.currentUser.uid,
+            tmdbId: movie.id,
+            title: movie.title || movie.name,
+            poster_path: movie.poster_path,
+            type: movie.media_type || 'movie'
+        });
+        alert('Añadido a Mi lista');
+    } catch (e) {
+        console.error("Error adding favorite: ", e);
+        alert('No se pudo añadir a la lista.');
+    }
+}
+
+async function fetchFavorites() {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+        return;
+    }
+    showLoader();
+    try {
+        const q = query(collection(db, "favorites"), where("userId", "==", auth.currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const favorites = querySnapshot.docs.map(doc => doc.data());
+        renderGrid(favoritesGrid, favorites, 'movie');
+    } catch (e) {
+        console.error("Error fetching favorites: ", e);
+        alert('No se pudieron cargar los favoritos.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function playAd() {
+    return new Promise((resolve) => {
+        console.log("Simulating ad playback...");
+        alert('Anuncio: El video comenzará en breve.');
+        setTimeout(() => {
+            resolve();
+        }, 5000);
+    });
+}
+
+submitRequestButton.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
         return;
     }
 
-    premium_wall.style.display = 'none';
-    tv_channel_grid.style.display = 'grid';
-    tv_channel_grid.innerHTML = '<p style="color:#E50914; text-align:center; padding-top:20px;">Cargando canales, espera un momento...</p>';
-    tv_current_name.textContent = `Cargando: ${source.name}...`;
+    const movieTitle = movieRequestInput.value.trim();
+    if (movieTitle === '') {
+        showAppMessage(requestMessage, 'Por favor, ingresa el título de la película.', 'error');
+        return;
+    }
 
-    let channelsToRender = [];
+    try {
+        await addDoc(collection(db, "requests"), {
+            userId: auth.currentUser.uid,
+            userName: auth.currentUser.displayName || 'Anónimo',
+            movieTitle: movieTitle,
+            requestedAt: new Date()
+        });
+        
+        const successMsg = "Tu solicitud fue enviada. Si eres usuario gratuito, espera 3 a 6 horas. Si eres usuario premium, espera alrededor de 2 horas.";
+        showAppMessage(requestMessage, successMsg, 'success');
+        movieRequestInput.value = '';
+    } catch (e) {
+        console.error("Error adding movie request: ", e);
+        showAppMessage(requestMessage, 'No se pudo enviar la solicitud. Intenta de nuevo más tarde.', 'error');
+    }
+});
 
-    if (cached_channels[countryCode]) {
-        channelsToRender = cached_channels[countryCode];
+const passwordToggles = document.querySelectorAll('.password-toggle');
+passwordToggles.forEach(toggle => {
+    toggle.addEventListener('click', () => {
+        const passwordInput = toggle.previousElementSibling;
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        toggle.classList.toggle('fa-eye');
+        toggle.classList.toggle('fa-eye-slash');
+    });
+});
+
+proStatusButton.addEventListener('click', async () => {
+    if (!currentUser || currentUser.isAnonymous) {
+        switchScreen('auth-screen');
     } else {
-        try {
-            const response = await fetch(source.url);
-            if (!response.ok) throw new Error('Error al cargar la lista M3U');
+        showModal(paymentModal);
+    }
+});
 
-            const m3uContent = await response.text();
-            channelsToRender = parseM3U(m3uContent, source.name);
-            
-            cached_channels[countryCode] = channelsToRender; 
+if (createAccountButton) {
+    createAccountButton.addEventListener('click', () => {
+        switchScreen('auth-screen');
+        loginForm.classList.remove('active-form');
+        signupForm.classList.add('active-form');
+    });
+}
 
-        } catch (error) {
-            console.error("Fallo al obtener o parsear el M3U:", error);
-            tv_channel_grid.innerHTML = `<p style="color:#f00; text-align:center; padding-top:20px;">❌ Error al cargar canales de ${source.name}.</p>`;
-            tv_current_name.textContent = `ERROR: No se pudo cargar ${source.name}.`;
-            if (hls_instance) hls_instance.destroy();
-            tv_video.src = '';
+if (profileLoginLink) {
+    profileLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchScreen('auth-screen');
+        loginForm.classList.add('active-form');
+        signupForm.classList.remove('active-form');
+    });
+}
+
+if(authLoginLink){
+    authLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        loginForm.classList.add('active-form');
+        signupForm.classList.remove('active-form');
+    });
+}
+
+premiumInfoCtaButton.addEventListener('click', () => {
+    closeModal(premiumInfoModal);
+    showModal(paymentModal);
+});
+
+premiumInfoLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeModal(premiumInfoModal);
+    switchScreen('auth-screen');
+    loginForm.classList.add('active-form');
+    signupForm.classList.remove('active-form');
+});
+
+profileMyList.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser || currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+    } else {
+        switchScreen('favorites-screen');
+    }
+});
+profilePrivacy.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('privacy-screen');
+});
+profileTerms.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('terms-screen');
+});
+profileSubscription.addEventListener('click', (e) => {
+    e.preventDefault();
+    showModal(paymentModal);
+});
+profileHelpCenter.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('help-screen');
+});
+
+showSignupLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginForm.classList.remove('active-form');
+    signupForm.classList.add('active-form');
+});
+
+showLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    signupForm.classList.remove('active-form');
+    loginForm.classList.add('active-form');
+});
+
+signupButton.addEventListener('click', async () => {
+    signupMessage.style.display = 'none'; 
+    const email = signupEmailInput.value;
+    const password = signupPasswordInput.value;
+    const termsAccepted = document.getElementById('terms-checkbox').checked;
+
+    if (!termsAccepted) {
+        showAppMessage(signupMessage, 'Debes aceptar los términos y condiciones para continuar.', 'error');
+        return;
+    }
+    
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        showAppMessage(signupMessage, '¡Registro exitoso! Por favor, activa tu Cuenta Premium.', 'success');
+        switchScreen('profile-screen');
+        showModal(paymentModal);
+    } catch (error) {
+        console.error("Signup error:", error);
+        let userMessage = 'Error al registrarse. Intenta de nuevo.';
+        if (error.code === 'auth/email-already-in-use') {
+             userMessage = 'Este correo ya está registrado. ¿Quieres iniciar sesión?';
+        } else if (error.code === 'auth/weak-password') {
+             userMessage = 'La contraseña debe tener al menos 6 caracteres.';
+        }
+        showAppMessage(signupMessage, userMessage, 'error'); 
+    }
+});
+
+loginButton.addEventListener('click', async () => {
+    loginMessage.style.display = 'none'; 
+    const email = loginEmailInput.value;
+    const password = loginPasswordInput.value;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        showAppMessage(loginMessage, '¡Inicio de sesión exitoso!', 'success');
+        switchScreen('profile-screen');
+    } catch (error) {
+        console.error("Login error:", error);
+        let userMessage = 'Error al iniciar sesión. Intenta de nuevo.';
+        if (error.code === 'auth/invalid-email' || error.code === 'auth/user-not-found') {
+            userMessage = 'Correo no registrado o inválido.';
+        } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            userMessage = 'Contraseña incorrecta.';
+        }
+        showAppMessage(loginMessage, userMessage, 'error'); 
+    }
+});
+
+socialLoginButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        alert('Esta funcionalidad aún no está disponible.');
+    });
+});
+
+// === NUEVA LÓGICA: Redirigir a ventana de selección de OS antes de iniciar pago ===
+buyButtons.forEach(button => {
+    button.addEventListener('click', (e) => {
+        if (!currentUser || currentUser.isAnonymous) {
+            switchScreen('auth-screen');
             return;
         }
-    }
+        const plan = e.target.getAttribute('data-plan');
+        showOSSelectionModal(plan);
+    });
+});
 
-    tv_renderChannelGrid(channelsToRender, countryCode);
+async function initPaypalPayment(plan) {
+    if (!currentUser || currentUser.isAnonymous) return;
 
-    const firstChannel = document.querySelector(`#tv-channel-grid .tv-grid-item[data-country="${countryCode}"]`);
-    if (firstChannel) {
-        tv_loadChannel(firstChannel, 0, countryCode); 
-    } else {
-        tv_current_name.textContent = `No se encontraron canales disponibles para ${source.name}.`;
-        tv_channel_grid.innerHTML = `<p style="color:#aaa; text-align:center; padding-top:20px;">No hay canales en esta sección. Intenta con otra o recarga la página.</p>`;
-        if (hls_instance) hls_instance.destroy();
-        tv_video.src = '';
+    try {
+        const amount = (plan === 'annual') ? '19.99' : '1.99';
+        
+        const response = await fetch('https://serivisios.onrender.com/create-paypal-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                plan: plan,
+                amount: amount,
+                userId: currentUser.uid
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.approval_url) {
+            window.location.href = data.approval_url;
+        } else {
+            alert('Error al iniciar el pago con PayPal. Verifica la configuración en tu servidor.');
+        }
+    } catch (error) {
+        console.error("Error processing PayPal payment:", error);
+        alert('Hubo un error al procesar tu pago con PayPal. Intenta de nuevo.');
     }
 }
 
-function tv_searchChannels(query) {
-    const countryCode = currentActiveCountryCode;
-    const allChannels = cached_channels[countryCode] || [];
+if (buyWithPaypalButton) {
+    buyWithPaypalButton.addEventListener('click', () => {
+        alert('Selecciona un plan antes de continuar con el pago.');
+    });
+}
+if (buyWithBinanceButton) {
+    buyWithBinanceButton.addEventListener('click', () => {
+        alert('Redirigiendo a Binance... (Funcionalidad simulada)');
+    });
+}
 
-    if (!query || query.trim() === "") {
-        tv_renderChannelGrid(allChannels, countryCode);
+signoutButton.addEventListener('click', async () => {
+    try {
+        await signOut(auth);
+        alert('Has cerrado sesión.');
+        window.location.reload();
+    } catch (error) {
+        console.error("Sign out error:", error);
+        alert('No se pudo cerrar sesión. Intenta de nuevo.');
+    }
+});
+
+// --- LISTENERS DE NOTIFICACIONES Y EVENTOS ---
+
+if (btnOpenNotifications) {
+    btnOpenNotifications.addEventListener('click', () => {
+        renderNotifications(); 
+        showModal(userNotificationsModal);
+    });
+}
+if (notificationsClose) {
+    notificationsClose.addEventListener('click', () => {
+        closeModal(userNotificationsModal);
+    });
+}
+
+if (btnClearAllNotifications) {
+    btnClearAllNotifications.addEventListener('click', async () => {
+        if (confirm('¿Estás seguro de que quieres borrar todas tus notificaciones?')) {
+            showLoader();
+            try {
+                const batch = db.batch();
+                notificationsData.forEach(notif => {
+                    if (notif.docId) {
+                        const notifRef = doc(db, 'userNotifications', notif.docId);
+                        batch.delete(notifRef);
+                    }
+                });
+                await batch.commit();
+                alert('Se han borrado todas tus notificaciones.');
+            } catch (error) {
+                console.error("Error al borrar notificaciones:", error);
+                alert('Hubo un error al borrar las notificaciones. Intenta de nuevo.');
+            } finally {
+                hideLoader();
+            }
+        }
+    });
+}
+
+if (btnPubSaveNotify) {
+    btnPubSaveNotify.addEventListener('click', async () => {
+        const embedLink = document.getElementById('admin-embed-input').value || 'Link_Simulado_PRO';
+
+        try {
+            await addDoc(collection(db, "userNotifications"), {
+                title: '¡Nueva Película Publicada!',
+                description: `Contenido nuevo disponible: ${embedLink.substring(0, 15)}...`,
+                image: 'https://placehold.co/50x70?text=NEW',
+                timestamp: new Date(),
+                isRead: false,
+                type: 'movie',
+                targetScreen: 'details-screen' 
+            });
+            
+            alert('Película guardada y notificación enviada a los usuarios. (Simulado)');
+            closeModal(contentPublishingModal); 
+
+        } catch (error) {
+             console.error("Error al simular notificación real:", error);
+             alert('Error: No se pudo conectar a la colección de notificaciones. Revisa Firebase.');
+        }
+    });
+}
+
+// NUEVA FUNCIÓN: Carga estática de películas y series (VACIADA para usar TMDB)
+async function fetchAppData() {
+    // La función que cargaba masivamente datos de Firebase se vacía para ahorrar cuota.
+    moviesData = [];
+    seriesData = [];
+}
+
+// *** FUNCIÓN CRÍTICA DE INICIO Y LLAMADA A CARGA DE CONTENIDO (Hoisted) ***
+function fetchHomeContent() { 
+    showLoader();
+    try {
+        fetchHistory().then(() => {
+            const promises = [
+                fetchFromTMDB('movie/popular').then(movies => renderCarousel('populares-movies', movies, 'movie')),
+                fetchFromTMDB('trending/all/day').then(content => {
+                    renderCarousel('tendencias-movies', content);
+                    bannerMovies = content.filter(m => m.backdrop_path);
+                    renderBannerCarousel();
+                }),
+                fetchFromTMDB('discover/movie?with_genres=28').then(movies => renderCarousel('accion-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with_genres=27,9648').then(movies => renderCarousel('terror-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with_genres=16').then(movies => renderCarousel('animacion-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with_genres=99').then(movies => renderCarousel('documentales-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with-genres=878').then(movies => renderCarousel('scifi-movies', movies, 'movie')),
+                fetchFromTMDB('tv/popular').then(series => renderCarousel('populares-series', series, 'tv'))
+            ];
+
+            // Permite que todo se cargue de forma concurrente
+            Promise.all(promises).catch(error => {
+                console.error("Error en la carga de carruseles:", error);
+                alert('Error al cargar contenido principal. Revisa la API de TMDB.');
+            }).finally(() => {
+                hideLoader();
+            });
+        });
+    } catch (error) {
+        console.error("Error al iniciar fetchHomeContent:", error);
+        alert('Hubo un error crítico al iniciar la carga. Intenta recargar.');
+        hideLoader();
+    }
+}
+
+
+let isInitialized = false;
+onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    
+    // Lógica de autenticación y estado PRO (sin cambios)
+    if (user && !user.isAnonymous) {
+        if (profileLoggedIn) {
+            profileLoggedIn.style.display = 'block';
+        }
+        if (profileLoggedOut) {
+            profileLoggedOut.style.display = 'none';
+        }
+        
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (userDocSnap.exists() && userDocSnap.data().isPro) {
+            currentUser.isPro = true;
+            if (proStatusButton) {
+                proStatusButton.textContent = 'Cuenta Premium Activada';
+                proStatusButton.disabled = true;
+            }
+        } else {
+            currentUser.isPro = false;
+            if (proStatusButton) {
+                proStatusButton.textContent = 'Activar Cuenta Premium';
+                proStatusButton.disabled = false;
+            }
+        }
+    } else {
+        if (currentUser) {
+             currentUser.isPro = false;
+        }
+
+        if (profileLoggedIn) {
+            profileLoggedIn.style.display = 'none';
+        }
+        if (profileLoggedOut) {
+            profileLoggedOut.style.display = 'block';
+        }
+        if (!user) {
+             await signInAnonymously(auth);
+        }
+    }
+
+    if (!isInitialized) {
+        showLoader();
+
+        isInitialized = true;
+        setupRealtimeNotificationsListener(); 
+        initializeTheme();
+        
+        await fetchAppData(); 
+
+        await getTMDBGenres('movie');
+        await getTMDBGenres('tv');
+        updateNotificationIndicator(); 
+        
+        appContainer.style.display = 'block';
+        hideLoader();
+
+        const startAppId = getURLParameter('startapp');
+        if (startAppId) {
+            try {
+                let fullItem = await fetchFromTMDB(`movie/${startAppId}`);
+                let type = 'movie';
+
+                if (!fullItem || fullItem.status_code === 34 || !fullItem.id) {
+                     fullItem = await fetchFromTMDB(`tv/${startAppId}`);
+                     type = 'tv';
+                }
+
+                if (fullItem && fullItem.id) {
+                    fullItem.media_type = type; 
+                    history.pushState({ screen: 'details-screen', item: fullItem, type: type }, '', '');
+                    showDetailsScreen(fullItem, type);
+                } else {
+                    switchScreen('home-screen');
+                }
+            } catch (error) {
+                console.error("Error al cargar contenido desde Telegram:", error);
+                switchScreen('home-screen');
+            }
+        } else {
+            switchScreen('home-screen');
+        }
+    }
+});
+
+// --- Funciones Auxiliares de Renderizado ---
+
+function renderBannerCarousel() {
+    bannerList.innerHTML = '';
+    bannerMovies.forEach(movie => {
+        bannerList.appendChild(createBannerItem(movie));
+    });
+    startBannerAutoScroll();
+}
+
+function stopBannerAutoScroll() {
+    clearInterval(bannerInterval);
+    if (resumeAutoScrollTimeout) {
+        clearTimeout(resumeAutoScrollTimeout);
+    }
+}
+
+function startBannerAutoScroll() {
+    let currentIndex = 0;
+    const scrollAmount = bannerList.clientWidth;
+    stopBannerAutoScroll();
+    bannerInterval = setInterval(() => {
+        if (currentIndex < bannerMovies.length - 1) {
+            currentIndex++;
+        } else {
+            currentIndex = 0;
+        }
+        bannerList.scrollTo({
+            left: currentIndex * scrollAmount,
+            behavior: 'smooth'
+        });
+    }, 3000);
+}
+
+bannerList.addEventListener('mousedown', stopBannerAutoScroll);
+bannerList.addEventListener('mouseup', () => {
+    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); 
+});
+bannerList.addEventListener('touchstart', stopBannerAutoScroll);
+bannerList.addEventListener('touchend', () => {
+    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); 
+});
+
+async function getTMDBGenres(type = 'movie') {
+    try {
+        const genres = await fetchFromTMDB(`genre/${type}/list`);
+        const genreMap = {};
+        genres.genres.forEach(genre => {
+            genreMap[genre.id] = genre.name;
+        });
+        if (type === 'movie') {
+            allMovieGenres = genreMap;
+        } else {
+            allTvGenres = genreMap;
+        }
+    } catch (error) {
+        console.error("Error fetching genres:", error);
+    }
+}
+
+function renderGenresModal(type) {
+    genresList.innerHTML = '';
+    const currentGenres = type === 'movie' ? allMovieGenres : allTvGenres;
+    for (const id in currentGenres) {
+        const genreButton = document.createElement('button');
+        genreButton.className = 'button secondary';
+        genreButton.textContent = currentGenres[id];
+        genreButton.onclick = () => {
+            fetchFromTMDB(`discover/${type}?with_genres=${id}`).then(items => {
+                renderGrid(allMoviesGrid, items, type);
+                document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+                if (type === 'movie') moviesScreen.classList.add('active');
+                else seriesScreen.classList.add('active');
+                closeModal(genresModal);
+            });
+        };
+        genresList.appendChild(genreButton);
+    }
+}
+
+searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        handleSearch(searchInput.value);
+    }
+});
+
+searchInput.addEventListener('input', (e) => {
+    const query = e.target.value;
+    if (query.length > 2) {
+        handleSearch(query);
+    } else if (query.length === 0) {
+        moviesScreen.classList.remove('search-active');
+        switchScreen('home-screen'); 
+    }
+});
+
+function renderSearchResults(results, filterType = 'all') {
+    allMoviesGrid.innerHTML = '';
+    
+    const filteredResults = results.filter(item => {
+        if (filterType === 'all') {
+            return true;
+        }
+        return item.media_type === filterType;
+    });
+
+    filteredResults.forEach(item => {
+        if (item.media_type === 'movie' || item.media_type === 'tv') {
+            const card = createMovieCard(item, item.media_type);
+            allMoviesGrid.appendChild(card);
+        }
+    });
+
+    if (filteredResults.length === 0) {
+        allMoviesGrid.innerHTML = '<p>No se encontraron resultados.</p>';
+    }
+}
+
+async function handleSearch(query) {
+    if (query.length > 2) {
+        showLoader();
+        try {
+            const searchResults = await fetchFromTMDB('search/multi', query);
+            lastSearchResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
+            
+            renderSearchResults(lastSearchResults);
+
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            moviesScreen.classList.add('active', 'search-active');
+            
+            document.querySelector('.top-nav').style.display = 'none';
+            document.querySelector('.bottom-nav').style.display = 'flex';
+            appContainer.style.paddingBottom = '70px'; 
+
+            history.replaceState({ screen: 'movies-screen', searchActive: true, query: searchInput.value, results: lastSearchResults }, '', `?screen=movies-screen&search=${encodeURIComponent(searchInput.value)}`);
+            
+        } catch (error) {
+            console.error("Error performing search:", error);
+            alert('Hubo un error en la búsqueda. Por favor, intenta de nuevo.');
+        } finally {
+            hideLoader();
+        }
+    } else if (query.length === 0) {
+        moviesScreen.classList.remove('search-active');
+        switchScreen('home-screen'); 
+    }
+}
+
+
+filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        const filterType = button.getAttribute('data-filter');
+        renderSearchResults(lastSearchResults, filterType);
+    });
+});
+
+// La función switchScreen ya está definida arriba y es accesible.
+
+window.addEventListener('popstate', async (event) => {
+    const state = event.state;
+    
+    resetDetailsPlayer(); 
+    closeAllModals(); 
+    
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+
+    if (state) {
+        if (state.screen === 'details-screen') {
+            const item = state.item;
+            const type = state.type;
+            if (item && type) {
+                showDetailsScreen(item, type); 
+            } else {
+                switchScreen('home-screen');
+            }
+        } else {
+            const previousStateIsSearch = state.searchActive;
+
+            if (previousStateIsSearch) {
+                searchOverlay.classList.add('active');
+                moviesScreen.classList.add('active'); 
+                moviesScreen.classList.add('search-active'); 
+
+                searchInput.value = state.query || '';
+                if (state.results) {
+                    lastSearchResults = state.results;
+                    renderSearchResults(lastSearchResults, 'all'); 
+                }
+                
+                document.querySelector('.top-nav').style.display = 'none';
+                document.querySelector('.bottom-nav').style.display = 'flex';
+                appContainer.style.paddingBottom = '70px';
+                searchFilters.style.display = 'flex'; 
+
+            } else {
+                searchOverlay.classList.remove('active');
+                moviesScreen.classList.remove('search-active');
+                switchScreen(state.screen); 
+            }
+        }
+    } else {
+        switchScreen('home-screen');
+    }
+});
+
+
+// Listener para el botón de Descarga (CORREGIDO: Usando la variable renombrada)
+if (btnDownloadApp) {
+    btnDownloadApp.addEventListener('click', () => {
+        showModal(downloadAppModal);
+    });
+}
+
+// Listener para Abrir Búsqueda
+if (btnOpenSearch) {
+    btnOpenSearch.addEventListener('click', () => {
+        searchOverlay.classList.add('active');
+        searchInput.focus();
+        
+        document.querySelector('.top-nav').style.display = 'none';
+        document.querySelector('.bottom-nav').style.display = 'flex';
+        appContainer.style.paddingBottom = '70px'; 
+
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        moviesScreen.classList.add('active', 'search-active');
+        searchFilters.style.display = 'flex'; 
+
+        if (lastSearchResults.length > 0) {
+            renderSearchResults(lastSearchResults);
+        } else {
+            allMoviesGrid.innerHTML = '';
+        }
+
+        history.pushState({ screen: 'movies-screen', searchActive: true, query: searchInput.value, results: lastSearchResults }, '', `?screen=movies-screen&search=${encodeURIComponent(searchInput.value)}`);
+    });
+}
+
+// Listener para Cerrar Búsqueda
+if (closeSearchButton) {
+    closeSearchButton.addEventListener('click', () => {
+        searchOverlay.classList.remove('active');
+        moviesScreen.classList.remove('search-active'); 
+        
+        searchInput.value = '';
+        lastSearchResults = [];
+        renderSearchResults(lastSearchResults); 
+        
+        switchScreen('home-screen');
+    });
+}
+
+
+document.querySelectorAll('.nav-item, .profile-button[data-screen]').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetScreenId = e.currentTarget.getAttribute('data-screen');
+        if (targetScreenId) {
+            switchScreen(targetScreenId);
+        }
+    });
+});
+authBackButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    history.back();
+});
+
+seeMoreButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const endpoint = e.currentTarget.getAttribute('data-endpoint');
+        const type = e.currentTarget.getAttribute('data-type');
+        
+        showLoader();
+        try {
+            const items = await fetchFromTMDB(endpoint);
+            if (type === 'movie') {
+                renderGrid(allMoviesGrid, items, 'movie');
+                switchScreen('movies-screen');
+            } else {
+                renderGrid(allSeriesGrid, items, 'tv');
+                switchScreen('series-screen');
+            }
+        } catch (error) {
+            console.error("Error loading 'See more' content:", error);
+            alert('No se pudo cargar el contenido. Intenta de nuevo.');
+        } finally {
+            hideLoader();
+        }
+    });
+});
+
+genresButton.addEventListener('click', () => {
+    getTMDBGenres('movie');
+    renderGenresModal('movie');
+    showModal(genresModal);
+});
+seriesGenresButton.addEventListener('click', () => {
+    getTMDBGenres('tv');
+    renderGenresModal('tv');
+    showModal(genresModal);
+});
+
+async function renderAllMovies() {
+    showLoader();
+    try {
+        const movies = await fetchFromTMDB('discover/movie?sort_by=popularity.desc');
+        renderGrid(allMoviesGrid, movies, 'movie');
+    } catch (error) {
+        console.error("Error rendering all movies:", error);
+        alert('No se pudieron cargar las películas. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function renderAllSeries() {
+    showLoader();
+    try {
+        const series = await fetchFromTMDB('discover/tv?sort_by=popularity.desc');
+        renderGrid(allSeriesGrid, series, 'tv');
+    } catch (error) {
+        console.error("Error rendering all series:", error);
+        alert('No se pudieron cargar las series. Intenta de nuevo.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function addToFavorites(movie) {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+        return;
+    }
+    try {
+        await addDoc(collection(db, "favorites"), {
+            userId: auth.currentUser.uid,
+            tmdbId: movie.id,
+            title: movie.title || movie.name,
+            poster_path: movie.poster_path,
+            type: movie.media_type || 'movie'
+        });
+        alert('Añadido a Mi lista');
+    } catch (e) {
+        console.error("Error adding favorite: ", e);
+        alert('No se pudo añadir a la lista.');
+    }
+}
+
+async function fetchFavorites() {
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+        return;
+    }
+    showLoader();
+    try {
+        const q = query(collection(db, "favorites"), where("userId", "==", auth.currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const favorites = querySnapshot.docs.map(doc => doc.data());
+        renderGrid(favoritesGrid, favorites, 'movie');
+    } catch (e) {
+        console.error("Error fetching favorites: ", e);
+        alert('No se pudieron cargar los favoritos.');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function playAd() {
+    return new Promise((resolve) => {
+        console.log("Simulating ad playback...");
+        alert('Anuncio: El video comenzará en breve.');
+        setTimeout(() => {
+            resolve();
+        }, 5000);
+    });
+}
+
+submitRequestButton.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        switchScreen('auth-screen');
         return;
     }
 
-    const lowerCaseQuery = query.toLowerCase().trim();
-    const filteredChannels = allChannels.filter(channel =>
-        channel.name.toLowerCase().includes(lowerCaseQuery)
-    );
+    const movieTitle = movieRequestInput.value.trim();
+    if (movieTitle === '') {
+        showAppMessage(requestMessage, 'Por favor, ingresa el título de la película.', 'error');
+        return;
+    }
 
-    tv_renderChannelGrid(filteredChannels, countryCode);
+    try {
+        await addDoc(collection(db, "requests"), {
+            userId: auth.currentUser.uid,
+            userName: auth.currentUser.displayName || 'Anónimo',
+            movieTitle: movieTitle,
+            requestedAt: new Date()
+        });
+        
+        const successMsg = "Tu solicitud fue enviada. Si eres usuario gratuito, espera 3 a 6 horas. Si eres usuario premium, espera alrededor de 2 horas.";
+        showAppMessage(requestMessage, successMsg, 'success');
+        movieRequestInput.value = '';
+    } catch (e) {
+        console.error("Error adding movie request: ", e);
+        showAppMessage(requestMessage, 'No se pudo enviar la solicitud. Intenta de nuevo más tarde.', 'error');
+    }
+});
 
-    if (filteredChannels.length === 0) {
-        if (tv_channel_grid) {
-            tv_channel_grid.innerHTML = `<p style="color:#aaa; text-align:center; padding-top:20px;">No se encontraron canales que coincidan con "${query}".</p>`;
+const passwordToggles = document.querySelectorAll('.password-toggle');
+passwordToggles.forEach(toggle => {
+    toggle.addEventListener('click', () => {
+        const passwordInput = toggle.previousElementSibling;
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        toggle.classList.toggle('fa-eye');
+        toggle.classList.toggle('fa-eye-slash');
+    });
+});
+
+proStatusButton.addEventListener('click', async () => {
+    if (!currentUser || currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+    } else {
+        showModal(paymentModal);
+    }
+});
+
+if (createAccountButton) {
+    createAccountButton.addEventListener('click', () => {
+        switchScreen('auth-screen');
+        loginForm.classList.remove('active-form');
+        signupForm.classList.add('active-form');
+    });
+}
+
+if (profileLoginLink) {
+    profileLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchScreen('auth-screen');
+        loginForm.classList.add('active-form');
+        signupForm.classList.remove('active-form');
+    });
+}
+
+if(authLoginLink){
+    authLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        loginForm.classList.add('active-form');
+        signupForm.classList.remove('active-form');
+    });
+}
+
+premiumInfoCtaButton.addEventListener('click', () => {
+    closeModal(premiumInfoModal);
+    showModal(paymentModal);
+});
+
+premiumInfoLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeModal(premiumInfoModal);
+    switchScreen('auth-screen');
+    loginForm.classList.add('active-form');
+    signupForm.classList.remove('active-form');
+});
+
+profileMyList.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser || currentUser.isAnonymous) {
+        switchScreen('auth-screen');
+    } else {
+        switchScreen('favorites-screen');
+    }
+});
+profilePrivacy.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('privacy-screen');
+});
+profileTerms.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('terms-screen');
+});
+profileSubscription.addEventListener('click', (e) => {
+    e.preventDefault();
+    showModal(paymentModal);
+});
+profileHelpCenter.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchScreen('help-screen');
+});
+
+showSignupLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginForm.classList.remove('active-form');
+    signupForm.classList.add('active-form');
+});
+
+showLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    signupForm.classList.remove('active-form');
+    loginForm.classList.add('active-form');
+});
+
+signupButton.addEventListener('click', async () => {
+    signupMessage.style.display = 'none'; 
+    const email = signupEmailInput.value;
+    const password = signupPasswordInput.value;
+    const termsAccepted = document.getElementById('terms-checkbox').checked;
+
+    if (!termsAccepted) {
+        showAppMessage(signupMessage, 'Debes aceptar los términos y condiciones para continuar.', 'error');
+        return;
+    }
+    
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        showAppMessage(signupMessage, '¡Registro exitoso! Por favor, activa tu Cuenta Premium.', 'success');
+        switchScreen('profile-screen');
+        showModal(paymentModal);
+    } catch (error) {
+        console.error("Signup error:", error);
+        let userMessage = 'Error al registrarse. Intenta de nuevo.';
+        if (error.code === 'auth/email-already-in-use') {
+             userMessage = 'Este correo ya está registrado. ¿Quieres iniciar sesión?';
+        } else if (error.code === 'auth/weak-password') {
+             userMessage = 'La contraseña debe tener al menos 6 caracteres.';
+        }
+        showAppMessage(signupMessage, userMessage, 'error'); 
+    }
+});
+
+loginButton.addEventListener('click', async () => {
+    loginMessage.style.display = 'none'; 
+    const email = loginEmailInput.value;
+    const password = loginPasswordInput.value;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        showAppMessage(loginMessage, '¡Inicio de sesión exitoso!', 'success');
+        switchScreen('profile-screen');
+    } catch (error) {
+        console.error("Login error:", error);
+        let userMessage = 'Error al iniciar sesión. Intenta de nuevo.';
+        if (error.code === 'auth/invalid-email' || error.code === 'auth/user-not-found') {
+            userMessage = 'Correo no registrado o inválido.';
+        } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            userMessage = 'Contraseña incorrecta.';
+        }
+        showAppMessage(loginMessage, userMessage, 'error'); 
+    }
+});
+
+socialLoginButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        alert('Esta funcionalidad aún no está disponible.');
+    });
+});
+
+// === NUEVA LÓGICA: Redirigir a ventana de selección de OS antes de iniciar pago ===
+buyButtons.forEach(button => {
+    button.addEventListener('click', (e) => {
+        if (!currentUser || currentUser.isAnonymous) {
+            switchScreen('auth-screen');
+            return;
+        }
+        const plan = e.target.getAttribute('data-plan');
+        showOSSelectionModal(plan);
+    });
+});
+
+async function initPaypalPayment(plan) {
+    if (!currentUser || currentUser.isAnonymous) return;
+
+    try {
+        const amount = (plan === 'annual') ? '19.99' : '1.99';
+        
+        const response = await fetch('https://serivisios.onrender.com/create-paypal-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                plan: plan,
+                amount: amount,
+                userId: currentUser.uid
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.approval_url) {
+            window.location.href = data.approval_url;
+        } else {
+            alert('Error al iniciar el pago con PayPal. Verifica la configuración en tu servidor.');
+        }
+    } catch (error) {
+        console.error("Error processing PayPal payment:", error);
+        alert('Hubo un error al procesar tu pago con PayPal. Intenta de nuevo.');
+    }
+}
+
+if (buyWithPaypalButton) {
+    buyWithPaypalButton.addEventListener('click', () => {
+        alert('Selecciona un plan antes de continuar con el pago.');
+    });
+}
+if (buyWithBinanceButton) {
+    buyWithBinanceButton.addEventListener('click', () => {
+        alert('Redirigiendo a Binance... (Funcionalidad simulada)');
+    });
+}
+
+signoutButton.addEventListener('click', async () => {
+    try {
+        await signOut(auth);
+        alert('Has cerrado sesión.');
+        window.location.reload();
+    } catch (error) {
+        console.error("Sign out error:", error);
+        alert('No se pudo cerrar sesión. Intenta de nuevo.');
+    }
+});
+
+// --- LISTENERS DE NOTIFICACIONES Y EVENTOS ---
+
+if (btnOpenNotifications) {
+    btnOpenNotifications.addEventListener('click', () => {
+        renderNotifications(); 
+        showModal(userNotificationsModal);
+    });
+}
+if (notificationsClose) {
+    notificationsClose.addEventListener('click', () => {
+        closeModal(userNotificationsModal);
+    });
+}
+
+if (btnClearAllNotifications) {
+    btnClearAllNotifications.addEventListener('click', async () => {
+        if (confirm('¿Estás seguro de que quieres borrar todas tus notificaciones?')) {
+            showLoader();
+            try {
+                const batch = db.batch();
+                notificationsData.forEach(notif => {
+                    if (notif.docId) {
+                        const notifRef = doc(db, 'userNotifications', notif.docId);
+                        batch.delete(notifRef);
+                    }
+                });
+                await batch.commit();
+                alert('Se han borrado todas tus notificaciones.');
+            } catch (error) {
+                console.error("Error al borrar notificaciones:", error);
+                alert('Hubo un error al borrar las notificaciones. Intenta de nuevo.');
+            } finally {
+                hideLoader();
+            }
+        }
+    });
+}
+
+if (btnPubSaveNotify) {
+    btnPubSaveNotify.addEventListener('click', async () => {
+        const embedLink = document.getElementById('admin-embed-input').value || 'Link_Simulado_PRO';
+
+        try {
+            await addDoc(collection(db, "userNotifications"), {
+                title: '¡Nueva Película Publicada!',
+                description: `Contenido nuevo disponible: ${embedLink.substring(0, 15)}...`,
+                image: 'https://placehold.co/50x70?text=NEW',
+                timestamp: new Date(),
+                isRead: false,
+                type: 'movie',
+                targetScreen: 'details-screen' 
+            });
+            
+            alert('Película guardada y notificación enviada a los usuarios. (Simulado)');
+            closeModal(contentPublishingModal); 
+
+        } catch (error) {
+             console.error("Error al simular notificación real:", error);
+             alert('Error: No se pudo conectar a la colección de notificaciones. Revisa Firebase.');
+        }
+    });
+}
+
+// NUEVA FUNCIÓN: Carga estática de películas y series (VACIADA para usar TMDB)
+async function fetchAppData() {
+    moviesData = [];
+    seriesData = [];
+}
+
+// *** FUNCIÓN CRÍTICA DE INICIO Y LLAMADA A CARGA DE CONTENIDO (Hoisted) ***
+function fetchHomeContent() { 
+    showLoader();
+    try {
+        fetchHistory().then(() => {
+            const promises = [
+                fetchFromTMDB('movie/popular').then(movies => renderCarousel('populares-movies', movies, 'movie')),
+                fetchFromTMDB('trending/all/day').then(content => {
+                    renderCarousel('tendencias-movies', content);
+                    bannerMovies = content.filter(m => m.backdrop_path);
+                    renderBannerCarousel();
+                }),
+                fetchFromTMDB('discover/movie?with_genres=28').then(movies => renderCarousel('accion-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with_genres=27,9648').then(movies => renderCarousel('terror-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with_genres=16').then(movies => renderCarousel('animacion-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with_genres=99').then(movies => renderCarousel('documentales-movies', movies, 'movie')),
+                fetchFromTMDB('discover/movie?with-genres=878').then(movies => renderCarousel('scifi-movies', movies, 'movie')),
+                fetchFromTMDB('tv/popular').then(series => renderCarousel('populares-series', series, 'tv'))
+            ];
+
+            // Permite que todo se cargue de forma concurrente
+            Promise.all(promises).catch(error => {
+                console.error("Error en la carga de carruseles:", error);
+                alert('Error al cargar contenido principal. Revisa la API de TMDB.');
+            }).finally(() => {
+                hideLoader();
+            });
+        });
+    } catch (error) {
+        console.error("Error al iniciar fetchHomeContent:", error);
+        alert('Hubo un error crítico al iniciar la carga. Intenta recargar.');
+        hideLoader();
+    }
+}
+
+
+let isInitialized = false;
+onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    
+    // Lógica de autenticación y estado PRO (sin cambios)
+    if (user && !user.isAnonymous) {
+        if (profileLoggedIn) {
+            profileLoggedIn.style.display = 'block';
+        }
+        if (profileLoggedOut) {
+            profileLoggedOut.style.display = 'none';
+        }
+        
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (userDocSnap.exists() && userDocSnap.data().isPro) {
+            currentUser.isPro = true;
+            if (proStatusButton) {
+                proStatusButton.textContent = 'Cuenta Premium Activada';
+                proStatusButton.disabled = true;
+            }
+        } else {
+            currentUser.isPro = false;
+            if (proStatusButton) {
+                proStatusButton.textContent = 'Activar Cuenta Premium';
+                proStatusButton.disabled = false;
+            }
+        }
+    } else {
+        if (currentUser) {
+             currentUser.isPro = false;
+        }
+
+        if (profileLoggedIn) {
+            profileLoggedIn.style.display = 'none';
+        }
+        if (profileLoggedOut) {
+            profileLoggedOut.style.display = 'block';
+        }
+        if (!user) {
+             await signInAnonymously(auth);
         }
     }
+
+    if (!isInitialized) {
+        showLoader();
+
+        isInitialized = true;
+        setupRealtimeNotificationsListener(); 
+        initializeTheme();
+        
+        await fetchAppData(); 
+
+        await getTMDBGenres('movie');
+        await getTMDBGenres('tv');
+        updateNotificationIndicator(); 
+        
+        appContainer.style.display = 'block';
+        hideLoader();
+
+        const startAppId = getURLParameter('startapp');
+        if (startAppId) {
+            try {
+                let fullItem = await fetchFromTMDB(`movie/${startAppId}`);
+                let type = 'movie';
+
+                if (!fullItem || fullItem.status_code === 34 || !fullItem.id) {
+                     fullItem = await fetchFromTMDB(`tv/${startAppId}`);
+                     type = 'tv';
+                }
+
+                if (fullItem && fullItem.id) {
+                    fullItem.media_type = type; 
+                    history.pushState({ screen: 'details-screen', item: fullItem, type: type }, '', '');
+                    showDetailsScreen(fullItem, type);
+                } else {
+                    switchScreen('home-screen');
+                }
+            } catch (error) {
+                console.error("Error al cargar contenido desde Telegram:", error);
+                switchScreen('home-screen');
+            }
+        } else {
+            switchScreen('home-screen');
+        }
+    }
+});
+
+// --- Funciones Auxiliares de Renderizado ---
+
+function renderBannerCarousel() {
+    bannerList.innerHTML = '';
+    bannerMovies.forEach(movie => {
+        bannerList.appendChild(createBannerItem(movie));
+    });
+    startBannerAutoScroll();
 }
 
-
-function renderCountryButtons() {
-    if (!country_nav) return;
-    country_nav.innerHTML = '';
-    for (const code in country_sources) {
-        const source = country_sources[code];
-        const button = document.createElement('button');
-        button.className = `country-button ${code === 'MX' ? 'active' : ''} ${source.premium ? 'premium' : ''}`;
-        button.textContent = source.name;
-        button.setAttribute('data-country', code);
-        button.onclick = () => window.tv_filterChannels(code);
-        country_nav.appendChild(button);
+function stopBannerAutoScroll() {
+    clearInterval(bannerInterval);
+    if (resumeAutoScrollTimeout) {
+        clearTimeout(resumeAutoScrollTimeout);
     }
 }
 
-// ======================================================================
-// [PASO CRÍTICO] HACER FUNCIONES DE TV GLOBALES PARA EL ONCLICK DEL HTML
-// ======================================================================
-window.tv_loadChannel = tv_loadChannel;
-window.tv_filterChannels = tv_filterChannels;
-window.renderCountryButtons = renderCountryButtons;
-window.switchScreen = switchScreen;
-// ======================================================================
-// FIN BLOQUE TV
-// ======================================================================
+function startBannerAutoScroll() {
+    let currentIndex = 0;
+    const scrollAmount = bannerList.clientWidth;
+    stopBannerAutoScroll();
+    bannerInterval = setInterval(() => {
+        if (currentIndex < bannerMovies.length - 1) {
+            currentIndex++;
+        } else {
+            currentIndex = 0;
+        }
+        bannerList.scrollTo({
+            left: currentIndex * scrollAmount,
+            behavior: 'smooth'
+        });
+    }, 3000);
+}
+
+bannerList.addEventListener('mousedown', stopBannerAutoScroll);
+bannerList.addEventListener('mouseup', () => {
+    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); 
+});
+bannerList.addEventListener('touchstart', stopBannerAutoScroll);
+bannerList.addEventListener('touchend', () => {
+    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); 
+});
+
+async function getTMDBGenres(type = 'movie') {
+    try {
+        const genres = await fetchFromTMDB(`genre/${type}/list`);
+        const genreMap = {};
+        genres.genres.forEach(genre => {
+            genreMap[genre.id] = genre.name;
+        });
+        if (type === 'movie') {
+            allMovieGenres = genreMap;
+        } else {
+            allTvGenres = genreMap;
+        }
+    } catch (error) {
+        console.error("Error fetching genres:", error);
+    }
+}
+
+function renderGenresModal(type) {
+    genresList.innerHTML = '';
+    const currentGenres = type === 'movie' ? allMovieGenres : allTvGenres;
+    for (const id in currentGenres) {
+        const genreButton = document.createElement('button');
+        genreButton.className = 'button secondary';
+        genreButton.textContent = currentGenres[id];
+        genreButton.onclick = () => {
+            fetchFromTMDB(`discover/${type}?with_genres=${id}`).then(items => {
+                renderGrid(allMoviesGrid, items, type);
+                document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+                if (type === 'movie') moviesScreen.classList.add('active');
+                else seriesScreen.classList.add('active');
+                closeModal(genresModal);
+            });
+        };
+        genresList.appendChild(genreButton);
+    }
+}
+
+searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        handleSearch(searchInput.value);
+    }
+});
+
+searchInput.addEventListener('input', (e) => {
+    const query = e.target.value;
+    if (query.length > 2) {
+        handleSearch(query);
+    } else if (query.length === 0) {
+        moviesScreen.classList.remove('search-active');
+        switchScreen('home-screen'); 
+    }
+});
+
+function renderSearchResults(results, filterType = 'all') {
+    allMoviesGrid.innerHTML = '';
+    
+    const filteredResults = results.filter(item => {
+        if (filterType === 'all') {
+            return true;
+        }
+        return item.media_type === filterType;
+    });
+
+    filteredResults.forEach(item => {
+        if (item.media_type === 'movie' || item.media_type === 'tv') {
+            const card = createMovieCard(item, item.media_type);
+            allMoviesGrid.appendChild(card);
+        }
+    });
+
+    if (filteredResults.length === 0) {
+        allMoviesGrid.innerHTML = '<p>No se encontraron resultados.</p>';
+    }
+}
+
+async function handleSearch(query) {
+    if (query.length > 2) {
+        showLoader();
+        try {
+            const searchResults = await fetchFromTMDB('search/multi', query);
+            lastSearchResults = searchResults.filter(m => m.media_type !== 'person' && m.poster_path);
+            
+            renderSearchResults(lastSearchResults);
+
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            moviesScreen.classList.add('active', 'search-active');
+            
+            document.querySelector('.top-nav').style.display = 'none';
+            document.querySelector('.bottom-nav').style.display = 'flex';
+            appContainer.style.paddingBottom = '70px'; 
+
+            history.replaceState({ screen: 'movies-screen', searchActive: true, query: searchInput.value, results: lastSearchResults }, '', `?screen=movies-screen&search=${encodeURIComponent(searchInput.value)}`);
+            
+        } catch (error) {
+            console.error("Error performing search:", error);
+            alert('Hubo un error en la búsqueda. Por favor, intenta de nuevo.');
+        } finally {
+            hideLoader();
+        }
+    } else if (query.length === 0) {
+        moviesScreen.classList.remove('search-active');
+        switchScreen('home-screen'); 
+    }
+}
+
+
+filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        const filterType = button.getAttribute('data-filter');
+        renderSearchResults(lastSearchResults, filterType);
+    });
+});
