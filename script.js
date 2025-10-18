@@ -998,13 +998,6 @@ function setupDetailsTabs(tmdbItem, type) {
             const targetPane = document.getElementById(targetTabId);
             if (targetPane) {
                 targetPane.classList.add('active');
-                
-                // [MODIFICADO] Se elimina la lógica de carga aquí. Ahora la carga es automática en showDetailsScreen.
-                // if (targetTabId === 'related-content-pane') {
-                //     if (relatedMoviesContainer.children.length === 0) {
-                //         fetchRelatedContent(tmdbItem, type);
-                //     }
-                // }
             }
         });
     });
@@ -1026,7 +1019,6 @@ async function fetchRelatedContent(item, type) {
         if (genreIds) {
             // [MODIFICADO] Usar el endpoint discover con los géneros, ordenado por popularidad.
             const endpoint = `discover/${tmdbEndpointType}?with_genres=${genreIds}&sort_by=popularity.desc`;
-            // NOTA: fetchFromTMDB maneja la estructura de la respuesta.
             const results = await fetchFromTMDB(endpoint); 
             
             // FILTRO ADICIONAL: Eliminar el elemento actual de la lista de resultados relacionados.
@@ -2017,8 +2009,9 @@ async function fetchHomeContent() {
         // Cargar el banner principal (tendencias de la semana)
         const trendingBanners = await fetchFromTMDB('trending/movie/week'); 
         if (trendingBanners && Array.isArray(trendingBanners.results)) {
-             // Aplicar filtro para asegurar que haya una imagen de fondo
-             const validBanners = trendingBanners.results.filter(i => i.backdrop_path).slice(0, 5);
+             // [MODIFICACIÓN CRÍTICA] Aplicar filtro para asegurar que haya una imagen de PÓSTER,
+             // que es un filtro menos restrictivo que backdrop_path, para asegurar que se intente renderizar el HTML.
+             const validBanners = trendingBanners.results.filter(i => i.poster_path).slice(0, 5); 
              renderBanner(validBanners); 
         }
 
