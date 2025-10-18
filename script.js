@@ -1937,6 +1937,18 @@ function renderBanner(items) {
     if (!bannerList) return;
     bannerList.innerHTML = '';
     
+    if (items.length === 0) {
+        // [AÑADIDO] Mensaje de depuración visible si no hay banners.
+        bannerList.style.display = 'block'; 
+        bannerList.innerHTML = `
+            <div style="text-align: center; padding: 50px 20px; color: #E50914; background: #1a1a1a; height: 250px; display: flex; align-items: center; justify-content: center;">
+                <p>⚠️ ERROR: No se encontraron películas de tendencia para el carrusel. (Revise la API de TMDB)</p>
+            </div>
+        `;
+        if (bannerInterval) clearInterval(bannerInterval);
+        return; 
+    }
+
     items.forEach(item => {
         const banner = document.createElement('div');
         banner.className = 'banner-item';
@@ -2008,13 +2020,29 @@ async function fetchHomeContent() {
     try {
         // Cargar el banner principal (tendencias de la semana)
         const trendingBanners = await fetchFromTMDB('trending/movie/week'); 
+        
+        let validBanners = [];
+
         if (trendingBanners && Array.isArray(trendingBanners.results)) {
-             // [MODIFICACIÓN CRÍTICA] Aplicar filtro para asegurar que haya una imagen de PÓSTER,
-             // que es un filtro menos restrictivo que backdrop_path, para asegurar que se intente renderizar el HTML.
-             const validBanners = trendingBanners.results.filter(i => i.poster_path).slice(0, 5); 
-             renderBanner(validBanners); 
+             // Aplicar filtro para asegurar que haya una imagen de PÓSTER
+             validBanners = trendingBanners.results.filter(i => i.poster_path).slice(0, 5); 
         }
 
+        // [MODIFICACIÓN CRÍTICA] Si no hay banners válidos, forzar un banner de fallback para depuración.
+        if (validBanners.length === 0) {
+            console.error("DEBUG: La API de TMDB no devolvió banners válidos. Usando fallback.");
+            validBanners.push({
+                id: 999999,
+                title: 'No hay Banners (Error de API)',
+                name: 'No hay Banners (Error de API)',
+                media_type: 'movie',
+                backdrop_path: 'https://placehold.co/800x450/E50914/FFF?text=API+FAIL',
+                poster_path: 'https://placehold.co/130x195/E50914/FFF?text=API+FAIL'
+            });
+        }
+        
+        renderBanner(validBanners); 
+        
         // Cargar los carruseles de categorías (usando los IDs del index.html)
         await fetchAndRenderCarousel('movie/popular', 'populares-movies', 'movie');
         await fetchAndRenderCarousel('trending/all/day', 'tendencias-movies', 'movie');
