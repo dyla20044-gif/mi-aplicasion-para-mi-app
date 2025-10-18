@@ -1025,207 +1025,9 @@ async function fetchRelatedContent(item, type) {
     }
 }
 
-async function fetchAllGenres(type = 'movie') {
-    try {
-        const genres = await fetchFromTMDB(`genre/${type}/list`);
-        const genreMap = {};
-        genres.genres.forEach(genre => {
-            genreMap[genre.id] = genre.name;
-        });
-        if (type === 'movie') {
-            allMovieGenres = genreMap;
-        } else {
-            allTvGenres = genreMap;
-        }
-    } catch (error) {
-        console.error("Error fetching genres:", error);
-    }
-}
-
-function createMovieCard(movie, type = 'movie') {
-    const movieCard = document.createElement('div');
-    movieCard.className = 'movie-card';
-    const posterUrl = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://placehold.co/500x750?text=No+Poster';
-    
-    let badgeHtml = '';
-    const isPopular = movie.popularity > 100;
-    if (isPopular) {
-        badgeHtml = `<div class="badge">TOP</div>`;
-    }
-
-    const mediaTypeLabel = movie.media_type ? `<div class="media-type-label">${movie.media_type === 'movie' ? 'Película' : 'Serie'}</div>` : '';
-    
-    movieCard.innerHTML = `
-        ${badgeHtml}
-        ${mediaTypeLabel}
-        <img src="${posterUrl}" alt="${movie.title || movie.name}" class="movie-poster">
-    `;
-    
-    movieCard.addEventListener('click', () => {
-        const currentState = history.state || { screen: 'home-screen' };
-        
-        history.pushState({ 
-            screen: 'details-screen', 
-            item: movie, 
-            type: type || movie.media_type, 
-            previousState: currentState 
-        }, '', '');
-        showDetailsScreen(movie, type || movie.media_type)
-    });
-    return movieCard;
-}
-
-function createBannerItem(movie) {
-    const bannerItem = document.createElement('div');
-    bannerItem.className = 'banner-item';
-    const backdropUrl = movie.backdrop_path ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}` : 'https://placehold.co/1080x600?text=No+Banner';
-    bannerItem.style.backgroundImage = `url('${backdropUrl}')`;
-    
-    let buttonHtml = '';
-    buttonHtml = `<button class="banner-button red"><i class="fas fa-play"></i> Ver ahora</button>`;
-
-    bannerItem.innerHTML = `
-        <div class="banner-buttons-container">
-            ${buttonHtml}
-        </div>
-    `;
-
-    const playButton = bannerItem.querySelector('.red');
-    if (playButton) {
-        playButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            history.pushState({ screen: 'details-screen', item: movie, type: movie.media_type || 'movie' }, '', '');
-            showDetailsScreen(movie, movie.media_type || 'movie');
-        });
-    }
-
-    bannerItem.addEventListener('click', () => {
-        history.pushState({ screen: 'details-screen', item: movie, type: movie.media_type || 'movie' }, '', '');
-        showDetailsScreen(movie, movie.media_type || 'movie')
-    });
-    return bannerItem;
-}
-
-function renderCarousel(containerId, movies, type = 'movie') {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.innerHTML = '';
-    movies.forEach(movie => {
-        container.appendChild(createMovieCard(movie, movie.media_type || type));
-    });
-}
-
-function renderGrid(container, movies, type = 'movie') {
-    if (!container) return;
-    container.innerHTML = '';
-    movies.forEach(movie => {
-        container.appendChild(createMovieCard(movie, type));
-    });
-}
-
-async function fetchHistory() {
-    if (!auth.currentUser || auth.currentUser.isAnonymous) {
-        historySection.style.display = 'none';
-        return;
-    }
-    try {
-        const q = query(collection(db, "history"), where("userId", "==", auth.currentUser.uid), orderBy("timestamp", "desc"), limit(10));
-        const querySnapshot = await getDocs(q);
-        const history = querySnapshot.docs.map(doc => doc.data());
-        if (history.length > 0) {
-            historySection.style.display = 'block';
-            renderCarousel('history-list', history, 'movie');
-        } else {
-            historySection.style.display = 'none';
-        }
-    } catch (e) {
-        console.error("Error al obtener el historial: ", e);
-        historySection.style.display = 'none';
-    }
-}
-
-
-async function fetchHomeContent() {
-    showLoader();
-    try {
-        await fetchHistory();
-
-        const popularMovies = await fetchFromTMDB('movie/popular');
-        renderCarousel('populares-movies', popularMovies, 'movie');
-
-        const trendingContent = await fetchFromTMDB('trending/all/day');
-        renderCarousel('tendencias-movies', trendingContent);
-
-        const actionMovies = await fetchFromTMDB('discover/movie?with_genres=28');
-        renderCarousel('accion-movies', actionMovies, 'movie');
-
-        const terrorMovies = await fetchFromTMDB('discover/movie?with_genres=27,9648');
-        renderCarousel('terror-movies', terrorMovies, 'movie');
-        
-        const animacionMovies = await fetchFromTMDB('discover/movie?with_genres=16');
-        renderCarousel('animacion-movies', animacionMovies, 'movie');
-
-        const documentalesMovies = await fetchFromTMDB('discover/movie?with_genres=99');
-        renderCarousel('documentales-movies', documentalesMovies, 'movie');
-
-        const scifiMovies = await fetchFromTMDB('discover/movie?with-genres=878');
-        renderCarousel('scifi-movies', scifiMovies, 'movie');
-
-        const popularSeries = await fetchFromTMDB('tv/popular');
-        renderCarousel('populares-series', popularSeries, 'tv');
-        
-        bannerMovies = trendingContent.filter(m => m.backdrop_path);
-        renderBannerCarousel();
-    } catch (error) {
-        console.error("Error fetching home content:", error);
-        alert('Hubo un error al cargar el contenido principal. Por favor, recarga la página.');
-    } finally {
-        hideLoader();
-    }
-}
-
-function renderBannerCarousel() {
-    bannerList.innerHTML = '';
-    bannerMovies.forEach(movie => {
-        bannerList.appendChild(createBannerItem(movie));
-    });
-    startBannerAutoScroll();
-}
-
-function stopBannerAutoScroll() {
-    clearInterval(bannerInterval);
-    if (resumeAutoScrollTimeout) {
-        clearTimeout(resumeAutoScrollTimeout);
-    }
-}
-
-function startBannerAutoScroll() {
-    let currentIndex = 0;
-    const scrollAmount = bannerList.clientWidth;
-    stopBannerAutoScroll();
-    bannerInterval = setInterval(() => {
-        if (currentIndex < bannerMovies.length - 1) {
-            currentIndex++;
-        } else {
-            currentIndex = 0;
-        }
-        bannerList.scrollTo({
-            left: currentIndex * scrollAmount,
-            behavior: 'smooth'
-        });
-    }, 3000);
-}
-
-bannerList.addEventListener('mousedown', stopBannerAutoScroll);
-bannerList.addEventListener('mouseup', () => {
-    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); 
-});
-bannerList.addEventListener('touchstart', stopBannerAutoScroll);
-bannerList.addEventListener('touchend', () => {
-    resumeAutoScrollTimeout = setTimeout(startBannerAutoScroll, 10000); 
-});
-
-async function fetchAllGenres(type = 'movie') {
+// ** FUNCIÓN ORIGINAL CAUSANTE DEL ERROR (Ahora renombrada en el backend para evitar conflicto) **
+// La función original era fetchAllGenres.
+async function getTMDBGenres(type = 'movie') {
     try {
         const genres = await fetchFromTMDB(`genre/${type}/list`);
         const genreMap = {};
@@ -1546,10 +1348,12 @@ seeMoreButtons.forEach(button => {
 });
 
 genresButton.addEventListener('click', () => {
+    getTMDBGenres('movie');
     renderGenresModal('movie');
     showModal(genresModal);
 });
 seriesGenresButton.addEventListener('click', () => {
+    getTMDBGenres('tv');
     renderGenresModal('tv');
     showModal(genresModal);
 });
@@ -1993,10 +1797,10 @@ onAuthStateChanged(auth, async (user) => {
         setupRealtimeNotificationsListener(); 
         initializeTheme();
         
-        await fetchAppData(); // Se mantiene pero se vacía.
+        await fetchAppData(); 
 
-        await fetchAllGenres('movie');
-        await fetchAllGenres('tv');
+        await getTMDBGenres('movie');
+        await getTMDBGenres('tv');
         updateNotificationIndicator(); 
         
         appContainer.style.display = 'block';
@@ -2267,7 +2071,7 @@ function renderCountryButtons() {
 
 // ======================================================================
 // [PASO CRÍTICO] HACER FUNCIONES DE TV GLOBALES PARA EL ONCLICK DEL HTML
-// ======================================================================\
+// ======================================================================
 window.tv_loadChannel = tv_loadChannel;
 window.tv_filterChannels = tv_filterChannels;
 window.renderCountryButtons = renderCountryButtons;
@@ -2275,11 +2079,3 @@ window.switchScreen = switchScreen;
 // ======================================================================
 // FIN BLOQUE TV
 // ======================================================================
-
-// --- LISTENER DE BÚSQUEDA DE TV EN VIVO (Implementación solicitada) ---
-const tvSearchInput = document.getElementById('tv-search-input');
-if (tvSearchInput) {
-    tvSearchInput.addEventListener('input', (e) => {
-        tv_searchChannels(e.target.value);
-    });
-}
