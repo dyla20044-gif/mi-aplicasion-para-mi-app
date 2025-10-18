@@ -393,6 +393,83 @@ function resetDetailsPlayer() {
     playButtonContainer.style.display = 'flex';
 }
 
+// --- FUNCIÓN FALTANTE: showDetailsScreen (Soluciona el ReferenceError) ---
+async function showDetailsScreen(item, type) {
+    if (!item || !item.id) return;
+    showLoader();
+    
+    switchScreen('details-screen');
+    resetDetailsPlayer(); 
+    
+    // Almacena el elemento actual
+    currentMovieOrSeries = {
+        tmdbId: item.id,
+        type: type,
+        isMovie: type === 'movie'
+    };
+
+    try {
+        const tmdbEndpointType = type === 'movie' ? 'movie' : 'tv';
+        const fullDetails = await fetchFromTMDB(`${tmdbEndpointType}/${item.id}?append_to_response=credits`);
+        currentFullTMDBItem = fullDetails;
+
+        // --- RENDERIZAR INFO BÁSICA ---
+        detailsTitle.textContent = fullDetails.title || fullDetails.name;
+        detailsYear.textContent = (fullDetails.release_date || fullDetails.first_air_date || 'N/A').substring(0, 4);
+        detailsSinopsis.textContent = fullDetails.overview || 'Sinopsis no disponible.';
+        
+        detailsGenres.textContent = fullDetails.genres ? fullDetails.genres.map(g => g.name).join(', ') : 'N/A';
+
+        // Poster/Backdrop
+        const posterPath = fullDetails.backdrop_path || fullDetails.poster_path;
+        if (posterPath) {
+            detailsPosterTop.style.backgroundImage = `url('https://image.tmdb.org/t/p/original${posterPath}')`;
+        } else {
+            detailsPosterTop.style.backgroundImage = 'none';
+            detailsPosterTop.style.backgroundColor = '#222';
+        }
+
+        // Director y Actores
+        const credits = fullDetails.credits;
+        if (credits) {
+            const director = credits.crew.find(c => c.job === 'Director');
+            directorName.textContent = director ? director.name : 'N/A';
+            
+            const actors = credits.cast.slice(0, 5).map(a => a.name).join(', ');
+            actorsList.textContent = actors || 'N/A';
+        }
+
+        // --- RENDERIZAR METRICAS (Views/Likes) ---
+        const views = await getCount(item.id, 'views');
+        const likes = await getCount(item.id, 'likes');
+
+        viewCountDisplay.innerHTML = `<i class="fas fa-eye"></i> ${views} Vistas`;
+        likeCountDisplayText.innerHTML = `<i class="fas fa-heart"></i> ${likes} Me Gusta`;
+        renderLikeState(item.id);
+
+        // --- RENDERIZAR BOTONES DE REPRODUCCIÓN y Episodios ---
+        seasonsContainer.style.display = 'none';
+        episodesContainer.innerHTML = '';
+        
+        if (type === 'movie') {
+            await renderMoviePlayButtons(item, fullDetails);
+        } else {
+            await renderSeriesButtons(item, fullDetails);
+        }
+
+        // --- RENDERIZAR TABS (Similares/Comentarios) ---
+        setupDetailsTabs(fullDetails, type);
+        renderComments(item.id);
+        
+    } catch (error) {
+        console.error("Error al mostrar detalles:", error);
+        alert('No se pudieron cargar los detalles del contenido.');
+    } finally {
+        hideLoader();
+    }
+}
+// --- FIN FUNCIÓN showDetailsScreen ---
+
 // --- Lógica del Tema Dual (Sin cambios) ---
 
 function applyTheme(mode) {
