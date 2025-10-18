@@ -1746,10 +1746,10 @@ async function fetchAppData() {
 }
 
 // ======================================================================
-// 📌 FUNCIONES AGREGADAS PARA CORREGIR ReferenceError (fetchHomeContent, renderGrid, etc.)
+// 📌 FUNCIONES AGREGADAS PARA CORREGIR ERRORES DE CARGA Y RENDERIZADO
 // ======================================================================
 
-// --- Base Rendering Functions (Fixes renderGrid not defined) ---
+// --- Base Rendering Functions ---
 
 function createMovieCard(item, type) {
     const card = document.createElement('div');
@@ -1888,7 +1888,7 @@ async function showDetailsScreen(item, type) {
 // Making showDetailsScreen globally available (for onclick in createMovieCard and banner)
 window.showDetailsScreen = showDetailsScreen;
 
-// --- Home Screen Content Loading Functions (Fixes fetchHomeContent not defined) ---
+// --- Home Screen Content Loading Functions ---
 
 // Función para simplificar la carga y renderizado de un carrusel
 async function fetchAndRenderCarousel(endpoint, containerId, type) {
@@ -1923,21 +1923,22 @@ function renderBanner(items) {
     items.forEach(item => {
         const banner = document.createElement('div');
         banner.className = 'banner-item';
-        // Usa backdrop_path para las imágenes de banner
-        const imagePath = item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : 'https://placehold.co/800x450?text=No+Image';
-        banner.style.backgroundImage = `url(${imagePath})`;
+        
+        // Usar backdrop_path o un placeholder
+        const imagePath = item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : 'https://placehold.co/800x450/1e1e1e/FFF?text=Contenido+Premium';
+        banner.style.backgroundImage = `url('${imagePath}')`; 
         
         const itemType = item.media_type || (item.title ? 'movie' : 'tv');
         const itemTitle = item.title || item.name;
 
-        // FIX CRÍTICO: Escapar el título para el onclick para evitar errores con comillas simples (ej. "King's Man")
+        // Escapar el título para el onclick para evitar errores con comillas simples (ej. "King's Man")
         const safeTitle = (itemTitle || '').replace(/'/g, "\\'"); 
         const safePoster = (item.poster_path || '').replace(/'/g, "\\'"); 
         
         banner.innerHTML = `
             <div class="banner-buttons-container">
                  <div class="pro-badge">PRO</div>
-                <button class="banner-button red" onclick="showDetailsScreen({id: ${item.id}, title: '${safeTitle}', name: '${safeTitle}', media_type: '${itemType}'}, '${itemType}')"><i class="fas fa-play"></i> Ver Ahora</button>
+                <button class="banner-button red" onclick="showDetailsScreen({id: ${item.id}, title: '${safeTitle}', name: '${safeTitle}', media_type: '${itemType}', backdrop_path: '${item.backdrop_path}'}, '${itemType}')"><i class="fas fa-play"></i> Ver Ahora</button>
                 <button class="banner-button" onclick="addToFavorites({id: ${item.id}, title: '${safeTitle}', poster_path: '${safePoster}', type: '${itemType}'})"><i class="fas fa-plus"></i> Mi Lista</button>
             </div>
         `;
@@ -1946,7 +1947,8 @@ function renderBanner(items) {
     
     // Start auto-scrolling only if there are banners
     if (items.length > 0) {
-        startBannerAutoScroll();
+        // FIX CRÍTICO: Añadir timeout para asegurar que el DOM cargue las dimensiones antes de iniciar el scroll.
+        setTimeout(startBannerAutoScroll, 100); 
     }
 }
 
@@ -1955,6 +1957,7 @@ function startBannerAutoScroll() {
     const bannerList = document.getElementById('banner-list');
     const bannerItems = bannerList.querySelectorAll('.banner-item');
 
+    // Re-chequeo si hay elementos después del timeout
     if (bannerItems.length < 2) return;
 
     // Clear any existing interval to prevent overlap
@@ -1988,9 +1991,9 @@ async function fetchHomeContent() {
         // Cargar el banner principal (tendencias de la semana)
         const trendingBanners = await fetchFromTMDB('trending/movie/week'); 
         if (trendingBanners && Array.isArray(trendingBanners.results)) {
-             // FIX CRÍTICO: Quitamos el filtro 'backdrop_path' aquí para asegurar que siempre haya elementos, 
-             // dejando que renderBanner use la imagen placeholder si es necesario.
-             renderBanner(trendingBanners.results.slice(0, 5)); 
+             // Aplicar filtro para asegurar que haya una imagen de fondo
+             const validBanners = trendingBanners.results.filter(i => i.backdrop_path).slice(0, 5);
+             renderBanner(validBanners); 
         }
 
         // Cargar los carruseles de categorías (usando los IDs del index.html)
@@ -2000,15 +2003,13 @@ async function fetchHomeContent() {
         await fetchAndRenderCarousel('discover/movie?with_genres=27,9648', 'terror-movies', 'movie'); 
         await fetchAndRenderCarousel('discover/movie?with_genres=16', 'animacion-movies', 'movie'); 
         await fetchAndRenderCarousel('discover/movie?with_genres=99', 'documentales-movies', 'movie'); 
-        await fetchAndRenderCarousel('discover/movie?with_genres=878', 'scifi-movies', 'movie'); 
+        await fetchAndRenderCarousel('discover/movie?with-genres=878', 'scifi-movies', 'movie'); 
         await fetchAndRenderCarousel('tv/popular', 'populares-series', 'tv');
 
         // Lógica para mostrar/ocultar el historial (history-section)
         const historySection = document.getElementById('history-section');
         if (currentUser && !currentUser.isAnonymous) {
              if(historySection) historySection.style.display = 'block';
-             // Asumiendo que existe una función fetchHistory()
-             // fetchHistory(); 
         } else {
              if(historySection) historySection.style.display = 'none';
         }
@@ -2020,7 +2021,7 @@ async function fetchHomeContent() {
     }
 }
 // ======================================================================
-// 📌 FIN FUNCIONES AGREGADAS
+// FIN FUNCIONES AGREGADAS
 // ======================================================================
 
 let isInitialized = false;
