@@ -2076,8 +2076,7 @@ function renderCarousel(containerId, items, type) {
 async function fetchHomeContent() {
     showLoader();
     try {
-        // CORRECCIÓN CRÍTICA: Usamos 'trending/all/day' para el banner para garantizar la disponibilidad
-        // de 'backdrop_path' y la estabilidad del carrusel.
+        // Fuente principal del banner: 'trending/all/day' para garantizar la imagen de fondo.
         const bannerSource = await fetchFromTMDB('trending/all/day'); 
         
         let validBanners = [];
@@ -2090,14 +2089,17 @@ async function fetchHomeContent() {
         // Renderiza el banner usando la función corregida
         renderBanner(validBanners); 
         
-        // Cargar los carruseles de categorías (usando los IDs del index.html)
+        // Cargar los carruseles de categorías
         await fetchAndRenderCarousel('movie/popular', 'populares-movies', 'movie');
         await fetchAndRenderCarousel('trending/all/day', 'tendencias-movies', 'movie');
         await fetchAndRenderCarousel('discover/movie?with_genres=28', 'accion-movies', 'movie'); 
         await fetchAndRenderCarousel('discover/movie?with_genres=27,9648', 'terror-movies', 'movie'); 
         await fetchAndRenderCarousel('discover/movie?with_genres=16', 'animacion-movies', 'movie'); 
         await fetchAndRenderCarousel('discover/movie?with_genres=99', 'documentales-movies', 'movie'); 
-        await fetchAndRenderCarousel('discover/movie?with-genres=878', 'scifi-movies', 'movie'); 
+        
+        // CORRECCIÓN CRÍTICA: Se cambia 'with-genres=878' a 'with_genres=878' para resolver el error 404.
+        await fetchAndRenderCarousel('discover/movie?with_genres=878', 'scifi-movies', 'movie'); 
+        
         await fetchAndRenderCarousel('tv/popular', 'populares-series', 'tv');
 
         // Lógica para mostrar/ocultar el historial (history-section)
