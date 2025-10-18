@@ -1939,6 +1939,7 @@ function renderBanner(items) {
     
     if (items.length === 0) {
         // Mensaje de depuración visible si no hay banners.
+        console.error("DEBUG: La API de Populares falló. Mostrando Error Explícito.");
         bannerList.style.display = 'block'; 
         bannerList.innerHTML = `
             <div style="text-align: center; padding: 50px 20px; color: #E50914; background: #1a1a1a; height: 250px; display: flex; align-items: center; justify-content: center;">
@@ -2024,8 +2025,8 @@ async function fetchHomeContent() {
         let validBanners = [];
 
         if (bannerSource && Array.isArray(bannerSource.results)) {
-             // Aplicar filtro para asegurar que haya una imagen de PÓSTER
-             validBanners = bannerSource.results.filter(i => i.poster_path).slice(0, 5); 
+             // 🎯 CORRECCIÓN: Filtrar por backdrop_path, que es la imagen del banner, no poster_path.
+             validBanners = bannerSource.results.filter(i => i.backdrop_path).slice(0, 5); 
         }
 
         // Si no hay banners válidos, mostrar error explícito (la función renderBanner lo manejará)
